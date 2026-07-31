@@ -22,8 +22,12 @@ A **product** over `@pellux/goodvibes-sdk`, exactly like the TUI and the agent a
 - the composition root that builds the daemon's service graph,
 - the product handlers the SDK does not own (inbox, triage, drafts, routing, remote peers,
   credentials),
-- the CLI (`send`, `cluster`, `provision-wake-model`, `install-service` and friends),
-- packaging: the compiled `goodvibes-daemon-<os>-<arch>` binaries.
+- the CLI (`send`, `cluster`, `webui`, `provision-wake-model`, `install-service` and friends),
+- packaging: the compiled `goodvibes-daemon-<os>-<arch>` binaries,
+- `scripts/install.sh` — the suite installer behind `https://goodvibes.sh/install.sh`, which
+  installs all four products (this daemon, the terminal app, the agent, the browser operator
+  surface) from their own repositories' releases. It lives here because the daemon is the product
+  everything else is installed alongside, and because this repository's release lane publishes it.
 
 Every engine — the facade, the routes, the brokers, the updater, the channel adapters, the
 schedulers — lives in the SDK and is consumed from the published package. Nothing was moved out of
@@ -48,11 +52,26 @@ restart would break all three on machines that are already running.
 ## Install
 
 The one-line installer downloads checksum-verified binaries and needs no package
-manager:
+manager. It installs the whole suite — this daemon and the sqlite-vec addon from
+this repository's release, the terminal app from `goodvibes-tui`, the agent and
+its browser driver from `goodvibes-agent`, and the browser operator surface's
+bundle from `goodvibes-webui` — resolving a tag per repository and verifying
+every file against that repository's own `SHA256SUMS.txt`:
 
 ```sh
 curl -fsSL https://goodvibes.sh/install.sh | sh
 ```
+
+The installer is `scripts/install.sh` in this repository and ships as a release
+asset of it, so the current published copy is always at
+`https://github.com/mgd34msu/goodvibes-daemon/releases/latest/download/install.sh`.
+
+The browser surface is not a fourth binary and not a fourth service: the bundle
+unpacks to `<install dir>/webui/<version>` and this daemon serves it on its own
+listener, same origin as the API. Installing it exposes nothing new to your
+network — the shipped binding is loopback and the installer does not change it.
+`goodvibes-daemon webui --lan` is the deliberate act that widens it, and
+`goodvibes-daemon webui status` says which posture is in force.
 
 Or install from the npm registry with [Bun](https://bun.sh):
 
@@ -95,6 +114,7 @@ goodvibes-daemon install-service      # install and start the user service unit
 goodvibes-daemon service-status
 goodvibes-daemon send --channel telegram "message"
 goodvibes-daemon cluster status
+goodvibes-daemon webui status         # is the browser surface served, from where, to whom
 goodvibes-daemon provision-wake-model
 ```
 
