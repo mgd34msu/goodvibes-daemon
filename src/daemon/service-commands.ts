@@ -141,7 +141,7 @@ export interface DaemonServiceCliInput {
    * lives, regardless of any GOODVIBES_HOME/GOODVIBES_DAEMON_HOME override.
    * Required (no default to `homeDir`) so a unit-management subcommand can
    * never silently search for its unit under a relocated tree home instead of
-   * where the service manager actually looks (D12).
+   * where the service manager actually looks.
    */
   readonly unitHomeDir: string;
   readonly host: string;

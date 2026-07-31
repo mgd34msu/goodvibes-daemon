@@ -103,7 +103,7 @@ export interface BuildManagedDaemonServiceManagerParams {
    * used for unit-file path resolution: see `unitHomeDir` for that. A unit
    * path search rooted here would look for `~/.config/systemd/user/` under
    * whatever GOODVIBES_HOME points at instead of the real login home systemd
-   * actually reads (D12) — the same class of bug the boot-time reconcile in
+   * actually reads — the same class of bug the boot-time reconcile in
    * `src/daemon/cli.ts` already guards against with the identical split.
    */
   readonly homeDir: string;
@@ -253,7 +253,7 @@ export interface DetectLegacyUnitInput {
    * (`~/.config/systemd/user/goodvibes-daemon.service`), never the
    * GOODVIBES_HOME-overridable tree home. See
    * `BuildManagedDaemonServiceManagerParams.unitHomeDir` for the identical
-   * split and why it matters (D12).
+   * split and why it matters.
    */
   readonly unitHomeDir: string;
   /** Injectable existsSync so tests never touch the host filesystem. */
