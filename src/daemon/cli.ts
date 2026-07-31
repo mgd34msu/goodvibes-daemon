@@ -41,6 +41,7 @@ import {
 } from '@pellux/goodvibes-sdk/platform/discovery';
 import { createSafeHostServeFactory } from '@pellux/goodvibes-sdk/platform/daemon';
 import { runProvisionWakeModelCommand } from './provision-wake-model.ts';
+import { runWebuiCommand } from './webui-command.ts';
 import { runSendCommand } from './send/command.ts';
 import { createSendStack } from './send/composition.ts';
 import { readAllStdin } from './send/stdin.ts';
@@ -219,6 +220,40 @@ async function main(): Promise<void> {
     // result; an exit that discards the receipt would report nothing at all.
     for (const line of result.lines) {
       writeExitingStdoutLine(line);
+    }
+    process.exit(result.exitCode);
+  }
+
+  // `webui …` is intercepted here for the same two reasons the commands above
+  // are, plus its own: the curl installer runs it on the binary it has just
+  // placed, right after unpacking the web UI bundle, so that the key names, the
+  // settings-tier routing and the "which listener actually serves this" question
+  // all stay in one implementation instead of being copied into shell. It
+  // composes no runtime — it resolves a home directory, opens the same config
+  // manager the daemon boots with, and writes two or three keys. See
+  // webui-command.ts.
+  if (rawArgs[0] === 'webui') {
+    const ownership = resolveDaemonCliOwnership();
+    runDaemonConfigMigration(ownership.homeDirectory);
+    const webuiConfig = new ConfigManager({
+      workingDir: ownership.workingDirectory,
+      homeDir: ownership.homeDirectory,
+      surfaceRoot: GOODVIBES_DAEMON_SURFACE_ROOT,
+      // Same reason the cluster branch names it: the daemon tier this writes
+      // must be the file the booting daemon reads, even when GOODVIBES_DAEMON_HOME
+      // moved it away from the plain home.
+      daemonTierPath: daemonConfigPathForHome(ownership.daemonHomeDirectory),
+    });
+    const result = runWebuiCommand(rawArgs.slice(1), {
+      configManager: webuiConfig,
+      baseDirectory: ownership.workingDirectory,
+    });
+    // The installer runs this on a binary it has just placed and prints the
+    // result into its own receipt; a stream write lost to the exit below would
+    // leave the install saying nothing about the web UI at all.
+    for (const line of result.lines) {
+      if (result.exitCode === 0) writeExitingStdoutLine(line);
+      else writeFatalLine(line);
     }
     process.exit(result.exitCode);
   }
