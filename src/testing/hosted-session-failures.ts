@@ -42,9 +42,9 @@ export interface HostedSessionFailureFixture {
  * A hosted session id that names nothing. 404: the id is wrong, and no amount
  * of retrying it will make it right.
  */
-export const HOSTED_SESSION_NOT_FOUND: HostedSessionFailureFixture = {
+export const SESSION_NOT_FOUND: HostedSessionFailureFixture = {
   methodId: 'sessions.hosted.attach',
-  code: 'HOSTED_SESSION_NOT_FOUND',
+  code: 'SESSION_NOT_FOUND',
   status: 404,
   when: 'the sessionId names no session this daemon holds',
   clientAction: 'Drop the id. Re-list before addressing a session again.',
@@ -77,7 +77,7 @@ export const HOSTED_SESSION_LIMIT_REACHED: HostedSessionFailureFixture = {
 
 /** Every hosted-session refusal a client must handle, in one list. */
 export const HOSTED_SESSION_FAILURE_FIXTURES: readonly HostedSessionFailureFixture[] = [
-  HOSTED_SESSION_NOT_FOUND,
+  SESSION_NOT_FOUND,
   HOSTED_SESSION_UNAVAILABLE,
   HOSTED_SESSION_LIMIT_REACHED,
 ];

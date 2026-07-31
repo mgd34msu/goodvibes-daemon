@@ -29,7 +29,7 @@ import {
   HOSTED_SESSION_FAILURE_FIXTURES,
   HOSTED_SESSION_LIMIT_REACHED,
   HOSTED_SESSION_METHOD_IDS,
-  HOSTED_SESSION_NOT_FOUND,
+  SESSION_NOT_FOUND,
   HOSTED_SESSION_UNAVAILABLE,
 } from '../../testing/hosted-session-failures.ts';
 import { makeProjectTempDir } from '../helpers/project-temp.ts';
@@ -101,14 +101,14 @@ describe('sessions.hosted.* is handler-attached on a daemon that hosts sessions'
 });
 
 describe('the three refusals a client has to handle', () => {
-  test('HOSTED_SESSION_NOT_FOUND: an id this daemon does not hold', async () => {
-    const refusal = await refusalOf(HOSTED_SESSION_NOT_FOUND.methodId, {
+  test('SESSION_NOT_FOUND: an id this daemon does not hold', async () => {
+    const refusal = await refusalOf(SESSION_NOT_FOUND.methodId, {
       sessionId: 'hosted-no-such-session',
       clientId: 'client-1',
     });
     expect(refusal, 'attaching to an unknown session answered instead of refusing').not.toBeNull();
-    expect(refusal!.code).toBe(HOSTED_SESSION_NOT_FOUND.code);
-    expect(refusal!.status).toBe(HOSTED_SESSION_NOT_FOUND.status);
+    expect(refusal!.code).toBe(SESSION_NOT_FOUND.code);
+    expect(refusal!.status).toBe(SESSION_NOT_FOUND.status);
   });
 
   test('HOSTED_SESSION_UNAVAILABLE: a real session that has terminated', async () => {
@@ -163,7 +163,7 @@ describe('the three refusals a client has to handle', () => {
     // the engine and left out of what consumers are handed.
     expect(HOSTED_SESSION_FAILURE_FIXTURES.map((entry) => entry.code).sort()).toEqual([
       'HOSTED_SESSION_LIMIT_REACHED',
-      'HOSTED_SESSION_NOT_FOUND',
+      'SESSION_NOT_FOUND',
       'HOSTED_SESSION_UNAVAILABLE',
     ]);
     for (const entry of HOSTED_SESSION_FAILURE_FIXTURES) {
