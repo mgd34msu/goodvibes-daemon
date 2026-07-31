@@ -12,6 +12,7 @@ import { GOODVIBES_DAEMON_SURFACE_ROOT } from '../config/surface.ts';
 import { formatProviderModel, getModelIdFromProviderModel, getProviderIdFromModel } from '../config/provider-model.ts';
 import { resolveGoodVibesHomeOwnership } from '../config/goodvibes-home.ts';
 import { RuntimeEventBus, GlobalNetworkTransportInstaller, configureRuntimeEventBusDefaults, runtimeEventBusOptionsFrom } from '@/runtime/index.ts';
+import { createHostedSessionOptions } from '@/runtime/hosted-session-composition.ts';
 import { bindFeatureSettingsBridge, createFeatureFlagManager, deriveFeatureStates } from '@/runtime/index.ts';
 import { createRuntimeStore } from '@pellux/goodvibes-sdk/platform/runtime/store';
 import { createRuntimeServices } from '../runtime/services.ts';
@@ -528,6 +529,11 @@ async function main(): Promise<void> {
     // TUI's /cluster command and any web UI all call these, so a command run
     // against a REMOTE daemon behaves exactly like one run on that machine.
     clusterGroupVerbs: runtimeServices.clusterGroup.verbs,
+    // Daemon-hosted sessions. Stating this is what turns `sessions.hosted.*`
+    // on, and what it states is where a hosted run's asks are gated — this
+    // daemon's per-workspace trust decision. See
+    // runtime/hosted-session-composition.ts.
+    hostedSessions: createHostedSessionOptions(runtimeServices),
   });
   const listener = new HttpListener({
     hookDispatcher: runtimeServices.hookDispatcher,
