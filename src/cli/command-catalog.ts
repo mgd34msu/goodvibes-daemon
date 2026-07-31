@@ -1,15 +1,15 @@
 /**
  * command-catalog.ts — WHAT the daemon binary understands.
  *
- * This file is data. It holds no parsing logic, reads no argv and imports
- * nothing from the parser. `parser.ts` is the engine: it is handed a catalog
- * and an argument list and knows nothing about daemons. That seam is
- * deliberate — the terminal-shell package is expected to own the engine later,
- * at which point this file is the only part that stays behind, and it can be
- * moved under a different engine without editing a line of it.
+ * This file is data. It holds no parsing logic and reads no argv. The engine is
+ * `parseWithCatalog` in @pellux/goodvibes-terminal-shell: it knows tokens,
+ * values, arity, `--` and refusals, and nothing about daemons. `DAEMON_CLI_CATALOG`
+ * at the bottom is this binary's whole vocabulary expressed in that engine's
+ * catalog contract, so a front-end with different commands is a different
+ * catalog rather than a second parser.
  *
- * The seam in one sentence: `DaemonCommandSpec[]` in, `DaemonCliParseResult`
- * out, and nothing daemon-shaped in between.
+ * The seam in one sentence: a `CliCatalog` in, a `DaemonCliParseResult` out,
+ * and nothing daemon-shaped in between.
  *
  * WHY THIS EXISTS AT ALL
  *
@@ -23,6 +23,18 @@
  * to match. The vocabulary below is exactly the set of things this binary
  * actually does, and the engine refuses everything else.
  */
+import {
+  catalogFlagArity,
+  catalogFlagsForCommand,
+  resolveCatalogCommand,
+  type CliCatalog,
+  type CliFlagKind,
+  type CommandFlagSpec,
+  type CommandSpec,
+  type EngineParseResult,
+  type RejectedFlagSpec,
+} from '@pellux/goodvibes-terminal-shell';
+import type { DaemonCliFlags } from './types.ts';
 
 /** Every command this binary has. There is no other. */
 export type DaemonCommand =
@@ -74,41 +86,42 @@ export type DaemonCliFlagField =
   | 'enableFeatures'
   | 'disableFeatures';
 
-/** How a flag consumes argv, and what shape its value has. */
-export type DaemonCliFlagKind = 'boolean' | 'string' | 'port' | 'string-list';
+/**
+ * How a flag consumes argv, and what shape its value has.
+ *
+ * Four of the engine's seven kinds. The other three (`string-optional`,
+ * `const`, `enum`) exist for a conversation-shaped vocabulary — an optional
+ * `--resume [id]`, two flags writing one field, a checked value set — and this
+ * binary declares none of them.
+ */
+export type DaemonCliFlagKind = Extract<CliFlagKind, 'boolean' | 'string' | 'port' | 'string-list'>;
 
-export interface DaemonCommandFlagSpec {
-  /** Every spelling that selects this flag, longest-lived first. `-C`, `--cd`, `--working-dir`. */
-  readonly tokens: readonly string[];
-  readonly field: DaemonCliFlagField;
+/**
+ * A flag entry, narrowed to what this catalog actually declares.
+ *
+ * The engine's spec allows every kind and leaves the help fields optional; a
+ * daemon flag always has a summary and only ever has the four kinds above, and
+ * saying so here is what lets help.ts and completion.ts read those fields
+ * without a check that could never fail.
+ */
+export type DaemonCommandFlagSpec = CommandFlagSpec<DaemonCliFlagField> & {
   readonly kind: DaemonCliFlagKind;
-  /** Placeholder shown in help for a value-taking flag. */
-  readonly valueName?: string | undefined;
   readonly summary: string;
-}
+};
 
-export interface DaemonCommandSpec {
-  readonly name: DaemonCommand;
-  /** Extra spellings that resolve to this command. The name itself is always accepted. */
-  readonly aliases: readonly string[];
-  /** One line, for the command list in `--help`. */
+/**
+ * A command entry, narrowed the same way.
+ *
+ * `summary`, `usage` and `detail` are optional to the engine — a catalog with
+ * no help surface of its own may omit them — and required here, because this
+ * binary has a `help <command>` page for every command it answers to.
+ */
+export type DaemonCommandSpec = CommandSpec<DaemonCommand, DaemonCliFlagField> & {
   readonly summary: string;
-  /** Argument shape, shown as the first line of `help <command>`. */
   readonly usage: string;
-  /** The body of `help <command>` — full sentences, no telegraphese. */
   readonly detail: readonly string[];
-  /** Flags this command accepts, beyond the global ones. */
   readonly flags: readonly DaemonCommandFlagSpec[];
-  /**
-   * True when everything after the command word belongs to the command's own
-   * parser rather than to this one. `send` carries arbitrary operator text — a
-   * message starting with a dash, or one containing `--port`, has to reach the
-   * channel intact rather than be eaten as a daemon flag.
-   */
-  readonly passthrough: boolean;
-  /** Positional words the command takes, for completion. Empty for most. */
-  readonly subcommands: readonly string[];
-}
+};
 
 // ---------------------------------------------------------------------------
 // Flags
@@ -242,39 +255,37 @@ const SERVE_FLAGS: readonly DaemonCommandFlagSpec[] = [
  * and then ignored. `goodvibes-daemon --resume` started a fresh foreground
  * daemon and said nothing about the flag. They are refused by name so the
  * message names the surface that does own them.
+ *
+ * `reason` is a NOUN PHRASE the engine drops into
+ * "<flag> is not a <binary> flag — <reason> belongs to another surface.", so
+ * each one names the terminal app as well as the job, and the finished sentence
+ * points at where the flag actually works.
+ *
+ * `takesValue` matters for the refusal, not for the behaviour: the engine has
+ * to skip a refused flag's VALUE while hunting for the command word, or
+ * `--prompt hello` reports "Unknown command: hello" instead of naming the flag
+ * that is actually wrong. `--resume` and `--fork` took an OPTIONAL value, so
+ * they are listed as taking none — over-skipping would swallow a real command
+ * word.
  */
-export interface RejectedFlagSpec {
-  /** What the flag was for, named so the refusal points at the right surface. */
-  readonly reason: string;
-  /**
-   * True when the flag took a value in the parser this binary inherited.
-   *
-   * It matters for the refusal, not for the behaviour: the engine has to skip a
-   * refused flag's VALUE while hunting for the command word, or
-   * `--prompt hello` reports "Unknown command: hello" instead of naming the
-   * flag that is actually wrong. `--resume` and `--fork` took an OPTIONAL
-   * value, so they are listed as taking none — over-skipping would swallow a
-   * real command word.
-   */
-  readonly takesValue: boolean;
-}
+export type { RejectedFlagSpec };
 
 export const REJECTED_TERMINAL_FLAGS: Readonly<Record<string, RejectedFlagSpec>> = {
-  '--resume': { reason: 'resuming a conversation', takesValue: false },
-  '-r': { reason: 'resuming a conversation', takesValue: false },
-  '--continue': { reason: 'continuing the last conversation', takesValue: false },
-  '--fork': { reason: 'forking a conversation', takesValue: false },
-  '--print': { reason: 'printing one conversation turn', takesValue: false },
-  '--prompt': { reason: 'sending a prompt', takesValue: true },
-  '-p': { reason: 'sending a prompt', takesValue: true },
-  '--output': { reason: 'choosing a conversation output format', takesValue: true },
-  '--output-format': { reason: 'choosing a conversation output format', takesValue: true },
-  '-o': { reason: 'choosing a conversation output format', takesValue: true },
-  '--open': { reason: 'opening a browser window', takesValue: false },
-  '--no-alt-screen': { reason: 'terminal screen handling', takesValue: false },
-  '--session': { reason: 'selecting a conversation', takesValue: true },
-  '-s': { reason: 'selecting a conversation', takesValue: true },
-  '--strict': { reason: "the doctor command's strict mode", takesValue: false },
+  '--resume': { reason: 'resuming a conversation, a terminal app concern that', takesValue: false },
+  '-r': { reason: 'resuming a conversation, a terminal app concern that', takesValue: false },
+  '--continue': { reason: 'continuing the last conversation, a terminal app concern that', takesValue: false },
+  '--fork': { reason: 'forking a conversation, a terminal app concern that', takesValue: false },
+  '--print': { reason: 'printing one conversation turn, a terminal app concern that', takesValue: false },
+  '--prompt': { reason: 'sending a prompt, a terminal app concern that', takesValue: true },
+  '-p': { reason: 'sending a prompt, a terminal app concern that', takesValue: true },
+  '--output': { reason: 'choosing a conversation output format, a terminal app concern that', takesValue: true },
+  '--output-format': { reason: 'choosing a conversation output format, a terminal app concern that', takesValue: true },
+  '-o': { reason: 'choosing a conversation output format, a terminal app concern that', takesValue: true },
+  '--open': { reason: 'opening a browser window, a terminal app concern that', takesValue: false },
+  '--no-alt-screen': { reason: 'terminal screen handling, a terminal app concern that', takesValue: false },
+  '--session': { reason: 'selecting a conversation, a terminal app concern that', takesValue: true },
+  '-s': { reason: 'selecting a conversation, a terminal app concern that', takesValue: true },
+  '--strict': { reason: "the doctor command's strict mode, a terminal app concern that", takesValue: false },
 };
 
 // ---------------------------------------------------------------------------
@@ -694,6 +705,73 @@ export const RAW_INTERCEPT_COMMANDS: readonly DaemonCommand[] = DAEMON_COMMANDS
   .filter((spec) => spec.passthrough)
   .map((spec) => spec.name);
 
+/**
+ * The flag record a parse starts from — every field at its empty value, so a
+ * command's dispatcher reads only what its own catalog entry declares.
+ */
+function createDefaultFlags(): DaemonCliFlags {
+  return {
+    daemonHome: undefined,
+    workingDir: undefined,
+    help: false,
+    version: false,
+    json: false,
+    yes: false,
+    check: false,
+    all: false,
+    provider: undefined,
+    model: undefined,
+    hostname: undefined,
+    port: undefined,
+    host: undefined,
+    token: undefined,
+    configOverrides: [],
+    enableFeatures: [],
+    disableFeatures: [],
+  };
+}
+
+/**
+ * `provider:model` and `provider/model` name the provider inside the model id.
+ *
+ * Applied once, over the finished parse, rather than at the moment `--model`
+ * is read: a `--provider` the operator typed explicitly always wins, and
+ * deciding that after both flags have landed means it wins whichever order
+ * they were typed in.
+ */
+function inferProviderFromModel(
+  result: EngineParseResult<DaemonCommand, DaemonCliFlags>,
+): EngineParseResult<DaemonCommand, DaemonCliFlags> {
+  const { provider, model } = result.flags;
+  if (provider !== undefined || model === undefined) return result;
+  const inferred = model.includes(':')
+    ? model.split(':')[0]
+    : model.includes('/') ? model.split('/')[0] : undefined;
+  if (inferred === undefined) return result;
+  return { ...result, flags: { ...result.flags, provider: inferred } };
+}
+
+/**
+ * This binary's vocabulary, as the shared engine reads it.
+ *
+ * `unmatchedFirstToken: 'reject'` is the rule this catalog exists to enforce:
+ * an unmatched first word must never quietly become a positional under the
+ * default command, because the default command here is "start serving" and
+ * that is how `goodvibes-daemon install-servce` used to start a daemon.
+ * `unresolvedCommandSentinel: 'help'` is what such a parse reports instead, so
+ * the caller prints the refusal and the command list rather than serving.
+ */
+export const DAEMON_CLI_CATALOG: CliCatalog<DaemonCommand, DaemonCliFlagField, DaemonCliFlags> = {
+  commands: DAEMON_COMMANDS,
+  globalFlags: GLOBAL_FLAGS,
+  rejectedFlags: REJECTED_TERMINAL_FLAGS,
+  defaultCommand: 'serve',
+  unmatchedFirstToken: 'reject',
+  unresolvedCommandSentinel: 'help',
+  createDefaultFlags,
+  postProcess: inferProviderFromModel,
+};
+
 const SPECS_BY_NAME: ReadonlyMap<DaemonCommand, DaemonCommandSpec> = new Map(
   DAEMON_COMMANDS.map((spec) => [spec.name, spec]),
 );
@@ -717,7 +795,7 @@ export function daemonCommandSpec(command: DaemonCommand): DaemonCommandSpec {
 
 /** Resolve a raw argv word to a command, or undefined when it names none. */
 export function resolveDaemonCommand(token: string): DaemonCommand | undefined {
-  return DAEMON_COMMAND_ALIASES[token.toLowerCase()];
+  return resolveCatalogCommand(DAEMON_CLI_CATALOG, token);
 }
 
 export function isRawInterceptCommand(command: DaemonCommand): boolean {
@@ -733,17 +811,9 @@ export function isRawInterceptCommand(command: DaemonCommand): boolean {
  * than one command's flag list has the same kind in all of them — asserted by
  * a unit test rather than left as an assumption — so one table is honest.
  */
-export const ALL_FLAG_ARITY: ReadonlyMap<string, DaemonCliFlagKind> = (() => {
-  const table = new Map<string, DaemonCliFlagKind>();
-  const record = (spec: DaemonCommandFlagSpec): void => {
-    for (const token of spec.tokens) table.set(token, spec.kind);
-  };
-  for (const spec of GLOBAL_FLAGS) record(spec);
-  for (const command of DAEMON_COMMANDS) for (const spec of command.flags) record(spec);
-  return table;
-})();
+export const ALL_FLAG_ARITY: ReadonlyMap<string, CliFlagKind> = catalogFlagArity(DAEMON_CLI_CATALOG);
 
 /** Flag specs a given command accepts: the global ones plus its own. */
 export function flagsForCommand(command: DaemonCommand): readonly DaemonCommandFlagSpec[] {
-  return [...GLOBAL_FLAGS, ...daemonCommandSpec(command).flags];
+  return catalogFlagsForCommand(DAEMON_CLI_CATALOG, command) as readonly DaemonCommandFlagSpec[];
 }
