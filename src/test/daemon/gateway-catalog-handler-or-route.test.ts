@@ -63,21 +63,15 @@ const ANONYMOUS_PROBE_BLIND_PREFIXES: readonly { readonly prefix: string; readon
  * one fails the sweep and a fixed one fails it too, forcing the entry out.
  *
  * Each entry states what would have to change. None of it is a test change.
+ *
+ * acp.agents.list and acp.sessions.create used to be pinned here
+ * (registerAcpGatewayMethods was gated on `deps.acpHost` and runtime/services.ts
+ * threaded none). services.ts now constructs an AcpHostService and threads it
+ * into both the fleet registry and the gateway verb group registration, so
+ * both verbs are handler-attached — see gateway-verb-family-parity.test.ts's
+ * `acp` family and gateway-acp-verbs.test.ts for the behavior.
  */
-const KNOWN_STRANDED: readonly { readonly id: string; readonly finding: string }[] = [
-  {
-    id: 'acp.agents.list',
-    finding:
-      'registerAcpGatewayMethods is gated on `deps.acpHost` (register-gateway-verb-groups.ts), and '
-      + 'runtime/services.ts threads no acpHost. The descriptor is cataloged, says invokable, names no '
-      + 'HTTP path, and nothing serves it. Fix: thread an ACP host, or mark the descriptors '
-      + 'invokable: false in the SDK so the contract stops promising them.',
-  },
-  {
-    id: 'acp.sessions.create',
-    finding: 'Same gate and same fix as acp.agents.list.',
-  },
-];
+const KNOWN_STRANDED: readonly { readonly id: string; readonly finding: string }[] = [];
 
 /** Replace `{param}` template segments with an opaque single-segment placeholder. */
 function resolveTemplatePath(template: string): string {

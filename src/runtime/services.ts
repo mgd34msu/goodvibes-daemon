@@ -3,6 +3,7 @@ import { ServiceRegistry, SubscriptionManager, ToolLLM } from '@pellux/goodvibes
 import { AutomationDeliveryManager, AutomationManager } from '@pellux/goodvibes-sdk/platform/automation';
 import { ChannelPolicyManager } from '@pellux/goodvibes-sdk/platform/channels';
 import { ApprovalBroker, GatewayMethodCatalog, SharedSessionBroker, buildSharedSessionAgentSpawnRoutingInput } from '@pellux/goodvibes-sdk/platform/control-plane';
+import { AcpHostService } from '@pellux/goodvibes-sdk/platform/acp';
 import { continuationChainOptions } from '@pellux/goodvibes-sdk/platform/agents';
 import { wireIdlePowerAndLiveTurn } from './idle-power-services.ts';
 import { resolvePairingWebOrigin } from '../core/pairing-origin.ts';
@@ -443,6 +444,17 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     configManager, shellPaths, surfaceRoot: GOODVIBES_DAEMON_SURFACE_ROOT,
     agentManager, processManager, sessionBroker,
   });
+  // Hosted third-party coding agents (ACP): permission asks route through the
+  // SAME shared approval broker every other confirmation rides (approvals
+  // panel + push like any native ask), and each hosted agent maps onto a
+  // kind-'acp' shared session so it is attachable/steerable like any other.
+  // Mirrors the SDK's own createRuntimeServices composition (services.ts ~879).
+  const acpHost = new AcpHostService({
+    requestPermission: (request) => approvalBroker.requestApproval({ request }),
+    registerSession: ({ id, title, agentTitle, cwd }) => void sessionBroker
+      .register({ sessionId: id, kind: 'acp', title, project: cwd, participant: { surfaceKind: 'service', surfaceId: `acp-host:${agentTitle}`, lastSeenAt: Date.now() } })
+      .catch(() => { /* best-effort; the fleet row is authoritative */ }),
+  });
   const { processRegistry } = createFleetServices({ // Shared archive-aware fleet registry (+ daemon observed rows) — see fleet-services.ts
     agentManager, wrfcController,
     orchestrationEngine, // Folds workstream/phase/work-item nodes into the fleet
@@ -453,6 +465,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     automationManager, // Folds scheduled AutomationJobs into the fleet as 'schedule' nodes
     runtimeBus: options.runtimeBus,
     observeExternalAgents: options.observeExternalAgents, providerRegistry, // observeExternalAgents is daemon-side only
+    acpHost, // Folds live hosted-agent sessions into the fleet as 'acp' rows
   });
   const modeManager = new ModeManager({ featureFlags }); const fileUndoManager = new FileUndoManager();
   // Checkpoints, gated on live workspace registration — see workspace-checkpointing.ts.
@@ -524,6 +537,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     watcherRegistry, userPermissionRuleStore, shellPaths, configManager, runtimeStore: options.runtimeStore,
     channelDeliveryRouter, providerRegistry, automationManager, sessionLister: sessionBroker, sessionIntake: sessionBroker,
     workingDirectory, memoryRegistry, pairingTokens, sessionLiveTurnControls, powerManager, memoryGovernor, voiceSetup,
+    acpHost, // Registers acp.agents.list (discovery) and acp.sessions.create (spawn) — see register-gateway-verb-groups.ts
     attemptsController: orchestrationEngine,
     relayAvailable: () => configManager.get('relay.enabled') === true,
     pairingWebOrigin: () => resolvePairingWebOrigin(configManager).origin,

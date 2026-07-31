@@ -8,6 +8,18 @@ All notable changes to the GoodVibes daemon.
 
 ### Changes
 
+- Hosted third-party coding agents (Claude Code, Codex CLI, opencode) now work
+  over this daemon's own gateway. `acp.agents.list` (read-only discovery of
+  installed agents) and `acp.sessions.create` (spawn one as a long-lived
+  session) were cataloged and advertised as callable on every build, and
+  answered nothing: the composition never constructed the ACP host they are
+  handlers for. `runtime/services.ts` now builds that host — permission asks
+  from a hosted agent route through the same shared approval broker every
+  other confirmation rides, and each hosted agent registers onto a shared
+  session so it is attachable and steerable like any native one — and threads
+  it into the gateway registration and the fleet registry, so a hosted agent
+  also shows up as a fleet row.
+
 - The command line is the daemon's, and it is an operator surface rather than a
   way to start a process. It shipped carrying the terminal app's parser: a table
   of two dozen command words — `tui`, `run`, `doctor`, `models`, `providers`,

@@ -230,6 +230,11 @@ const VERB_FAMILIES: readonly VerbFamily[] = [
     reason: 'Registered because powerManager is threaded in services.ts (sleep ownership, keep-awake toggle).',
     methodIds: ['power.status.get', 'power.keepAwake.set'],
   },
+  {
+    family: 'acp.agents.list / acp.sessions.create',
+    reason: 'Registered because acpHost (an AcpHostService constructed in services.ts, wired to the shared approval broker and session broker) is threaded into the gateway verb group registration. Deeper round-trip: gateway-acp-verbs.test.ts.',
+    methodIds: ['acp.agents.list', 'acp.sessions.create'],
+  },
 
   // ── Families the agent's sweep never covered, because the agent never
   //    threaded their deps. They are this daemon's, and they were unpinned. ──
