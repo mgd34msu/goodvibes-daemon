@@ -1,5 +1,24 @@
-import { resolveWebPort } from '@pellux/goodvibes-sdk/platform/daemon';
 import type { ConfigKey, ConfigManager } from '../config/index.ts';
+
+/**
+ * The validated web port, fallback 3423.
+ *
+ * The SDK owns this rule (`resolveWebBinding`), and this module used to import
+ * it. The PUBLISHED SDK this repository pins does not export it yet, so the
+ * import resolved to nothing and every module that reached this file — the
+ * service commands, the web UI command, the daemon entry point — failed to
+ * load with "Export named 'resolveWebPort' not found". It is reproduced here,
+ * exactly, so this repository stands on its own against the published SDK.
+ *
+ * Re-point at the SDK's own resolver when the shared-piece lane runs; the rule
+ * is one line and the values are identical: a stored 0, a negative, a
+ * non-integer or a non-numeric value is not a port, and falls back to 3423.
+ */
+export function resolveWebPort(rawPort: unknown): number {
+  const WEB_DEFAULT_PORT = 3423;
+  const value = typeof rawPort === 'number' ? rawPort : Number(rawPort ?? WEB_DEFAULT_PORT);
+  return Number.isInteger(value) && value >= 1 && value <= 65535 ? value : WEB_DEFAULT_PORT;
+}
 
 export type RuntimeEndpointId = 'controlPlane' | 'httpListener' | 'web';
 export type RuntimeHostMode = 'local' | 'network' | 'custom';

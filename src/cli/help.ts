@@ -2,6 +2,13 @@ import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { VERSION } from '../version.ts';
+import {
+  DAEMON_COMMANDS,
+  GLOBAL_FLAGS,
+  daemonCommandSpec,
+  resolveDaemonCommand,
+  type DaemonCommandFlagSpec,
+} from './command-catalog.ts';
 
 function readJsonVersion(path: string): string | null {
   try {
@@ -50,52 +57,111 @@ export function renderDaemonStartupBanner(
   );
 }
 
-export function renderGoodVibesDaemonHelp(binary = 'goodvibes-daemon'): string {
+/**
+ * What the host actually uses to keep the daemon running, named per platform.
+ *
+ * The help said "systemd user service" on every platform, including macOS,
+ * where `install-service` writes a launchd agent and nothing named systemd
+ * exists. Taking the platform as an argument keeps that testable without
+ * stubbing `process`.
+ */
+export function serviceKindForPlatform(platform: NodeJS.Platform = process.platform): string {
+  if (platform === 'darwin') return 'launchd user agent';
+  if (platform === 'win32') return 'Scheduled Task';
+  return 'systemd user service';
+}
+
+const COLUMN = 32;
+
+function pad(left: string): string {
+  return left.length >= COLUMN ? `${left}\n${' '.repeat(COLUMN)}` : left.padEnd(COLUMN);
+}
+
+/** `-y, --yes` / `    --json` / `-m, --model <registryKey>` */
+function renderFlagLine(flag: DaemonCommandFlagSpec): string {
+  const shorts = flag.tokens.filter((token) => !token.startsWith('--'));
+  const longs = flag.tokens.filter((token) => token.startsWith('--'));
+  const value = flag.valueName ? ` <${flag.valueName}>` : '';
+  const left = shorts.length > 0
+    ? `  ${shorts.join(', ')}, ${longs.join(', ')}${value}`
+    : `      ${longs.join(', ')}${value}`;
+  return `${pad(left)}${flag.summary}`;
+}
+
+/**
+ * The top-level help: what the binary is, what it does, what it accepts, and
+ * what its exit codes mean. Generated from the catalog, so a command that
+ * exists is listed and a command that is listed exists.
+ */
+export function renderGoodVibesDaemonHelp(
+  binary = 'goodvibes-daemon',
+  platform: NodeJS.Platform = process.platform,
+): string {
+  const commands = DAEMON_COMMANDS
+    .filter((spec) => spec.name !== 'serve')
+    .map((spec) => `${pad(`  ${spec.name}`)}${spec.summary}`);
+
   return [
     `Usage: ${binary} [COMMAND] [OPTIONS]`,
     '',
-    'Starts the headless GoodVibes daemon/API host.',
+    'The GoodVibes daemon: the one long-running host for the control plane, the',
+    'channels, cluster membership, scheduled work, the knowledge and memory stores,',
+    'and the verb families every GoodVibes client calls.',
+    '',
+    `Run with no command it starts serving in the foreground. Run \`${binary}`,
+    `install-service\` to have it come back after a reboot as a ${serviceKindForPlatform(platform)}.`,
     '',
     'Commands:',
-    '  install-service                Install + enable the daemon as a systemd user service (survives reboots)',
-    '  uninstall-service              Disable + remove the daemon systemd user service',
-    '  service-status                 Show whether the daemon service is installed / enabled / active',
-    '  migrate-service                Guided migration from an install-script goodvibes-daemon.service unit; prints a plan',
-    '                                 unless run with -y/--yes (never auto-migrates)',
-    '  send [message]                 Send a message to one of your configured channels — Telegram, ntfy,',
-    '                                 Discord, Slack, Google Chat, Signal, WhatsApp, iMessage, Teams,',
-    '                                 BlueBubbles, Mattermost, Matrix or a webhook. Takes the message as',
-    '                                 an argument or on stdin, so it composes with other tooling.',
-    '                                 --channel <id> picks the channel; with none named it uses your one',
-    '                                 configured channel and says which. --to <address> targets a specific',
-    '                                 topic / chat / room within it, --title <text> sets a title, and',
-    '                                 --list shows every channel with where it would send. A channel that',
-    '                                 is off is refused rather than redirected to the default, and a',
-    '                                 failed send exits non-zero with the provider\'s own error.',
-    '  provision-wake-model           Fetch any missing wake-word model files into the managed voice tree.',
-    '                                 The installer runs this on a freshly placed binary; a daemon start',
-    '                                 also retries it, so an offline install heals on its own.',
-    '  webui <command>                Serve the browser operator surface from this daemon.',
-    '                                 enable [--bundle-dir <dir>] | disable | status',
-    '                                 The bundle is served on the same origin as the API, so the URL to open',
-    '                                 is the control-plane one. `enable` alone changes no network exposure:',
-    '                                 a daemon bound to loopback keeps serving to this machine only. Add',
-    '                                 --lan to bind all interfaces, --loopback to take it back.',
-    '  cluster <command>              Share inbound channel work with your other machines on this network.',
-    '                                 status | create | join | key | nodes | forget <machine> | rotate [--now]',
-    '                                 | leave | rename | groups',
-    '                                 Talks to a running daemon: add --host/--port/--token for one on another',
-    '                                 machine, or --json for a scriptable answer.',
+    ...commands,
     '',
-    'Options:',
-    '      --daemon-home <dir>        Override daemon home',
-    '      --working-dir <dir>        Override working directory',
-    '  -C, --cd <dir>                 Alias for --working-dir',
-    '      --provider <id>            Override provider',
-    '  -m, --model <registryKey>      Override model. provider:model infers --provider',
-    '      --hostname <host>          Hostname hint for printed connection info',
-    '      --port <port>              Control-plane port override when supported',
-    '  -h, --help                     Print help',
-    '  -v, --version                  Print version',
+    `Run \`${binary} help <command>\` for a command's own arguments and flags.`,
+    '',
+    'Global options (accepted by every command):',
+    ...GLOBAL_FLAGS.map(renderFlagLine),
+    '',
+    'Serving options (a bare invocation, or `serve`):',
+    ...daemonCommandSpec('serve').flags.map(renderFlagLine),
+    '',
+    'Exit codes:',
+    `${pad('  0')}the command did what it says`,
+    `${pad('  1')}it ran and failed — the reason is printed`,
+    `${pad('  2')}the command line was wrong: an unknown command, an unknown flag,`,
+    `${pad('   ')}a flag this command does not take, or a missing value`,
+    `${pad('  3')}service-status only: installed, but not running`,
+    `${pad('  4')}service-status only: not installed`,
   ].join('\n');
+}
+
+/**
+ * `help <command>` — one command's usage, its own flags, and what it does.
+ *
+ * Returns null when the word names no command, so the caller can refuse with
+ * the same "Unknown command" message the parser produces rather than printing
+ * a help page for something that does not exist.
+ */
+export function renderDaemonCommandHelp(
+  commandWord: string,
+  binary = 'goodvibes-daemon',
+  platform: NodeJS.Platform = process.platform,
+): string | null {
+  const command = resolveDaemonCommand(commandWord);
+  if (command === undefined) return null;
+  const spec = daemonCommandSpec(command);
+  const usage = spec.usage.replace(/^goodvibes-daemon/, binary);
+
+  const lines = [`Usage: ${usage}`, '', ...spec.detail];
+  if (spec.flags.length > 0) {
+    lines.push('', 'Options:', ...spec.flags.map(renderFlagLine));
+  }
+  if (spec.passthrough) {
+    lines.push(
+      '',
+      `This command has its own flags; run \`${binary} ${spec.name}\` with none to see them.`,
+    );
+  }
+  lines.push('', 'Global options:', ...GLOBAL_FLAGS.map(renderFlagLine));
+  if (spec.name.endsWith('-service')) {
+    lines.push('', `On this host that means a ${serviceKindForPlatform(platform)}.`);
+  }
+  return lines.join('\n');
 }

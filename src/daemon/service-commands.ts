@@ -105,11 +105,31 @@ export type { ManagedServiceActionRunner } from '../runtime/legacy-daemon-migrat
 // TRACKED unit name.
 // ---------------------------------------------------------------------------
 
-export type DaemonServiceSubcommand = 'install-service' | 'uninstall-service' | 'service-status' | 'migrate-service';
+export const DAEMON_SERVICE_SUBCOMMANDS = [
+  'install-service',
+  'uninstall-service',
+  'service-status',
+  'migrate-service',
+  'start-service',
+  'stop-service',
+  'restart-service',
+] as const;
+
+export type DaemonServiceSubcommand = (typeof DAEMON_SERVICE_SUBCOMMANDS)[number];
 
 export function isDaemonServiceSubcommand(value: string | undefined): value is DaemonServiceSubcommand {
-  return value === 'install-service' || value === 'uninstall-service' || value === 'service-status' || value === 'migrate-service';
+  return typeof value === 'string' && (DAEMON_SERVICE_SUBCOMMANDS as readonly string[]).includes(value);
 }
+
+/**
+ * Exit codes `service-status` reports, so a script never parses prose.
+ *
+ * 0/3/4 are the three answers the question actually has; 1 stays what it has
+ * always been — the platform refused the query and the error is printed.
+ */
+export const SERVICE_STATUS_EXIT_RUNNING = 0;
+export const SERVICE_STATUS_EXIT_INSTALLED_NOT_RUNNING = 3;
+export const SERVICE_STATUS_EXIT_NOT_INSTALLED = 4;
 
 export interface DaemonServiceCliInput {
   readonly subcommand: DaemonServiceSubcommand;
@@ -143,6 +163,12 @@ export interface DaemonServiceCliInput {
    * `rmSync`.
    */
   readonly legacyUnitFileRemove?: ((path: string) => void) | undefined;
+  /**
+   * `service-status` only: report one JSON document instead of prose. The exit
+   * code is the same either way — the codes are the machine-readable answer,
+   * and JSON is for when a script wants the fields as well.
+   */
+  readonly json?: boolean | undefined;
 }
 
 export interface DaemonServiceCliResult {
@@ -211,6 +237,104 @@ export function buildInstallResultLines(status: ManagedServiceStatus): string[] 
     for (const cmd of status.suggestedCommands) lines.push(`  ${cmd}`);
   }
   return lines;
+}
+
+/**
+ * The receipt for `start-service` / `stop-service` / `restart-service`.
+ *
+ * Every line names the RESOLVED unit (`status.serviceName`, `status.path`) and
+ * says what the platform reported afterwards, rather than asserting the verb
+ * worked because it was dispatched without throwing. A verb aimed at a service
+ * that is not installed says exactly that — installing it silently would be a
+ * different command than the one that was run.
+ */
+export function buildLifecycleResultLines(
+  action: 'start' | 'stop' | 'restart',
+  status: ManagedServiceStatus,
+): string[] {
+  if (!status.installed) {
+    return [
+      `no ${status.platform} service is installed at ${status.path}, so there is nothing to ${action}.`,
+      `install it first:  goodvibes-daemon install-service`,
+    ];
+  }
+  const past = action === 'stop' ? 'stopped' : `${action}ed`;
+  const lines = [`${past} the ${status.platform} service ${status.serviceName} (${status.path})`];
+  lines.push(status.running ? 'it is running' : 'it is not running');
+  if (action !== 'stop' && !status.running) {
+    lines.push('suggested follow-ups:');
+    for (const cmd of status.suggestedCommands) lines.push(`  ${cmd}`);
+  }
+  return lines;
+}
+
+/**
+ * Run one of start / stop / restart against the managed service.
+ *
+ * The installed check happens BEFORE the platform verb is dispatched, not
+ * after: `systemctl --user enable --now goodvibes.service` against a unit that
+ * does not exist fails with systemd's own wording, which reads like a broken
+ * service rather than an absent one. Exit 4 is the same "not installed" answer
+ * `service-status` gives, so a script reading one reads the other.
+ */
+function runLifecycleVerb(
+  action: 'start' | 'stop' | 'restart',
+  manager: PlatformServiceManager,
+): DaemonServiceCliResult {
+  const before = manager.status();
+  if (!before.installed) {
+    return {
+      ok: false,
+      exitCode: SERVICE_STATUS_EXIT_NOT_INSTALLED,
+      lines: buildLifecycleResultLines(action, before),
+      status: before,
+    };
+  }
+  const status = action === 'start'
+    ? manager.start()
+    : action === 'stop'
+      ? manager.stop()
+      : manager.restart();
+  if (status.actionError) {
+    return {
+      ok: false,
+      exitCode: 1,
+      lines: [`service ${action} failed: ${status.actionError}`],
+      status,
+    };
+  }
+  return { ok: true, exitCode: 0, lines: buildLifecycleResultLines(action, status), status };
+}
+
+/** The honest 0/3/4 answer to "is the service installed, and is it running?". */
+export function serviceStatusExitCode(status: ManagedServiceStatus): number {
+  if (!status.installed) return SERVICE_STATUS_EXIT_NOT_INSTALLED;
+  return status.running ? SERVICE_STATUS_EXIT_RUNNING : SERVICE_STATUS_EXIT_INSTALLED_NOT_RUNNING;
+}
+
+/** The `--json` document for `service-status`: the status fields plus the code. */
+export function serviceStatusJson(status: ManagedServiceStatus, legacy: LegacyUnitInfo): string {
+  return JSON.stringify(
+    {
+      ok: true,
+      data: {
+        platform: status.platform,
+        serviceName: status.serviceName,
+        path: status.path,
+        installed: status.installed,
+        running: status.running,
+        autostart: status.autostart,
+        ...(status.pid === undefined ? {} : { pid: status.pid }),
+        ...(status.logPath === undefined ? {} : { logPath: status.logPath }),
+        ...(status.lingerNote === undefined ? {} : { lingerNote: status.lingerNote }),
+        suggestedCommands: status.suggestedCommands,
+        legacyUnitPresent: legacy.present,
+        exitCode: serviceStatusExitCode(status),
+      },
+    },
+    null,
+    2,
+  );
 }
 
 function ok(action: 'install' | 'uninstall' | 'status', status: ManagedServiceStatus, extra: string[] = []): DaemonServiceCliResult {
@@ -320,10 +444,29 @@ export async function runDaemonServiceCli(input: DaemonServiceCliInput): Promise
       if (legacy.present) extra.push(legacyUnitNote(legacy, resolveManagedUnitName(uninstalled)));
       return ok('uninstall', uninstalled, extra);
     }
+    case 'start-service':
+      return runLifecycleVerb('start', manager);
+    case 'stop-service':
+      return runLifecycleVerb('stop', manager);
+    case 'restart-service':
+      return runLifecycleVerb('restart', manager);
     case 'service-status': {
       const status = manager.status();
       if (status.actionError) return failed('status', status);
-      return ok('status', status, legacy.present ? [legacyUnitNote(legacy, resolveManagedUnitName(status))] : []);
+      if (input.json) {
+        return {
+          ok: true,
+          exitCode: serviceStatusExitCode(status),
+          lines: [serviceStatusJson(status, legacy)],
+          status,
+        };
+      }
+      const result = ok('status', status, legacy.present ? [legacyUnitNote(legacy, resolveManagedUnitName(status))] : []);
+      // The status verb reports; it does not fail. `ok` is still true — the
+      // question was answered — while the exit code carries the answer itself
+      // (0 running / 3 installed-not-running / 4 not installed), so a script
+      // never has to read the prose above.
+      return { ...result, exitCode: serviceStatusExitCode(status) };
     }
   }
 }

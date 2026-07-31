@@ -406,7 +406,7 @@ describe('wiring', () => {
     expect(source).toContain("if (rawArgs[0] === 'cluster') {");
     expect(source).toContain("import { runClusterCommand } from '../cluster/commands.ts';");
     const interceptIndex = source.indexOf("if (rawArgs[0] === 'cluster') {");
-    const parserIndex = source.indexOf('parseGoodVibesCli(');
+    const parserIndex = source.indexOf('parseDaemonCli(process.argv');
     const composeIndex = source.indexOf('createRuntimeServices({');
     expect(interceptIndex).toBeGreaterThan(0);
     expect(interceptIndex).toBeLessThan(parserIndex);
