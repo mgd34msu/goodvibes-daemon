@@ -46,12 +46,13 @@ describe('resolveConfiguredServiceName — config-honest name for pre-manager ca
 });
 
 describe('isDaemonServiceSubcommand', () => {
-  test('recognizes the four service verbs and nothing else', () => {
-    expect(isDaemonServiceSubcommand('install-service')).toBe(true);
-    expect(isDaemonServiceSubcommand('uninstall-service')).toBe(true);
-    expect(isDaemonServiceSubcommand('service-status')).toBe(true);
-    expect(isDaemonServiceSubcommand('migrate-service')).toBe(true);
+  test('recognizes the seven service verbs and nothing else', () => {
+    for (const verb of ['install-service', 'uninstall-service', 'service-status',
+      'migrate-service', 'start-service', 'stop-service', 'restart-service']) {
+      expect(isDaemonServiceSubcommand(verb)).toBe(true);
+    }
     expect(isDaemonServiceSubcommand('serve')).toBe(false);
+    expect(isDaemonServiceSubcommand('status')).toBe(false);
     expect(isDaemonServiceSubcommand(undefined)).toBe(false);
   });
 });
