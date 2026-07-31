@@ -160,10 +160,26 @@ export type DaemonVerbOutcome<T> =
  * can act on. The daemon's OWN refusals already carry a fix and are passed
  * through unchanged rather than being reworded here.
  */
+/**
+ * How a route's reply is shaped.
+ *
+ * The `/api/cluster/*` routes wrap their answer: `{ ok, data }` on success,
+ * `{ ok: false, error, fix }` on a refusal, and this module was written for
+ * them. Several older routes — `/status`, `/api/health`,
+ * `/api/channels/status` — answer with the payload ITSELF and use the HTTP
+ * status for the verdict. Reading one as the other is not a subtle failure: a
+ * raw payload has no `ok` field, so the wrapped reader called a perfectly good
+ * 200 a refusal and printed "the daemon refused the request".
+ *
+ * Stated per call rather than guessed at, because a payload is free to contain
+ * a field called `ok` and no sniffing rule can be honest about that.
+ */
+export type DaemonReplyEnvelope = 'wrapped' | 'raw';
+
 export async function callDaemonVerb<T>(
   target: RemoteDaemonTarget,
   path: string,
-  init: { method: 'GET' | 'POST'; body?: unknown } = { method: 'GET' },
+  init: { method: 'GET' | 'POST'; body?: unknown; envelope?: DaemonReplyEnvelope } = { method: 'GET' },
   fetchImpl: DaemonFetch = fetch,
 ): Promise<DaemonVerbOutcome<T>> {
   const where = target.isLocal ? 'the daemon on this machine' : `the daemon at ${target.baseUrl}`;
@@ -216,6 +232,18 @@ export async function callDaemonVerb<T>(
     };
   }
   const body = payload as { ok?: unknown; data?: unknown; error?: unknown; fix?: unknown };
+
+  if ((init.envelope ?? 'wrapped') === 'raw') {
+    // The HTTP status is the verdict for these routes. A 2xx means the body IS
+    // the answer; anything else carries whatever the route chose to say.
+    if (response.ok) return { ok: true, data: payload as T };
+    return {
+      ok: false,
+      error: typeof body.error === 'string' ? body.error : `${where} answered ${response.status} for ${path}`,
+      fix: typeof body.fix === 'string' ? body.fix : 'run `goodvibes-daemon status` to see what that daemon is doing',
+    };
+  }
+
   if (body.ok === true) return { ok: true, data: body.data as T };
   return {
     ok: false,
