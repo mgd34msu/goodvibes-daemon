@@ -21,6 +21,7 @@ import { OverflowHandler, ProcessManager, cancelAllAgentRuns, createWorkflowServ
 import { FileStateCache, FileUndoManager, MemoryEmbeddingProviderRegistry, MemoryRegistry, MemoryStore, ModeManager, ProjectIndex, resolveCanonicalMemoryDbPath } from '@pellux/goodvibes-sdk/platform/state';
 import { buildExecPromptAnswerHandler } from '@pellux/goodvibes-sdk/platform/runtime/permissions/exec-prompt-wiring';
 import { buildLocalhostFetchApproval } from '@pellux/goodvibes-sdk/platform/runtime/permissions/localhost-fetch-approval';
+import { createBrokeredPermissionManager } from '@pellux/goodvibes-sdk/platform/runtime/client-services';
 import { createNotificationDispatcher, wireRuntimeNotificationBridge, wireMemoryPressureNotice } from './notification-dispatch.ts';
 import { createDurabilityServices } from './durability-services.ts';
 import { MemorySpineClient, createLocalMemoryAccess } from '@pellux/goodvibes-sdk/platform/runtime/memory-spine';
@@ -62,6 +63,7 @@ import { createDevicePostureServices } from './device-posture-composition.ts';
 export { startDeviceHousekeeping } from './device-posture-composition.ts';
 import { createClusterServices, startClusterServices } from './cluster-group-composition.ts';
 import { WorkspaceTrustManager } from './trust/workspace-trust.ts';
+import { createWorkspaceTrustDecisionAsk, trustGatedApprovalRaiser } from './trust/trust-gated-approvals.ts';
 import { GOODVIBES_DAEMON_SURFACE_ROOT } from '../config/surface.ts';
 import type { RuntimeServicesOptions, RuntimeServices } from './runtime-services-types.ts';
 export type { RuntimeServicesOptions, RuntimeServices } from './runtime-services-types.ts';
@@ -537,8 +539,35 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   // so every setDependencies site installs the SAME handler; otherwise a
   // wholesale replace drops it and prompts hang.
   const execPromptAnswerHandler = buildExecPromptAnswerHandler({ requestApproval: (input) => approvalBroker.requestApproval(input) });
+  // Tool asks from the runs this daemon HOSTS. Without a manager here, the
+  // background permission gate short-circuits to approved and every hosted
+  // write, command and delegation ran ungated — the workspace trust decision
+  // written by the terminal app was read by nobody in this process.
+  //
+  // The ask seam is the trust gate wrapping the approval broker, which is the
+  // terminal app's layering with its modal replaced by the raise: a workspace
+  // with no decision yet has the question raised as an approval record and
+  // answered by whichever surface is attached (trust-gated-approvals.ts). The
+  // manager's own layers — permission mode, policy, session cache, durable
+  // user rules — still run first and are unchanged.
+  const permissionManager = createBrokeredPermissionManager({
+    requestApproval: trustGatedApprovalRaiser(
+      workspaceTrustManager,
+      (input) => approvalBroker.requestApproval(input),
+      createWorkspaceTrustDecisionAsk({
+        requestApproval: (input) => approvalBroker.requestApproval(input),
+        workingDirectory,
+      }),
+    ),
+    configManager,
+    policyRuntimeState,
+    hookDispatcher,
+    featureFlags,
+    userRuleStore: userPermissionRuleStore,
+  });
   agentOrchestrator.setDependencies({
     surfaceRoot: surface.surfaceRoot,
+    permissionManager,
     execPromptAnswerHandler,
     localhostFetchApproval,
     fileCache,
@@ -602,6 +631,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     surface,
     shellPaths,
     workspaceTrustManager,
+    permissionManager,
     configManager,
     featureFlags,
     runtimeBus: options.runtimeBus,
