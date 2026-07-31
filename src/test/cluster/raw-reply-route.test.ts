@@ -1,9 +1,6 @@
 import { describe, expect, test } from 'bun:test';
-import {
-  callDaemonVerb,
-  type DaemonFetch,
-  type RemoteDaemonTarget,
-} from '../../cluster/remote-daemon-target.ts';
+import type { DaemonFetch, RemoteDaemonTarget } from '@pellux/goodvibes-terminal-shell';
+import { callDaemonRoute } from '../../cluster/raw-reply-route.ts';
 
 const TARGET: RemoteDaemonTarget = { baseUrl: 'http://127.0.0.1:3421', token: 'op-token', isLocal: true };
 
@@ -22,14 +19,14 @@ function answering(body: unknown, status = 200): DaemonFetch {
  */
 describe('reply envelopes', () => {
   test('wrapped is the default, and unwraps data', async () => {
-    const outcome = await callDaemonVerb<{ membership: string }>(
+    const outcome = await callDaemonRoute<{ membership: string }>(
       TARGET, '/api/cluster/status', { method: 'GET' }, answering({ ok: true, data: { membership: 'member' } }),
     );
     expect(outcome).toEqual({ ok: true, data: { membership: 'member' } });
   });
 
   test('wrapped carries the daemon\'s own error and fix through', async () => {
-    const outcome = await callDaemonVerb(
+    const outcome = await callDaemonRoute(
       TARGET, '/api/cluster/join', { method: 'POST' },
       answering({ ok: false, error: 'no such group', fix: 'run cluster groups' }),
     );
@@ -41,7 +38,7 @@ describe('reply envelopes', () => {
 
   test('raw returns the body itself on a 2xx', async () => {
     const payload = { status: 'running', version: '1.28.0', cluster: { role: 'master' } };
-    const outcome = await callDaemonVerb<typeof payload>(
+    const outcome = await callDaemonRoute<typeof payload>(
       TARGET, '/status', { method: 'GET', envelope: 'raw' }, answering(payload),
     );
     expect(outcome).toEqual({ ok: true, data: payload });
@@ -51,15 +48,15 @@ describe('reply envelopes', () => {
     // This is the exact live failure: `{ overall: 'healthy', ... }` has no
     // `ok`, and the wrapped reader turned it into "refused the request".
     const payload = { overall: 'healthy', degradedDomains: [] };
-    const wrapped = await callDaemonVerb(TARGET, '/api/health', { method: 'GET' }, answering(payload));
+    const wrapped = await callDaemonRoute(TARGET, '/api/health', { method: 'GET' }, answering(payload));
     expect(wrapped.ok).toBe(false);
 
-    const raw = await callDaemonVerb(TARGET, '/api/health', { method: 'GET', envelope: 'raw' }, answering(payload));
+    const raw = await callDaemonRoute(TARGET, '/api/health', { method: 'GET', envelope: 'raw' }, answering(payload));
     expect(raw.ok).toBe(true);
   });
 
   test('raw uses the HTTP status for the verdict', async () => {
-    const outcome = await callDaemonVerb(
+    const outcome = await callDaemonRoute(
       TARGET, '/api/health', { method: 'GET', envelope: 'raw' }, answering({ error: 'nope' }, 500),
     );
     expect(outcome.ok).toBe(false);
@@ -68,7 +65,7 @@ describe('reply envelopes', () => {
   });
 
   test('raw with an unhelpful error body still names the status and the path', async () => {
-    const outcome = await callDaemonVerb(
+    const outcome = await callDaemonRoute(
       TARGET, '/api/health', { method: 'GET', envelope: 'raw' }, answering({}, 503),
     );
     expect(outcome.ok).toBe(false);
@@ -79,7 +76,7 @@ describe('reply envelopes', () => {
 
   test('a 401 is a token problem under either envelope', async () => {
     for (const envelope of ['wrapped', 'raw'] as const) {
-      const outcome = await callDaemonVerb(
+      const outcome = await callDaemonRoute(
         TARGET, '/status', { method: 'GET', envelope }, answering({}, 401),
       );
       expect(outcome.ok).toBe(false);

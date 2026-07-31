@@ -38,7 +38,7 @@
 import { isAbsolute, join, resolve } from 'node:path';
 import { existsSync, statSync } from 'node:fs';
 import type { ConfigManager } from '@pellux/goodvibes-sdk/platform/config';
-import { resolveRuntimeEndpointBinding } from '../cli/endpoints.ts';
+import { resolveRuntimeEndpointBinding } from '@pellux/goodvibes-terminal-shell';
 import { probeStableHostInputs, stableUrlHostForBindHost, type StableHostInputs } from '@pellux/goodvibes-sdk/platform/pairing';
 
 /** The shipped `web.publicBaseUrl` placeholder — a port nothing binds. */

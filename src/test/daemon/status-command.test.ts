@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import type { DaemonFetch } from '../../cluster/remote-daemon-target.ts';
+import type { DaemonFetch } from '@pellux/goodvibes-terminal-shell';
 import type { DaemonWebSocket, DaemonWebSocketFactory } from '../../cluster/daemon-ws-call.ts';
 import type { LocalStateIo } from '../../daemon/local-daemon-state.ts';
 import { localDaemonStatePaths } from '../../daemon/local-daemon-state.ts';

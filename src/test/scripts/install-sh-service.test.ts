@@ -13,7 +13,7 @@ import {
 import { join } from 'node:path';
 import { ConfigManager } from '@pellux/goodvibes-sdk/platform/config';
 import { buildManagedDaemonServiceManager } from '../../runtime/legacy-daemon-migration.ts';
-import { resolveRuntimeEndpointBinding } from '../../cli/endpoints.ts';
+import { resolveRuntimeEndpointBinding } from '@pellux/goodvibes-terminal-shell';
 import { makeProjectTempDir } from '../helpers/project-temp.ts';
 
 // Shell-level coverage for the two installer features added in this file:

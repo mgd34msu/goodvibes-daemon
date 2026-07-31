@@ -42,11 +42,10 @@ import { runSendCommand } from './send/command.ts';
 import { createSendStack } from './send/composition.ts';
 import { readAllStdin } from './send/stdin.ts';
 import { isDaemonServiceSubcommand, resolveInstalledDaemonBinary, runDaemonServiceCli } from './service-commands.ts';
-import { runClusterCommand } from '../cluster/commands.ts';
 import { resolveConfiguredServiceName } from '../runtime/legacy-daemon-migration.ts';
 import { runDaemonConfigMigration } from '../config/run-daemon-config-migration.ts';
 import { reconcileRedundantLegacyUnit } from '../runtime/legacy-daemon-reconcile.ts';
-import { resolveRuntimeEndpointBinding } from '../cli/endpoints.ts';
+import { resolveRuntimeEndpointBinding, runClusterCommand } from '@pellux/goodvibes-terminal-shell';
 import { resolveDaemonUpdateArtifact } from './lifecycle.ts';
 import { VERSION } from '../version.ts';
 
@@ -58,11 +57,13 @@ import {
   renderGoodVibesVersion,
   renderDaemonStartupBanner,
   runCompletionCommand,
+} from '../cli/index.ts';
+import {
   applyRuntimeConfigOverrides,
   applyRuntimeConfigValue,
-  applyRuntimeFeatureFlagOverrides,
   applyRuntimeEndpointFlagOverrides,
-} from '../cli/index.ts';
+  applyRuntimeFeatureFlagOverrides,
+} from '@pellux/goodvibes-terminal-shell';
 import { runConfigCommand } from './config-command.ts';
 import { runPairCommand } from './pair-command.ts';
 import { runSessionsCommand } from './sessions-command.ts';

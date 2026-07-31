@@ -15,19 +15,19 @@
 
 import { describe, expect, test } from 'bun:test';
 import type { ConfigManager } from '@pellux/goodvibes-sdk/platform/config';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { readFileSync, readdirSync } from 'node:fs';
+import { join, relative, resolve } from 'node:path';
 import {
-  parseClusterCommand,
-  runClusterCommand,
   CLUSTER_SUBCOMMANDS,
-} from '../../cluster/commands.ts';
-import {
+  clipboardEscapeSequence,
+  describeAge,
   extractOperatorToken,
+  parseClusterCommand,
+  renderStatus,
   resolveRemoteDaemonTarget,
+  runClusterCommand,
   type DaemonFetch,
-} from '../../cluster/remote-daemon-target.ts';
-import { clipboardEscapeSequence, describeAge, renderStatus } from '../../cluster/render.ts';
+} from '@pellux/goodvibes-terminal-shell';
 
 /**
  * A control-plane binding, without a real ConfigManager.
@@ -404,7 +404,7 @@ describe('wiring', () => {
     // talks to a daemon that is ALREADY RUNNING and a second composed graph on
     // the same machine is a second set of state.
     expect(source).toContain("if (rawArgs[0] === 'cluster') {");
-    expect(source).toContain("import { runClusterCommand } from '../cluster/commands.ts';");
+    expect(source).toContain('runClusterCommand');
     const interceptIndex = source.indexOf("if (rawArgs[0] === 'cluster') {");
     const parserIndex = source.indexOf('parseDaemonCli(process.argv');
     const composeIndex = source.indexOf('createRuntimeServices({');
@@ -413,14 +413,32 @@ describe('wiring', () => {
     expect(interceptIndex).toBeLessThan(composeIndex);
   });
 
-  test('the command layer builds no requests of its own', () => {
+  test('this repository builds no cluster requests of its own', () => {
     // Every caller — this CLI, a client's /cluster command, a web view — goes
     // through runClusterCommand, so a command run against a REMOTE daemon
     // behaves exactly like one run on that machine. A second request builder
-    // here is how those two drift apart.
-    const source = readFileSync(join(import.meta.dir, '../../cluster/commands.ts'), 'utf-8');
-    expect(source).toContain('export async function runClusterCommand(');
-    expect(source).toContain('/api/cluster/');
+    // in this repository is how those two drift apart. The one `/api/cluster/`
+    // path named here is status-command.ts asking for the group's own view of
+    // membership, which is a read the cluster command family does not have.
+    const src = resolve(import.meta.dir, '../..');
+    const builders = new Set<string>();
+    const walk = (dir: string): void => {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const full = join(dir, entry.name);
+        if (entry.isDirectory()) {
+          if (entry.name !== 'test') walk(full);
+          continue;
+        }
+        if (!entry.name.endsWith('.ts')) continue;
+        for (const line of readFileSync(full, 'utf-8').split('\n')) {
+          const trimmed = line.trimStart();
+          if (trimmed.startsWith('*') || trimmed.startsWith('/*') || trimmed.startsWith('//')) continue;
+          if (/['"`]\/api\/cluster\//.test(line)) builders.add(relative(src, full));
+        }
+      }
+    };
+    walk(src);
+    expect([...builders].sort()).toEqual(['daemon/status-command.ts']);
   });
 
   test('the daemon CLI intercepts `cluster` before composing a runtime', () => {

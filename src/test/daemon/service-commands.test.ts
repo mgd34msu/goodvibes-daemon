@@ -23,7 +23,7 @@ import {
   reconcileRedundantLegacyUnit,
   INSTALLER_UNIT_MARKER,
 } from '../../runtime/legacy-daemon-reconcile.ts';
-import { resolveRuntimeEndpointBinding } from '../../cli/endpoints.ts';
+import { resolveRuntimeEndpointBinding } from '@pellux/goodvibes-terminal-shell';
 import { makeProjectTempDir } from '../helpers/project-temp.ts';
 
 describe('resolveConfiguredServiceName — config-honest name for pre-manager callers', () => {

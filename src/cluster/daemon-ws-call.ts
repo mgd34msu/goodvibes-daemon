@@ -2,7 +2,7 @@
  * daemon-ws-call.ts — invoking a verb that has no REST binding.
  *
  * Most control-plane verbs answer on a plain HTTP path and `callDaemonVerb` in
- * ./remote-daemon-target.ts is all a subcommand needs. Some do not: the
+ * @pellux/goodvibes-terminal-shell is all a subcommand needs. Some do not: the
  * `sessions.hosted.*` family is declared ws-only in the method catalog (no
  * `http` binding at all), because a hosted session's whole point is the event
  * stream that comes with it. A GET against a path they do not have returns 404,
@@ -24,7 +24,7 @@
  * before any frame is read) and re-reads it from the frame; sending both is
  * what makes one connection work for both checks.
  */
-import type { DaemonVerbOutcome, RemoteDaemonTarget } from './remote-daemon-target.ts';
+import type { DaemonVerbOutcome, RemoteDaemonTarget } from '@pellux/goodvibes-terminal-shell';
 
 /** How long a single verb call may take, upgrade included. */
 export const DAEMON_WS_TIMEOUT_MS = 15_000;

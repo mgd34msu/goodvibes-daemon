@@ -8,16 +8,15 @@
  *     catalog and produces a parse, a help page or a completion script. None of
  *     them names a daemon command.
  *
- * The engine half is what a terminal-shell package is expected to own later;
- * the catalog stays here. Everything the terminal app's CLI barrel carried that
- * described a conversation surface (interactive status, doctor, plugin and
- * bundle commands) belongs to that surface, not here.
+ * The argument surface a `goodvibes` front-end shares — the parse engine's
+ * catalog contract, redaction, config overrides and endpoint resolution — is
+ * @pellux/goodvibes-terminal-shell's, imported at the point of use. What stays
+ * here is what only this binary has: its own command vocabulary, and the help,
+ * completion and settings-value reading built on it.
  */
 export * from './types.ts';
 export * from './command-catalog.ts';
 export * from './parser.ts';
 export * from './help.ts';
 export * from './completion.ts';
-export * from './config-overrides.ts';
-export * from './endpoints.ts';
-export * from './redaction.ts';
+export * from './config-value.ts';

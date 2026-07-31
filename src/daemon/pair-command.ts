@@ -23,7 +23,7 @@
 import type { ConfigManager } from '@pellux/goodvibes-sdk/platform/config';
 import { availablePairingOffers, resolvePairingWebOrigin } from '@pellux/goodvibes-sdk/platform/pairing';
 import { renderPairingBanner } from '../core/pairing-banner.ts';
-import { extractOperatorToken } from '../cluster/remote-daemon-target.ts';
+import { extractOperatorToken } from '@pellux/goodvibes-terminal-shell';
 import type { DaemonCommandResult, RemoteCommandFlags } from './status-command.ts';
 
 export interface PairCommandDeps {

@@ -26,12 +26,12 @@
  */
 import type { ConfigManager } from '@pellux/goodvibes-sdk/platform/config';
 import {
-  callDaemonVerb,
   resolveRemoteDaemonTarget,
   type DaemonFetch,
   type DaemonVerbOutcome,
   type RemoteDaemonTarget,
-} from '../cluster/remote-daemon-target.ts';
+} from '@pellux/goodvibes-terminal-shell';
+import { callDaemonRoute } from '../cluster/raw-reply-route.ts';
 import { callDaemonWsVerb, type DaemonWebSocketFactory } from '../cluster/daemon-ws-call.ts';
 import {
   describeLocalDaemonState,
@@ -330,15 +330,15 @@ export async function runStatusCommand(input: RunStatusCommandInput): Promise<Da
   // `/status` answers with the payload itself; `/api/cluster/*` wraps it. Each
   // call states which, because reading one as the other turns a healthy 200
   // into "the daemon refused the request".
-  const identity = await callDaemonVerb<ControlStatusPayload>(
+  const identity = await callDaemonRoute<ControlStatusPayload>(
     target, '/status', { method: 'GET', envelope: 'raw' }, fetchImpl,
   );
   if (!identity.ok) return failure(identity.error, identity.fix, flags.json);
 
   const [health, channels, cluster, hosted] = await Promise.all([
-    callDaemonVerb<HealthPayload>(target, '/api/health', { method: 'GET', envelope: 'raw' }, fetchImpl),
-    callDaemonVerb<ChannelsPayload>(target, '/api/channels/status', { method: 'GET', envelope: 'raw' }, fetchImpl),
-    callDaemonVerb<ClusterStatusPayload>(target, '/api/cluster/status', { method: 'GET', envelope: 'wrapped' }, fetchImpl),
+    callDaemonRoute<HealthPayload>(target, '/api/health', { method: 'GET', envelope: 'raw' }, fetchImpl),
+    callDaemonRoute<ChannelsPayload>(target, '/api/channels/status', { method: 'GET', envelope: 'raw' }, fetchImpl),
+    callDaemonRoute<ClusterStatusPayload>(target, '/api/cluster/status', { method: 'GET', envelope: 'wrapped' }, fetchImpl),
     callDaemonWsVerb<HostedSessionsPayload>(target, 'sessions.hosted.list', {
       ...(input.socketFactory ? { socketFactory: input.socketFactory } : {}),
     }),
@@ -422,7 +422,7 @@ export async function runUpdateCommand(input: RunUpdateCommandInput): Promise<Da
   const target = resolved.target;
   const fetchImpl = input.fetchImpl ?? fetch;
 
-  const identity = await callDaemonVerb<ControlStatusPayload>(
+  const identity = await callDaemonRoute<ControlStatusPayload>(
     target, '/status', { method: 'GET', envelope: 'raw' }, fetchImpl,
   );
   if (!identity.ok) return failure(identity.error, identity.fix, flags.json);

@@ -23,8 +23,8 @@
  */
 import type { ConfigManager, ConfigKey, ConfigSetting } from '../config/index.ts';
 import { ConfigError } from '../config/index.ts';
-import { parseConfigValueText } from '../cli/config-overrides.ts';
-import { REDACTED_VALUE, isSensitiveConfigPath, redactConfig } from '../cli/redaction.ts';
+import { parseConfigValueText } from '../cli/config-value.ts';
+import { REDACTED_VALUE, isSensitiveConfigPath, redactConfig } from '@pellux/goodvibes-terminal-shell';
 
 export const CONFIG_SUBCOMMANDS = ['list', 'get', 'set', 'unset'] as const;
 export type ConfigSubcommand = (typeof CONFIG_SUBCOMMANDS)[number];

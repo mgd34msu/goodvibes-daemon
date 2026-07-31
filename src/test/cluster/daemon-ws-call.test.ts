@@ -4,7 +4,7 @@ import {
   type DaemonWebSocket,
   type DaemonWebSocketFactory,
 } from '../../cluster/daemon-ws-call.ts';
-import type { RemoteDaemonTarget } from '../../cluster/remote-daemon-target.ts';
+import type { RemoteDaemonTarget } from '@pellux/goodvibes-terminal-shell';
 
 const LOCAL: RemoteDaemonTarget = { baseUrl: 'http://127.0.0.1:3421', token: 'op-token', isLocal: true };
 const REMOTE: RemoteDaemonTarget = { baseUrl: 'http://10.0.0.7:3421', token: 'other', isLocal: false };
