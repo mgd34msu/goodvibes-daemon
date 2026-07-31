@@ -9,7 +9,7 @@
  * WHERE EACH LINE COMES FROM
  *
  * Everything about the RUNNING daemon comes from that daemon, over the
- * --host/--port/--token convention `src/cluster/remote-daemon-target.ts`
+ * --host/--port/--token convention @pellux/goodvibes-terminal-shell
  * established: `/status` for identity, `/api/health` for the health roll-up and
  * the address it actually bound, `/api/channels/status` for the channels, and
  * `/api/cluster/status` for this machine's place in its group. Hosted sessions

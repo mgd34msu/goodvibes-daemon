@@ -41,7 +41,8 @@
 
 import type { ConfigManager } from '../../config/index.ts';
 import type { ChannelDeliveryRequest } from '@pellux/goodvibes-sdk/platform/channels';
-import { getMissingSurfaceFeatureFlags, surfaceFeatureGateSettingsKeys } from '../../runtime/surface-feature-flags.ts';
+import { operations } from '@pellux/goodvibes-sdk/platform/runtime';
+const { getMissingSurfaceFeatureFlags, surfaceFeatureGateSettingsKeys } = operations;
 import { findSendChannel, readChannelReadiness, resolveDefaultChannel, SEND_CHANNELS, type SendChannel } from './channels.ts';
 import { describeSendFailure } from './failure-text.ts';
 import { inertBodyFor } from './inert-text.ts';

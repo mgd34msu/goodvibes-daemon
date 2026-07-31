@@ -39,11 +39,11 @@ export { createDisposalScope };
 
 /** The assembled graph, narrowed to the poller owners it exposes as fields. */
 export interface DaemonRuntimePollerOwners extends Omit<RuntimePollerOwners, 'stopConfigWatch'> {
-  /** Daemon-only: the repeating crash-residue sweep (durability-services.ts). */
+  /** Daemon-only: the repeating crash-residue sweep. */
   readonly stopDurabilityHousekeeping: () => void;
   /**
    * Daemon-only: the wake-word recovery sweep and a pending boot provision
-   * (voice-setup-services.ts). Started only when an entrypoint opted into boot
+   * Started only when an entrypoint opted into boot
    * provisioning, and a no-op otherwise — but it is on this list unconditionally,
    * because "the graph did not start it this time" is not a reason for the
    * teardown path to have no way to stop it.
@@ -71,7 +71,7 @@ export interface DaemonRuntimePollerOwners extends Omit<RuntimePollerOwners, 'st
  * graph — handles the factory keeps as locals.
  */
 export interface RuntimeDisposalExtras {
-  /** Handle returned by `ConfigManager.watchConfigFiles()` (durability-services.ts). */
+  /** Handle returned by `ConfigManager.watchConfigFiles()`. */
   readonly stopConfigWatch: () => void;
 }
 

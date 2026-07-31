@@ -8,7 +8,7 @@
  * surface reuses the SAME DistributedRuntimeManager the SDK facade injects.
  *
  * Split out of services.ts for the 800-line file cap, the same reason
- * channel-composition.ts exists.
+ * the SDK's channel composition exists.
  *
  * The one behavioural decision that lives here: the inbox poller is handed to
  * the cluster coordinator instead of being started eagerly. It is this

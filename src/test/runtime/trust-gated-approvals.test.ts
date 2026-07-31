@@ -19,7 +19,9 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { readFileSync } from 'node:fs';
 import type { PermissionPromptDecision, PermissionPromptRequest } from '@pellux/goodvibes-sdk/platform/permissions';
-import { WorkspaceTrustManager } from '../../runtime/trust/workspace-trust.ts';
+import { operations } from '@pellux/goodvibes-sdk/platform/runtime';
+import { GOODVIBES_DAEMON_SURFACE_ROOT } from '../../config/surface.ts';
+const { WorkspaceTrustManager } = operations;
 import {
   createWorkspaceTrustDecisionAsk,
   trustGatedApprovalRaiser,
@@ -81,7 +83,7 @@ function recordingBroker(answers: { trust?: boolean; tool?: boolean } = {}) {
 }
 
 function buildRaiser(broker: ReturnType<typeof recordingBroker>) {
-  const manager = new WorkspaceTrustManager({ shellPaths: makePaths(workspace) });
+  const manager = new WorkspaceTrustManager({ shellPaths: makePaths(workspace), surfaceRoot: GOODVIBES_DAEMON_SURFACE_ROOT });
   const raiser = trustGatedApprovalRaiser(
     manager,
     broker.raise,
@@ -221,7 +223,7 @@ describe('the attribution a brokered ask carries survives the gate', () => {
     const raise = async (): Promise<PermissionPromptDecision> => {
       throw new Error('no surface attached');
     };
-    const manager = new WorkspaceTrustManager({ shellPaths: makePaths(workspace) });
+    const manager = new WorkspaceTrustManager({ shellPaths: makePaths(workspace), surfaceRoot: GOODVIBES_DAEMON_SURFACE_ROOT });
     const raiser = trustGatedApprovalRaiser(
       manager,
       raise,

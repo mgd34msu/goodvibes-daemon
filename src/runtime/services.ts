@@ -5,7 +5,6 @@ import { ChannelPolicyManager } from '@pellux/goodvibes-sdk/platform/channels';
 import { ApprovalBroker, GatewayMethodCatalog, SharedSessionBroker, buildSharedSessionAgentSpawnRoutingInput } from '@pellux/goodvibes-sdk/platform/control-plane';
 import { AcpHostService } from '@pellux/goodvibes-sdk/platform/acp';
 import { continuationChainOptions } from '@pellux/goodvibes-sdk/platform/agents';
-import { wireIdlePowerAndLiveTurn } from './idle-power-services.ts';
 import { resolvePairingWebOrigin } from '@pellux/goodvibes-sdk/platform/pairing';
 import { attachWsOnlyGatewayVerbHandlers } from '@pellux/goodvibes-terminal-shell';
 import { composeMailDeps } from './mail-composition.ts';
@@ -25,15 +24,20 @@ import { buildLocalhostFetchApproval } from '@pellux/goodvibes-sdk/platform/runt
 import { createBrokeredPermissionManager } from '@pellux/goodvibes-sdk/platform/runtime/client-services';
 import { wireMemoryPressureChannelNotice } from './notification-dispatch.ts';
 import { operations } from '@pellux/goodvibes-sdk/platform/runtime';
+const {
+  applyProviderOptimizerConfigMode, bindProviderOptimizerFeatureFlag, codeIndexDbPath,
+  createAgentGraph, createChannelComposition, createCodeIndexServices,
+  createRemoteExecutionServices, createSessionStorageServices, createStoreRerooter,
+  isCodeInjectionSettingEnabled, wireIdlePowerAndLiveTurn, wireVoiceSetup,
+} = operations;
+const { WorkspaceTrustManager } = operations;
 import { MemorySpineClient, createLocalMemoryAccess } from '@pellux/goodvibes-sdk/platform/runtime/memory-spine';
 import { createWorkspaceCheckpointing } from './workspace-checkpointing.ts';
 import { createSessionConversationRewindPort } from './conversation-rewind-port.ts';
 import { createDomainDispatch } from '@pellux/goodvibes-sdk/platform/runtime/store';
 import { DistributedRuntimeManager, IntegrationHelperService, IdempotencyStore, ComponentHealthMonitor, WorktreeRegistry, createShellPathService, createFeatureFlagManager, createNoopPanelManager, createNoopKeybindingsManager, PolicyRuntimeState } from '@/runtime/index.ts';
-import { createSessionStorageServices } from './session-storage-services.ts';
 import { VoiceProviderRegistry, VoiceService, ensureBuiltinVoiceProviders } from '@pellux/goodvibes-sdk/platform/voice';
 import { CacheRegistry, PauseController, wireDaemonMemoryGovernance } from '@pellux/goodvibes-sdk/platform/runtime/memory';
-import { wireVoiceSetup } from './voice-setup-services.ts';
 import { WebSearchProviderRegistry, WebSearchService } from '@pellux/goodvibes-sdk/platform/web-search';
 import { HookActivityTracker } from '@pellux/goodvibes-sdk/platform/hooks';
 import { HookDispatcher, createHookWorkbench } from '@pellux/goodvibes-sdk/platform/hooks';
@@ -43,18 +47,13 @@ import { ProfileManager } from '@pellux/goodvibes-sdk/platform/profiles';
 import { CrossSessionTaskRegistry, SessionChangeTracker } from '@pellux/goodvibes-sdk/platform/sessions';
 import { ApiTokenAuditor, UserAuthManager } from '@pellux/goodvibes-sdk/platform/security';
 import { WebhookNotifier } from '@pellux/goodvibes-sdk/platform/integrations';
-import { createRemoteExecutionServices } from './remote-execution-composition.ts';
-import { createAgentGraph } from './agent-graph-composition.ts';
 import { BenchmarkStore, CacheHitTracker, FavoritesStore, ModelLimitsService, ProviderCapabilityRegistry, ProviderOptimizer, createLaunchTolerantProviderRegistry, ensureConfiguredModelIsRoutable } from '@pellux/goodvibes-sdk/platform/providers';
 import { AdaptivePlanner, DeterministicReplayEngine, ExecutionPlanManager, SessionLineageTracker, SessionMemoryStore } from '@pellux/goodvibes-sdk/platform/core';
 import { deriveFeatureStates, bindFeatureSettingsBridge } from '@pellux/goodvibes-sdk/platform/runtime/state';
-import { createChannelComposition } from './channel-composition.ts';
-import { applyProviderOptimizerConfigMode, bindProviderOptimizerFeatureFlag } from './provider-optimizer-wiring.ts';
 import { createFleetServices } from './fleet-services.ts';
 import { createTriggerServices } from './trigger-services.ts';
 import { createWorkstreamServices } from '@pellux/goodvibes-sdk/platform/orchestration';
 import { wireFleetNeedsInputPush } from './fleet-needs-input-push.ts';
-import { codeIndexDbPath, createCodeIndexServices, createStoreRerooter, isCodeInjectionSettingEnabled } from './code-index-services.ts';
 import { createDaemonHandlerComposition } from './daemon-handler-composition.ts';
 import { createDevicePostureServices } from './device-posture-composition.ts';
 // Re-exported so the daemon entrypoint reaches the housekeeping sweep through
@@ -63,7 +62,6 @@ import { createDevicePostureServices } from './device-posture-composition.ts';
 // registry, and the daemon registers no tools — the sweep is the half it needs.
 export { startDeviceHousekeeping } from './device-posture-composition.ts';
 import { createClusterServices, startClusterServices } from './cluster-group-composition.ts';
-import { WorkspaceTrustManager } from './trust/workspace-trust.ts';
 import { createWorkspaceTrustDecisionAsk, trustGatedApprovalRaiser } from './trust/trust-gated-approvals.ts';
 import { GOODVIBES_DAEMON_SURFACE_ROOT } from '../config/surface.ts';
 import type { RuntimeServicesOptions, RuntimeServices } from './runtime-services-types.ts';
@@ -93,9 +91,9 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     workingDirectory,
     homeDirectory,
   });
-  // Built before anything that touches session state — see session-storage-services.ts.
-  const { surface, sessionManager } = createSessionStorageServices({ workingDirectory, homeDirectory });
-  const workspaceTrustManager = new WorkspaceTrustManager({ shellPaths });
+  // Built before anything that touches session state.
+  const { surface, sessionManager } = createSessionStorageServices({ surfaceRoot: GOODVIBES_DAEMON_SURFACE_ROOT, workingDirectory, homeDirectory });
+  const workspaceTrustManager = new WorkspaceTrustManager({ shellPaths, surfaceRoot: GOODVIBES_DAEMON_SURFACE_ROOT });
   const configManager = options.configManager;
   const featureFlags = options.featureFlags ?? createFeatureFlagManager();
   if (options.featureFlags === undefined) {
@@ -125,7 +123,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   // the honest answer rather than a stub that pretends to open panels.
   const panelManager = createNoopPanelManager();
   const keybindingsManager = createNoopKeybindingsManager();
-  // Channel/surface wiring: see channel-composition.ts (incl. the recorded surface-gating divergence note).
+  // Channel/surface wiring, composed by the SDK helper.
   const { routeBindings, surfaceRegistry, channelPlugins } = createChannelComposition({
     configManager,
     runtimeStore: options.runtimeStore,
@@ -205,7 +203,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     runtimeBus: options.runtimeBus,
   });
   // The agent-execution graph, wired in both directions; see
-  // agent-graph-composition.ts for why the six are built as one.
+  // the SDK's agent-graph composition for why the six are built as one.
   const {
     agentMessageBus, archetypeLoader, agentOrchestrator,
     agentManager, contextAccountingHolder, wrfcController,
@@ -390,7 +388,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   });
 
   // Remote runners and the sandboxes tool calls are confined to; see
-  // remote-execution-composition.ts for why the four are built as one.
+  // the SDK's remote-execution composition for why the four are built as one.
   const { remoteRunnerRegistry, remoteSupervisor, sandboxSessionRegistry, mcpRegistry }
     = createRemoteExecutionServices({
       agentManager, workingDirectory, hookDispatcher, configManager, runtimeBus: options.runtimeBus,
@@ -402,7 +400,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   const worktreeRegistry = new WorktreeRegistry(workingDirectory);
   const webhookNotifier = new WebhookNotifier();
   const replayEngine = new DeterministicReplayEngine(workingDirectory);
-  const providerOptimizer = new ProviderOptimizer(providerRegistry, providerCapabilityRegistry, false); // dark until its gate flips it (see provider-optimizer-wiring.ts)
+  const providerOptimizer = new ProviderOptimizer(providerRegistry, providerCapabilityRegistry, false); // dark until its gate flips it
   bindProviderOptimizerFeatureFlag(featureFlags, providerOptimizer);
   applyProviderOptimizerConfigMode(configManager, providerOptimizer);
   const sessionMemoryStore = new SessionMemoryStore();
@@ -428,11 +426,11 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     agentManager, configManager, adaptivePlanner, runtimeBus: options.runtimeBus, projectRoot: workingDirectory,
   });
   // Repo source-tree code index, sharing memoryEmbeddingRegistry with MemoryStore
-  // above. Auto-build is config-gated (default off) — see code-index-services.ts.
-  const { codeIndexStore, codeIndexReindexScheduler } = createCodeIndexServices({ workingDirectory, configManager, memoryEmbeddingRegistry, isReindexPaused: () => pauseController.isPaused('code-index-reindex'), admitExpensiveWork });
-  // Store snapshots, the periodic append-only sweep, durable remembered-approval rules + the live credential chain — see durability-services.ts.
+  // above. Auto-build is config-gated (default off).
+  const { codeIndexStore, codeIndexReindexScheduler } = createCodeIndexServices({ workingDirectory, surfaceRoot: GOODVIBES_DAEMON_SURFACE_ROOT, configManager, memoryEmbeddingRegistry, isReindexPaused: () => pauseController.isPaused('code-index-reindex'), admitExpensiveWork });
+  // Store snapshots, the periodic append-only sweep, durable remembered-approval rules + the live credential chain.
   const { storeSnapshotScheduler, appendOnlyRetentionScheduler, userPermissionRuleStore, stopDurabilityHousekeeping, stopConfigWatch } = operations.createDurabilityServices({
-    configManager, secretsManager, providerRegistry, memoryDbPath, codeIndexDbPath: codeIndexDbPath(workingDirectory), surface, shellPaths, // + retention-sweep roots & live config watch (mirrors the SDK)
+    configManager, secretsManager, providerRegistry, memoryDbPath, codeIndexDbPath: codeIndexDbPath(workingDirectory, GOODVIBES_DAEMON_SURFACE_ROOT), surface, shellPaths, // + retention-sweep roots & live config watch (mirrors the SDK)
     ...(options.currentSessionId ? { currentSessionId: options.currentSessionId } : {}), // exempts the running session from crash-residue reaping
   });
   const codeInjectionOrchestratorDeps = { codeIndex: codeIndexStore, isCodeInjectionSettingEnabled: () => isCodeInjectionSettingEnabled(configManager), codeIndexReindexScheduler };
@@ -508,7 +506,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   admitExpensiveWorkRef.current = (label) => memoryGovernor.admitExpensiveWork(label);
 
   // Managed local-voice provisioning (voice.local.status/install) — single-flight
-  // one-act install + no-network status; see voice-setup-services.ts.
+  // one-act install + no-network status.
   const { voiceSetup, stopWakeHousekeeping } = wireVoiceSetup({ configManager, shellPaths, voiceProviders, admitExpensiveWork,
     // Boot provisioning of the wake-word model + its recovery sweep, opted into
     // by the real entrypoint only (same treatment as powerSeam) so a one-shot CLI
@@ -755,7 +753,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     workspaceCheckpointManager,
     checkpointsCurrentlyAllowed: checkpointing.currentlyAllowed,
     integrationHelpers,
-    rerootStores: createStoreRerooter({ codeIndexStore, projectIndex }),
+    rerootStores: createStoreRerooter({ codeIndexStore, projectIndex, surfaceRoot: GOODVIBES_DAEMON_SURFACE_ROOT }),
     // Cancels the agent runs this graph was hosting. By dispose() time the fleet
     // registry, orchestration engine, process registry and bus these runs report
     // through are already down, so a run still described as "running" is orphaned

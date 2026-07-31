@@ -164,8 +164,9 @@ const YES_FLAG: DaemonCommandFlagSpec = {
 /**
  * The target-daemon flags, spelled the same way everywhere.
  *
- * This is the convention `src/cluster/remote-daemon-target.ts` established and
- * asked later subcommands to follow: `--host`/`--port`/`--token`, each
+ * This is the convention @pellux/goodvibes-terminal-shell's
+ * cluster-remote-daemon-target established and asked later subcommands to
+ * follow: `--host`/`--port`/`--token`, each
  * defaulting to this machine's own daemon — the configured control-plane
  * binding and the operator token in `<daemon home>/operator-tokens.json`. A
  * headless box the operator has SSHed into must work with no flags at all.

@@ -17,7 +17,7 @@ import type { AutomationDeliveryManager, AutomationManager } from '@pellux/goodv
 import type { ChannelDeliveryRouter, ChannelPolicyManager, ChannelPluginRegistry, RouteBindingManager, SurfaceRegistry } from '@pellux/goodvibes-sdk/platform/channels';
 import type { ApprovalBroker, GatewayMethodCatalog, SessionLiveTurnControlsHolder, SharedSessionBroker } from '@pellux/goodvibes-sdk/platform/control-plane';
 import type { PowerManager } from '@pellux/goodvibes-sdk/platform/power';
-import type { wireIdlePowerAndLiveTurn } from './idle-power-services.ts';
+
 import type { StepUpService } from '@pellux/goodvibes-sdk/daemon';
 import type { PairingTokenManager } from '@pellux/goodvibes-sdk/platform/pairing';
 import type { WatcherRegistry } from '@pellux/goodvibes-sdk/platform/watchers';
@@ -58,7 +58,7 @@ import type { WorkPlanStore } from '@pellux/goodvibes-sdk/platform/workflow';
 import type { DaemonHandlerSurfaces } from '../daemon/handlers/index.ts';
 import type { ClusterGroupComposition } from './cluster-group-composition.ts';
 import type { ClusterCoordinator } from '@pellux/goodvibes-sdk/platform/cluster';
-import type { WorkspaceTrustManager } from './trust/workspace-trust.ts';
+
 import type { TriggerManager } from '@pellux/goodvibes-sdk/platform/triggers';
 
 export interface RuntimeServicesOptions {
@@ -84,16 +84,17 @@ export interface RuntimeServicesOptions {
    * into the fleet as 'observed-external' rows. Interactive leaves it off and reads
    * the daemon snapshot. Mirrors the SDK's own createRuntimeServices option. */
   readonly observeExternalAgents?: boolean | undefined;
-  /** Host power seam opt-in. Fork mirrors the SDK: non-spawning unavailable-seam
-   * default (idle-power-services.ts); daemon + embedded runtime pass createHostPowerSeam(). */
-  readonly powerSeam?: Parameters<typeof wireIdlePowerAndLiveTurn>[0]['powerSeam'];
-  /** Live session id, read per crash-residue sweep so the running session is exempt — see durability-services.ts. */
+  /** Host power seam opt-in. Left out, the SDK's idle-power wiring falls back to
+   * the non-spawning unavailable seam; the daemon entrypoint passes the real
+   * host seam, which is what starts systemd-inhibit and the sleep-edge watcher. */
+  readonly powerSeam?: operations.IdlePowerServicesDeps['powerSeam'];
+  /** Live session id, read per crash-residue sweep so the running session is exempt. */
   readonly currentSessionId?: (() => string | null) | undefined;
   /**
    * Wake-word boot provisioning opt-in. Same shape as `powerSeam`: the real
    * entrypoints (daemon/cli.ts, bootstrap-core.ts) ask for it, the one-shot CLI
    * commands do not, and a test composing this graph gets neither a network fetch
-   * nor an hourly sweep it did not ask for. See voice-setup-services.ts.
+   * nor an hourly sweep it did not ask for.
    */
   readonly provisionWakeModelsAtBoot?: boolean | undefined;
 }
@@ -101,7 +102,7 @@ export interface RuntimeServicesOptions {
 export interface RuntimeServices {
   readonly workingDirectory: string;
   readonly homeDirectory: string;
-  /** The declare-once session-storage handle every session reader and writer threads through — see session-storage-services.ts. */
+  /** The declare-once session-storage handle every session reader and writer threads through. */
   readonly surface: SessionSurface;
   readonly shellPaths: ShellPathService;
   readonly configManager: ConfigManager;
@@ -211,10 +212,10 @@ export interface RuntimeServices {
   readonly contextAccountingHolder: ContextAccountingHolder; // bound at bootstrap.ts; see context-accounting-source.ts
   readonly wrfcController: WrfcController;
   readonly processManager: ProcessManager;
-  /** The phase/work-item orchestration engine — see runtime/workstream-services.ts. */
+  /** The phase/work-item orchestration engine — the SDK's platform/orchestration. */
   readonly orchestrationEngine: OrchestrationEngine;
   readonly workstreamCommands: WorkstreamCommandService;
-  /** The repo source-tree code index — see runtime/code-index-services.ts. */
+  /** The repo source-tree code index. */
   readonly codeIndexStore: CodeIndexStore;
   readonly codeIndexReindexScheduler: CodeIndexReindexScheduler; // tool-site reindex
   /** Daily snapshots of every SQLite store this runtime writes, with bounded retention; unref'd timers (mirrors the SDK composition — hosts that tear down a runtime stop() it themselves). */
@@ -243,7 +244,7 @@ export interface RuntimeServices {
   /** Surface-scoped continuity reads (recovery-file presence, last-session pointer). */
   readonly integrationHelpers: IntegrationHelperService;
   /** Per-workspace trust gate — restricts write/execute/delegate tools until the workspace is trusted. */
-  readonly workspaceTrustManager: WorkspaceTrustManager;
+  readonly workspaceTrustManager: operations.WorkspaceTrustManager;
   /**
    * The permission manager the runs this daemon hosts ask through. Its ask seam
    * is the workspace trust gate over the approval broker, so an undecided

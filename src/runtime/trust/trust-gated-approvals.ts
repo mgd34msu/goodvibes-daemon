@@ -38,7 +38,10 @@
 import { randomUUID } from 'node:crypto';
 import { logger } from '@pellux/goodvibes-sdk/platform/utils';
 import type { PermissionPromptDecision, PermissionPromptRequest } from '@pellux/goodvibes-sdk/platform/permissions';
-import { trustGatedAsk, type WorkspaceTrustLevel, type WorkspaceTrustManager } from './workspace-trust.ts';
+import { operations } from '@pellux/goodvibes-sdk/platform/runtime';
+const { trustGatedAsk } = operations;
+type WorkspaceTrustLevel = operations.WorkspaceTrustLevel;
+type WorkspaceTrustManager = operations.WorkspaceTrustManager;
 
 /**
  * The extra fields a raise carries beside the request itself — the attribution

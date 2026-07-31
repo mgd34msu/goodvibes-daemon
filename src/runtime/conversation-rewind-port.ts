@@ -8,7 +8,8 @@
 // messages would truncate to a recorded turn boundary, and rewind() performs the
 // truncation and captures the pre-/post-truncation snapshots so the reversal can
 // be undone and re-applied. The truncation boundary is the message count recorded
-// for the anchor's turnId at TURN_COMPLETED (rewind-turn-anchors.ts) — the same
+// for the anchor's turnId at TURN_COMPLETED (the SDK's platform/rewind turn
+// anchors) — the same
 // join key files rewind uses against the workspace checkpoint.
 //
 // This module is the daemon's implementation of that port, for sessions THIS

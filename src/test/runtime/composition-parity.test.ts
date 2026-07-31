@@ -10,8 +10,8 @@
  * deterministic way to catch a fork that silently drops one of them.
  */
 import { describe, expect, test } from 'bun:test';
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { readFileSync, readdirSync } from 'node:fs';
+import { join, relative, resolve } from 'node:path';
 
 const ROOT = resolve(import.meta.dir, '../../..');
 const read = (rel: string): string => readFileSync(resolve(ROOT, rel), 'utf8');
@@ -88,11 +88,19 @@ describe('composition parity — the retention janitor and live config apply are
   });
 });
 
-describe('composition parity — keep-awake config live-apply is wired', () => {
-  test('the power manager is wired with subscribeConfig so a config write applies live', () => {
-    const idlePower = read('src/runtime/idle-power-services.ts');
-    expect(idlePower).toContain('subscribeConfig:');
-    expect(idlePower).toContain('configManager.subscribe');
+describe('composition parity — the idle/power seam is composed here', () => {
+  // What wireIdlePowerAndLiveTurn DOES with these — the live config
+  // subscription behind keep-awake, the consolidation scheduler, the live-turn
+  // holder — is SDK-owned and covered by the SDK's own suite. What this
+  // repository has to keep true is that its composition root calls it, and
+  // hands it the config manager and the idle/heartbeat seams it decides from.
+  test('createRuntimeServices composes the idle-power services with the config manager and its seams', () => {
+    const services = read('src/runtime/services.ts');
+    const call = services.slice(services.indexOf('wireIdlePowerAndLiveTurn({'));
+    expect(call.slice(0, 100)).toContain('wireIdlePowerAndLiveTurn({');
+    for (const input of ['configManager', 'memoryRegistry', 'runtimeBus', 'isIdle:', 'snapshotTick:', 'heartbeat:']) {
+      expect(call.slice(0, 900), `idle-power input ${input} missing`).toContain(input);
+    }
   });
 });
 
@@ -142,22 +150,24 @@ describe('composition parity — memory governance is composed (governor default
 
   test('managed voice provisioning is composed so voice.local.status/install are invokable', () => {
     expect(services).toContain('wireVoiceSetup({');
-    const helper = read('src/runtime/voice-setup-services.ts');
-    // The composer is now the SDK's exported createVoiceSetupService (SDK 1.10.1
-    // added ./platform/runtime/voice-setup); the fork's wiring delegates to it.
-    expect(helper).toContain('createVoiceSetupService({');
+    // The composer is the SDK's wireVoiceSetup; what makes the two verbs
+    // reachable is this composition threading its handle into the verb-group
+    // registration.
+    expect(services).toContain('wireVoiceSetup({');
     const attachIdx = services.indexOf('attachWsOnlyGatewayVerbHandlers(gatewayMethods,');
     expect(services.slice(attachIdx)).toContain('voiceSetup,');
   });
 
-  test('the daemon serves LIVE install progress: the fork consumes the SDK composer that carries it', () => {
+  test('the daemon serves LIVE install progress: it composes the SDK helper that carries it', () => {
     // The single-flight install, the progress tracker folded onto status(), the
-    // ownership-aware preconfigure and the admission gate all live in the SDK's
-    // createVoiceSetupService now — the fork consumes it through the exported
-    // subpath rather than rebuilding it from the voice primitives.
-    const helper = read('src/runtime/voice-setup-services.ts');
-    expect(helper).toContain("from '@pellux/goodvibes-sdk/platform/runtime/voice-setup'");
-    expect(helper).toContain('createVoiceSetupService');
+    // ownership-aware preconfigure and the admission gate all live behind
+    // wireVoiceSetup. This composition reaches them by calling it and passing
+    // the admission gate, rather than by rebuilding any of it from the voice
+    // primitives — which is what a second copy of this wiring would be.
+    expect(services).toContain('wireVoiceSetup({');
+    expect(services.slice(services.indexOf('wireVoiceSetup({'), services.indexOf('wireVoiceSetup({') + 400))
+      .toContain('admitExpensiveWork');
+    expect(services).not.toContain('createVoiceSetupService(');
   });
 });
 
@@ -169,12 +179,28 @@ describe('composition parity — host power seam is opt-in (non-spawning default
   // the non-spawning unavailable seam, and only the real long-lived compositions
   // opt in. These source pins catch a fork that regresses either half.
 
-  test('the idle-power helper defaults to the NON-spawning unavailable seam when no seam is passed', () => {
-    const idlePower = read('src/runtime/idle-power-services.ts');
-    // The seam falls back to createUnavailablePowerSeam(...) rather than passing
-    // undefined through to wireRuntimePower (which would spawn the host seam).
-    expect(idlePower).toMatch(/seam:\s*deps\.powerSeam\s*\?\?\s*createUnavailablePowerSeam\(/);
-    expect(idlePower).toContain("import { PowerManager, wireRuntimePower, createUnavailablePowerSeam }");
+  test('the real host seam is constructed at the entrypoint and nowhere else in this repository', () => {
+    // An absent seam falls back to the non-spawning unavailable one inside the
+    // SDK helper. What must stay true here is that nothing BUT the daemon
+    // entrypoint constructs the real one — a second construction site is a
+    // systemd-inhibit and a dbus-monitor started by a test, or by a one-shot
+    // CLI command that exits a second later.
+    const src = resolve(import.meta.dir, '../..');
+    const constructors: string[] = [];
+    const walk = (dir: string): void => {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const full = join(dir, entry.name);
+        if (entry.isDirectory()) {
+          if (entry.name !== 'test') walk(full);
+          continue;
+        }
+        if (entry.name.endsWith('.ts') && readFileSync(full, 'utf-8').includes('createHostPowerSeam()')) {
+          constructors.push(relative(src, full));
+        }
+      }
+    };
+    walk(src);
+    expect(constructors).toEqual(['daemon/cli.ts']);
   });
 
   test('createRuntimeServices threads the power-seam opt-in into the idle-power helper', () => {
@@ -225,13 +251,15 @@ describe('composition parity — wake-model boot provisioning is opt-in, like th
     expect(read('src/runtime/services.ts')).toContain('stopWakeHousekeeping');
   });
 
-  test('the boot attempt joins the setup service single flight and names the terminal recovery command', () => {
-    const helper = read('src/runtime/voice-setup-services.ts');
-    // Through the service, not the provisioner directly: a boot attempt racing a
-    // user typing /voice wake setup would otherwise be two downloads of the same
-    // 6 MB. And the SDK would name the control-plane verb, which is right
-    // everywhere and useless to someone sitting in a terminal.
-    expect(helper).toContain('voiceSetup.wakeEnsureProvisioned({ recoveryHint: WAKE_RECOVERY_COMMAND })');
-    expect(helper).toContain("export const WAKE_RECOVERY_COMMAND = '/voice wake setup'");
+  test('the opt-in reaches the helper that owns the boot attempt', () => {
+    // Joining the setup service's single flight (so a boot attempt racing a
+    // user typing /voice wake setup is not two downloads of the same 6 MB) and
+    // naming a terminal-shaped recovery command instead of the control-plane
+    // verb both live behind wireVoiceSetup. The part that is this
+    // repository's is that the flag arrives there at all, and only from an
+    // entrypoint that asked for it.
+    const services = read('src/runtime/services.ts');
+    const call = services.slice(services.indexOf('wireVoiceSetup({'));
+    expect(call.slice(0, 600)).toContain('provisionWakeModelsAtBoot: options.provisionWakeModelsAtBoot === true');
   });
 });

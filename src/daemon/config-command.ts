@@ -13,7 +13,8 @@
  * shared one; this command reports where it landed rather than choosing, so the
  * routing stays in one place and this command cannot disagree with the daemon.
  *
- * READS ARE REDACTED. Every value printed goes through `src/cli/redaction.ts`
+ * READS ARE REDACTED. Every value printed goes through the terminal shell's
+ * cli-redaction
  * first, so a token, a password, an API key or a card number reads as
  * `<redacted>` and a `config list` pasted into a bug report carries no
  * credential. Writes are NOT redacted — `config set` stores the real value; it

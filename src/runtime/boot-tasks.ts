@@ -1,7 +1,8 @@
 import { Notifier } from '@pellux/goodvibes-sdk/platform/integrations';
 import { syncConfiguredServices } from '@/runtime/index.ts';
 import { logger, summarizeError } from '@pellux/goodvibes-sdk/platform/utils';
-import { runBootMemoryFold } from './memory-fold.ts';
+import { operations } from '@pellux/goodvibes-sdk/platform/runtime';
+const { runBootMemoryFold } = operations;
 import { createDaemonPluginLoaderDeps } from './plugin-composition.ts';
 import type { RuntimeServices } from './runtime-services-types.ts';
 

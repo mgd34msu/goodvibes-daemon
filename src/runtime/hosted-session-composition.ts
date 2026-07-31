@@ -30,7 +30,8 @@ import { createRuntimeStore } from '@pellux/goodvibes-sdk/platform/runtime/store
 import { createLaunchTolerantProviderRegistry } from '@pellux/goodvibes-sdk/platform/providers';
 import type { DaemonHostedSessionsOptions } from '@pellux/goodvibes-sdk/platform/daemon';
 import type { HostedWorkspaceFloor } from '@pellux/goodvibes-sdk/platform/hosted-sessions';
-import { WorkspaceTrustManager } from './trust/workspace-trust.ts';
+import { operations } from '@pellux/goodvibes-sdk/platform/runtime';
+const { WorkspaceTrustManager } = operations;
 import { createWorkspaceTrustDecisionAsk, trustGatedApprovalRaiser, type ApprovalRaise } from './trust/trust-gated-approvals.ts';
 import { GOODVIBES_DAEMON_SURFACE_ROOT } from '../config/surface.ts';
 import type { RuntimeServices } from './runtime-services-types.ts';
@@ -62,7 +63,7 @@ export function createHostedSessionOptions(services: RuntimeServices): DaemonHos
    * workspace in one place, so two sessions in one directory cannot end up
    * having been asked the trust question twice.
    */
-  const trustByWorkspace = new Map<string, WorkspaceTrustManager>();
+  const trustByWorkspace = new Map<string, operations.WorkspaceTrustManager>();
 
   const gateFor = (workspaceRoot: string): ApprovalRaise => {
     const shellPaths = createShellPathService({
@@ -71,7 +72,7 @@ export function createHostedSessionOptions(services: RuntimeServices): DaemonHos
     });
     let trust = trustByWorkspace.get(workspaceRoot);
     if (!trust) {
-      trust = new WorkspaceTrustManager({ shellPaths });
+      trust = new WorkspaceTrustManager({ shellPaths, surfaceRoot: GOODVIBES_DAEMON_SURFACE_ROOT });
       trustByWorkspace.set(workspaceRoot, trust);
     }
     const raise: ApprovalRaise = (input) => services.approvalBroker.requestApproval(input);

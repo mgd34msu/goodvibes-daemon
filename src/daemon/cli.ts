@@ -133,7 +133,8 @@ async function main(): Promise<void> {
   // daemon that is ALREADY RUNNING — composing a second runtime here would
   // build a competing set of state on a machine that already has one.
   //
-  // See remote-daemon-target.ts for the --host/--port/--token convention that
+  // See the terminal shell's cluster-remote-daemon-target for the
+  // --host/--port/--token convention that
   // every later remote-capable subcommand should follow.
   const rawArgs = process.argv.slice(2);
   if (rawArgs[0] === 'cluster') {
