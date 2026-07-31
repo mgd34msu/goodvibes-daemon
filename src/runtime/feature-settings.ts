@@ -45,7 +45,7 @@ export function getFeatureSetting(featureId: string): FeatureSetting | null {
   return FEATURE_SETTINGS_BY_ID.get(featureId) ?? null;
 }
 
-/** The CONFIG_SCHEMA descriptor for a settings key, or null for TUI-local synthetics. */
+/** The CONFIG_SCHEMA descriptor for a settings key, or null for local synthetics. */
 export function getConfigSchemaSetting(key: string): ConfigSetting | null {
   return SCHEMA_BY_KEY.get(key) ?? null;
 }

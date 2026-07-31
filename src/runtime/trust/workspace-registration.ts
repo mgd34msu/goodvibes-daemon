@@ -2,9 +2,9 @@
  * workspace-registration.ts — first-open workspace REGISTRATION half.
  *
  * Companion to the per-workspace trust gate (workspace-trust.ts). Trust is
- * TUI-local (a decision persisted under <cwd>/.goodvibes/tui); REGISTRATION is
- * the platform-wide "which project roots has the operator opted GoodVibes into"
- * registry, owned by the SDK.
+ * local to this surface (a decision persisted under <cwd>/.goodvibes/tui);
+ * REGISTRATION is the platform-wide "which project roots has the operator
+ * opted GoodVibes into" registry, owned by the SDK.
  *
  * SINGLE SOURCE OF TRUTH. Resolution and mutation both go through the SDK's
  * shared WorkspaceRegistrationStore — the exact class the daemon composes its

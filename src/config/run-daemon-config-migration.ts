@@ -1,6 +1,6 @@
 /**
- * run-daemon-config-migration.ts — the one call every TUI composition root
- * makes before constructing its `ConfigManager`.
+ * run-daemon-config-migration.ts — the one call every composition root in
+ * this daemon makes before constructing its `ConfigManager`.
  *
  * Daemon-owned configuration now has exactly one home:
  * `~/.goodvibes/daemon/settings.json`. Before this migration, every product

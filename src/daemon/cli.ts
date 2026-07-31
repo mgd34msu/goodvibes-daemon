@@ -501,6 +501,10 @@ async function main(): Promise<void> {
       subcommand: serviceSubcommand,
       binaryPath,
       homeDir: homeDirectory,
+      // Unit-file paths resolve from the LOGIN home, never the
+      // GOODVIBES_HOME-overridable tree home above — see
+      // BuildManagedDaemonServiceManagerParams.unitHomeDir's doc.
+      unitHomeDir: homedir(),
       host: binding.host,
       port: binding.port,
       // migrate-service only: never auto-migrate — requires the same explicit
@@ -508,6 +512,11 @@ async function main(): Promise<void> {
       confirmMigration: cliFlags.yes,
       // service-status only.
       json: cliFlags.json,
+      // install-service/migrate-service refuse an explicit --hostname/--port
+      // rather than printing/probing a binding the installed unit will never
+      // actually have (it re-resolves from persisted settings at boot).
+      hostnameFlagProvided: cliFlags.hostname !== undefined,
+      portFlagProvided: cliFlags.port !== undefined,
     });
     // These print the unit path, the follow-up commands and the honest result,
     // then exit immediately — exactly the race a stream write loses. Descriptor

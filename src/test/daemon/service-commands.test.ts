@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { chmodSync, existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { join } from 'node:path';
 import { ConfigManager } from '@pellux/goodvibes-sdk/platform/config';
@@ -8,6 +8,7 @@ import {
   isDaemonServiceSubcommand,
   resolveInstalledDaemonBinary,
   runDaemonServiceCli,
+  validateServiceEndpointFlags,
   type ManagedServiceActionRunner,
 } from '../../daemon/service-commands.ts';
 import {
@@ -54,6 +55,84 @@ describe('isDaemonServiceSubcommand', () => {
     expect(isDaemonServiceSubcommand('serve')).toBe(false);
     expect(isDaemonServiceSubcommand('status')).toBe(false);
     expect(isDaemonServiceSubcommand(undefined)).toBe(false);
+  });
+});
+
+/**
+ * D4: install-service/migrate-service refuse an explicit --hostname/--port
+ * rather than printing/probing a binding the installed unit will never
+ * actually have (the unit re-resolves controlPlane.* from persisted settings
+ * at boot — see buildManagedDaemonServiceManager's ExecStart doc).
+ */
+describe('validateServiceEndpointFlags', () => {
+  test('install-service refuses when --hostname or --port was provided', () => {
+    expect(validateServiceEndpointFlags('install-service', { hostnameProvided: true, portProvided: false })).not.toEqual([]);
+    expect(validateServiceEndpointFlags('install-service', { hostnameProvided: false, portProvided: true })).not.toEqual([]);
+    expect(validateServiceEndpointFlags('install-service', { hostnameProvided: true, portProvided: true })).not.toEqual([]);
+  });
+
+  test('migrate-service refuses the same way', () => {
+    expect(validateServiceEndpointFlags('migrate-service', { hostnameProvided: true, portProvided: false })).not.toEqual([]);
+  });
+
+  test('names exactly the flag(s) provided and points at the persistent config path', () => {
+    const hostnameOnly = validateServiceEndpointFlags('install-service', { hostnameProvided: true, portProvided: false }).join('\n');
+    expect(hostnameOnly).toContain('--hostname');
+    expect(hostnameOnly).not.toContain('--hostname/--port');
+    expect(hostnameOnly).toContain('goodvibes-daemon config set');
+
+    const both = validateServiceEndpointFlags('install-service', { hostnameProvided: true, portProvided: true }).join('\n');
+    expect(both).toContain('--hostname/--port');
+  });
+
+  test('uninstall-service and service-status are never refused: the flags are harmless there', () => {
+    expect(validateServiceEndpointFlags('uninstall-service', { hostnameProvided: true, portProvided: true })).toEqual([]);
+    expect(validateServiceEndpointFlags('service-status', { hostnameProvided: true, portProvided: true })).toEqual([]);
+  });
+
+  test('neither flag provided: no refusal for any subcommand', () => {
+    for (const subcommand of ['install-service', 'uninstall-service', 'service-status', 'migrate-service'] as const) {
+      expect(validateServiceEndpointFlags(subcommand, { hostnameProvided: false, portProvided: false })).toEqual([]);
+    }
+  });
+});
+
+describe('runDaemonServiceCli — D4 wired end to end', () => {
+  let dir = '';
+  beforeEach(() => { dir = makeProjectTempDir('gv-service-commands-d4'); });
+  afterEach(() => { rmSync(dir, { recursive: true, force: true }); });
+
+  test('install-service with portFlagProvided refuses and never writes the unit', async () => {
+    const result = await runDaemonServiceCli({
+      subcommand: 'install-service',
+      binaryPath: '/usr/local/bin/goodvibes-daemon',
+      homeDir: dir,
+      unitHomeDir: dir,
+      host: '127.0.0.1',
+      port: 9999,
+      portFlagProvided: true,
+      actionRunner: (() => ({ status: 0 })) as ManagedServiceActionRunner,
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.exitCode).toBe(1);
+    expect(result.lines.join('\n')).toContain('--port');
+    expect(existsSync(join(dir, '.config', 'systemd', 'user', 'goodvibes.service'))).toBe(false);
+  });
+
+  test('service-status with portFlagProvided is unaffected — the refusal is scoped to install/migrate', async () => {
+    const result = await runDaemonServiceCli({
+      subcommand: 'service-status',
+      binaryPath: '/usr/local/bin/goodvibes-daemon',
+      homeDir: dir,
+      unitHomeDir: dir,
+      host: '127.0.0.1',
+      port: 9999,
+      portFlagProvided: true,
+      actionRunner: (() => ({ status: 0 })) as ManagedServiceActionRunner,
+    });
+
+    expect(result.ok).toBe(true);
   });
 });
 
@@ -158,6 +237,7 @@ describe('runDaemonServiceCli (systemd path, real PlatformServiceManager, stubbe
       subcommand: 'install-service' as const,
       binaryPath: '/usr/local/bin/goodvibes-daemon',
       homeDir: dir,
+      unitHomeDir: dir,
       host: '127.0.0.1',
       port: 3421,
       // Injected by default: no test in this file may reach host systemd.
@@ -295,6 +375,84 @@ describe('runDaemonServiceCli (systemd path, real PlatformServiceManager, stubbe
 });
 
 /**
+ * D12: unit-file paths must resolve from the LOGIN home (`unitHomeDir`)
+ * everywhere on the service-subcommand path, never from the
+ * GOODVIBES_HOME-overridable tree home (`homeDir`) — the exact split the
+ * boot-time reconcile in `src/daemon/cli.ts` already gets right (`homeDir:
+ * homedir()`, a comment there states the invariant explicitly). Before this
+ * fix, `install-service`/`service-status` rooted BOTH the unit search and the
+ * daemon's own config/state on `homeDir`, so a host running with
+ * GOODVIBES_HOME set (a test harness, an isolated install, or any future
+ * multi-tree setup) would install its systemd unit under
+ * `$GOODVIBES_HOME/.config/systemd/user/` instead of the real
+ * `~/.config/systemd/user/` systemd actually reads — a unit that looks
+ * installed to this tool and invisible to the real service manager.
+ */
+describe('runDaemonServiceCli — D12: unit paths use the login home, never the tree home', () => {
+  let treeHome = '';
+  let loginHome = '';
+
+  beforeEach(() => {
+    // Two DIFFERENT directories: treeHome stands in for a GOODVIBES_HOME
+    // override, loginHome for the real login home unit files must land under.
+    treeHome = makeProjectTempDir('gv-service-commands-d12-tree');
+    loginHome = makeProjectTempDir('gv-service-commands-d12-login');
+  });
+
+  afterEach(() => {
+    rmSync(treeHome, { recursive: true, force: true });
+    rmSync(loginHome, { recursive: true, force: true });
+  });
+
+  function baseInput(overrides: Partial<Parameters<typeof runDaemonServiceCli>[0]> = {}) {
+    return {
+      subcommand: 'install-service' as const,
+      binaryPath: '/usr/local/bin/goodvibes-daemon',
+      homeDir: treeHome,
+      unitHomeDir: loginHome,
+      host: '127.0.0.1',
+      port: 3421,
+      actionRunner: (() => ({ status: 0 })) as ManagedServiceActionRunner,
+      ...overrides,
+    };
+  }
+
+  test('install-service writes the unit under unitHomeDir, never under homeDir', async () => {
+    const result = await runDaemonServiceCli(baseInput());
+
+    expect(result.ok).toBe(true);
+    const loginUnitPath = join(loginHome, '.config', 'systemd', 'user', 'goodvibes.service');
+    const treeUnitPath = join(treeHome, '.config', 'systemd', 'user', 'goodvibes.service');
+    expect(existsSync(loginUnitPath)).toBe(true);
+    expect(existsSync(treeUnitPath)).toBe(false);
+    expect(result.status.path).toBe(loginUnitPath);
+  });
+
+  test('service-status reports the unit path under unitHomeDir', async () => {
+    await runDaemonServiceCli(baseInput());
+    const result = await runDaemonServiceCli(baseInput({ subcommand: 'service-status' }));
+
+    expect(result.status.installed).toBe(true);
+    expect(result.status.path).toBe(join(loginHome, '.config', 'systemd', 'user', 'goodvibes.service'));
+  });
+
+  test('legacy-unit detection reads unitHomeDir, never homeDir: a legacy unit file under homeDir is invisible', async () => {
+    // A legacy unit file planted under the TREE home (the pre-fix bug's own
+    // mistake) must never be detected — only one planted under the login home.
+    mkdirSync(join(treeHome, '.config', 'systemd', 'user'), { recursive: true });
+    writeFileSync(join(treeHome, '.config', 'systemd', 'user', 'goodvibes-daemon.service'), '[Service]\n');
+
+    const result = await runDaemonServiceCli(baseInput({ subcommand: 'service-status' }));
+    expect(result.lines.join('\n')).not.toContain('goodvibes-daemon.service');
+
+    mkdirSync(join(loginHome, '.config', 'systemd', 'user'), { recursive: true });
+    writeFileSync(join(loginHome, '.config', 'systemd', 'user', 'goodvibes-daemon.service'), '[Service]\n');
+    const afterPlantingUnderLogin = await runDaemonServiceCli(baseInput({ subcommand: 'service-status' }));
+    expect(afterPlantingUnderLogin.lines.join('\n')).toContain('goodvibes-daemon.service');
+  });
+});
+
+/**
  * Legacy-unit detection (`goodvibes-daemon.service`, the prior
  * command's literal unit name — distinct from this module's tracked
  * `goodvibes.service`). Both the file-existence check and the `is-active`
@@ -319,6 +477,7 @@ describe('runDaemonServiceCli — install-script unit detection', () => {
       subcommand: 'service-status' as const,
       binaryPath: '/usr/local/bin/goodvibes-daemon',
       homeDir: dir,
+      unitHomeDir: dir,
       host: '127.0.0.1',
       port: 3421,
       ...overrides,
@@ -407,7 +566,7 @@ describe('runDaemonServiceCli — install-script unit detection', () => {
 
       expect(result.ok).toBe(false);
       expect(result.exitCode).toBe(1);
-      expect(result.lines.join('\n')).toContain('goodvibes-daemon.service (the unit name the goodvibes install script manages)');
+      expect(result.lines.join('\n')).toContain('goodvibes-daemon.service (the unit name an older install script/release used)');
       expect(existsSync(join(dir, '.config', 'systemd', 'user', 'goodvibes.service'))).toBe(false);
       // Only read-only is-active queries ran — no install/enable dispatched.
       expect(calls).toContainEqual(['systemctl', '--user', 'is-active', 'goodvibes-daemon.service']);
@@ -499,6 +658,7 @@ describe('runDaemonServiceCli — migrate-service', () => {
       subcommand: 'migrate-service' as const,
       binaryPath: '/usr/local/bin/goodvibes-daemon',
       homeDir: dir,
+      unitHomeDir: dir,
       host: '127.0.0.1',
       port: 3421,
       ...overrides,
@@ -1301,6 +1461,7 @@ describe('canonical unit content parity — installer and product agree, endpoin
       const manager = buildManagedDaemonServiceManager({
         binaryPath: '/usr/local/bin/goodvibes-daemon',
         homeDir: dir,
+        unitHomeDir: dir,
         host: '0.0.0.0',
         port: 3500,
         configManager,

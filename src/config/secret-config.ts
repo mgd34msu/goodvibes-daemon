@@ -42,7 +42,7 @@ export const SECRET_CONFIG_KEYS = new Set<ConfigKey>([
   'surfaces.bluebubbles.password',
   'surfaces.mattermost.botToken',
   'surfaces.matrix.accessToken',
-  // TUI-local synthetic sub-keys, one level under the SDK's real `payments`
+  // Local synthetic sub-keys, one level under the SDK's real `payments`
   // section (not yet a scalar CONFIG_SCHEMA entry — same situation as
   // tts.speed, behavior.notifyAfterSeconds, etc. in settings-modal-data.ts),
   // hence the cast. See input/payments-config.ts for why these are named flat

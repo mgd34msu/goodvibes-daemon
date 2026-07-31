@@ -2202,6 +2202,7 @@ describe('install.sh ↔ product — canonical unit content parity on a non-defa
     const manager = buildManagedDaemonServiceManager({
       binaryPath: join(installDir, 'goodvibes-daemon'),
       homeDir: home,
+      unitHomeDir: home,
       host: '0.0.0.0',
       port: 3500,
       configManager,
@@ -2570,6 +2571,10 @@ describe('install.sh — uninstall mode', () => {
       const p = join(installDir, name);
       writeFileSync(p, '#!/bin/sh\nexit 0\n');
       chmodSync(p, 0o755);
+      // The updater's parked rollback copy (self-update.ts's
+      // swapFileAtomically/<path>.previous contract) — uninstall must remove
+      // this too, not just the live binary.
+      writeFileSync(`${p}.previous`, '#!/bin/sh\nexit 0\n');
     }
     writeFileSync(join(installDir, 'lib/sqlite-vec-linux-x64/vec0.so'), 'x');
     writeFileSync(join(dataDir, 'settings.json'), '{}');
@@ -2601,6 +2606,10 @@ describe('install.sh — uninstall mode', () => {
     expect(existsSync(join(installDir, 'goodvibes'))).toBe(false);
     expect(existsSync(join(installDir, 'goodvibes-daemon'))).toBe(false);
     expect(existsSync(join(installDir, 'goodvibes-agent'))).toBe(false);
+    // The updater's parked <binary>.previous rollback copies must go too.
+    expect(existsSync(join(installDir, 'goodvibes.previous'))).toBe(false);
+    expect(existsSync(join(installDir, 'goodvibes-daemon.previous'))).toBe(false);
+    expect(existsSync(join(installDir, 'goodvibes-agent.previous'))).toBe(false);
     expect(existsSync(join(installDir, 'lib/sqlite-vec-linux-x64'))).toBe(false);
     expect(existsSync(managedUnit)).toBe(false);
     // The retired legacy unit name is installer-marker-managed too — also gone.
