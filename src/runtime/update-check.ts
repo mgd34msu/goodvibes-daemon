@@ -53,7 +53,7 @@ export function detectInstallKind(execPath: string): InstallKind {
 /** The exact command to tell the user to run instead of a swap, for each non-binary install kind. */
 export function fallbackUpdateCommand(kind: Exclude<InstallKind, 'binary'>): string {
   if (kind === 'bun-global-package') {
-    return 'bun add -g @pellux/goodvibes-tui';
+    return 'bun add -g goodvibes-daemon';
   }
   return 'curl -fsSL https://goodvibes.sh/install.sh | sh';
 }
