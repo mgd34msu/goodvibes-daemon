@@ -51,10 +51,16 @@ export interface DevicePostureCompositionOptions {
   /** Surface-scoped directory the grants ledger, captures and disclosure live in. */
   readonly stateDirectory: string;
   /**
-   * Binding the catalog turns devices.nodes.list / devices.grants.* /
-   * devices.housekeeping.run from cataloged-but-unhandled into real handlers,
-   * which is what makes the grants surface work in the web app and the companion
-   * rather than only through this app's own tool.
+   * Binding the catalog turns the whole devices.* family from
+   * cataloged-but-unhandled into real handlers: nodes.list, grants.*,
+   * housekeeping.run, and — since a surface with no device runtime of its own
+   * could read the grants and never open a camera — capability.request and
+   * artifacts.list/read. That is what makes the paired phone usable from the web
+   * app and the companion rather than only through this process's own tool.
+   *
+   * The runtime is handed over whole because the verbs and the tool must reach
+   * the SAME service: a second path to a phone would be a second place the
+   * confirmation prompt and the durable grants could be decided differently.
    */
   readonly gatewayMethods?: GatewayMethodCatalog | undefined;
   readonly getSessionId?: (() => string | undefined) | undefined;

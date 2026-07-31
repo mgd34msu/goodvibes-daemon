@@ -11,14 +11,22 @@
 // for the anchor's turnId at TURN_COMPLETED (rewind-turn-anchors.ts) — the same
 // join key files rewind uses against the workspace checkpoint.
 //
-// This module is the daemon's implementation of that port. It resolves the live
-// conversation per anchor.sessionId from the registry below, which is populated
-// by whatever process hosts the conversation. While conversation loops run in
-// the surfaces (the terminal app and the agent), the daemon's registry is empty
-// and conversation-scope rewind reports "nothing to drop" rather than a
-// fabricated count; files-scope rewind, which is entirely daemon-owned, is
-// unaffected. When session hosting moves here, the registry fills in and the
-// same code serves it.
+// This module is the daemon's implementation of that port, for sessions THIS
+// process holds the conversation for. It resolves the live conversation per
+// anchor.sessionId from the registry below.
+//
+// While conversation loops run in the surfaces, that registry is empty here, and
+// it used to answer an empty resolution with "0 messages to drop" — the same
+// answer a conversation already at the anchor gives, which is a confident wrong
+// answer rather than a missing one. It now reports the anchor as UNAVAILABLE
+// with the reason, which the SDK's rewind service turns into a plan warning.
+//
+// The surfaces reach conversation rewind a different way now: they offer their
+// live conversation over the control plane (rewind.conversation.*), and the
+// SDK's host broker asks them directly. This port is the fallback the broker
+// falls through to for sessions no surface has offered — which is exactly the
+// case where the daemon hosts the conversation itself. Files-scope rewind,
+// entirely daemon-owned, was never affected either way.
 //
 // The port is written against a structural conversation shape rather than any
 // one surface's conversation class, so nothing about it is terminal-specific.
@@ -63,11 +71,17 @@ interface SnapshotPair {
   readonly after: ConversationJson;
 }
 
+/** What this port says when it holds no conversation for the session asked about. */
+const NO_LIVE_CONVERSATION =
+  'this daemon holds no live conversation for that session, so it cannot count or drop its messages';
+
 /**
  * Build a conversation rewind port. `resolveConversation` maps an anchor's
  * sessionId to the live conversation: the daemon looks the session up in the
- * registry below. A null resolution means no live conversation for that session,
- * reported as "nothing to drop" rather than a fabricated count.
+ * registry below. A null resolution is reported as unavailable with the reason
+ * — never as a count, because "nobody here is holding those messages" and
+ * "there are no messages to drop" are different facts and only one of them is
+ * true.
  */
 export function createConversationRewindPort(
   resolveConversation: (sessionId: string) => RewindableConversation | null,
@@ -92,14 +106,19 @@ export function createConversationRewindPort(
 
   return {
     async preview(anchor: RewindAnchor): Promise<RewindConversationPreview> {
-      const { keep, total } = keepFor(anchor);
+      const { conv, keep, total } = keepFor(anchor);
+      if (!conv) {
+        return { messagesToDrop: 0, messagesRemaining: 0, available: false, unavailableReason: NO_LIVE_CONVERSATION };
+      }
       return { messagesToDrop: Math.max(0, total - keep), messagesRemaining: keep };
     },
 
     async rewind(anchor: RewindAnchor): Promise<RewindConversationOutcome> {
       const { conv, keep, total } = keepFor(anchor);
       const undoSnapshotId = `rwc_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
-      if (!conv) return { droppedMessages: 0, undoSnapshotId };
+      if (!conv) {
+        return { droppedMessages: 0, undoSnapshotId: '', available: false, unavailableReason: NO_LIVE_CONVERSATION };
+      }
       const before = conv.toJSON();
       conv.removeMessagesAfter(keep);
       conv.rebuildHistory();
@@ -120,9 +139,12 @@ export function createConversationRewindPort(
 
 // ---------------------------------------------------------------------------
 // Live per-session conversation registry — the daemon-hosted mutable store the
-// composed daemon's rewind.plan/apply verbs resolve conversations from. The TUI
-// registers its active session's conversation; a session
-// with no registration reports conversation rewind as "nothing to drop".
+// composed daemon's rewind.plan/apply verbs fall back to. A process INSIDE this
+// daemon that runs a conversation registers it here; a surface in another
+// process offers its conversation over the control plane instead
+// (rewind.conversation.host.register), and that offer is consulted first.
+// A session in neither reports conversation rewind as unavailable, with the
+// reason, rather than as a count.
 // ---------------------------------------------------------------------------
 
 const liveConversations = new Map<string, RewindableConversation>();
