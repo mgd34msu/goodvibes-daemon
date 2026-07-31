@@ -55,9 +55,11 @@ import { wireFleetNeedsInputPush } from './fleet-needs-input-push.ts';
 import { codeIndexDbPath, createCodeIndexServices, createStoreRerooter, isCodeInjectionSettingEnabled } from './code-index-services.ts';
 import { createDaemonHandlerComposition } from './daemon-handler-composition.ts';
 import { createDevicePostureServices } from './device-posture-composition.ts';
-// Re-exported so the daemon entrypoint reaches these through the same module it
-// already imports the runtime graph from.
-export { installDevicePosture, startDeviceHousekeeping } from './device-posture-composition.ts';
+// Re-exported so the daemon entrypoint reaches the housekeeping sweep through
+// the same module it already imports the runtime graph from. `installDevicePosture`
+// is deliberately NOT re-exported: it registers the phone TOOL into a tool
+// registry, and the daemon registers no tools — the sweep is the half it needs.
+export { startDeviceHousekeeping } from './device-posture-composition.ts';
 import { createClusterServices, startClusterServices } from './cluster-group-composition.ts';
 import { WorkspaceTrustManager } from './trust/workspace-trust.ts';
 import { GOODVIBES_DAEMON_SURFACE_ROOT } from '../config/surface.ts';
