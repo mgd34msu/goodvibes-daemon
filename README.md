@@ -45,6 +45,34 @@ Live installs already carry a settings reader-floor (`$goodvibes.minReaderVersio
 handover compares versions monotonically, and the rejected-version record is keyed by version — a
 restart would break all three on machines that are already running.
 
+## Install
+
+The one-line installer downloads checksum-verified binaries and needs no package
+manager:
+
+```sh
+curl -fsSL https://goodvibes.sh/install.sh | sh
+```
+
+Or install from the npm registry with [Bun](https://bun.sh):
+
+```sh
+bun add -g goodvibes-daemon
+bun pm trust -g goodvibes-daemon
+goodvibes-daemon install-service
+```
+
+Bun blocks lifecycle scripts for untrusted global packages, so the second line
+lets the package's postinstall place the matching daemon binary. If you skip it,
+the `goodvibes-daemon` launcher still self-heals on first run by fetching and
+checksum-verifying the binary. `npm install -g goodvibes-daemon` also works when
+`bun` is already on `PATH`.
+
+The npm package carries the product source and the launcher; the daemon itself is
+a compiled binary published as a GitHub release asset of this repository, and the
+release always lands before the registry publish so a fresh install can never
+resolve a version whose binary does not exist yet.
+
 ## Build
 
 ```sh

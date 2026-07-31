@@ -3,7 +3,6 @@
   "version": "1.28.0",
   "description": "The GoodVibes daemon — the one long-running host for the control plane, channels, cluster membership, scheduled work, knowledge and memory stores, and the verb families every GoodVibes client calls.",
   "type": "module",
-  "private": true,
   "main": "src/daemon/cli.ts",
   "bin": {
     "goodvibes-daemon": "bin/goodvibes-daemon"
@@ -13,6 +12,8 @@
     "src",
     "!src/test",
     "!src/**/*.test.ts",
+    "scripts/check-bun.sh",
+    "scripts/postinstall.js",
     "README.md",
     "CHANGELOG.md"
   ],
@@ -29,6 +30,9 @@
     "typecheck": "bunx tsc --noEmit",
     "typecheck:test": "bunx tsc --noEmit -p tsconfig.test.json",
     "test": "bun run scripts/run-tests.ts",
+    "preinstall": "sh scripts/check-bun.sh",
+    "postinstall": "bun scripts/postinstall.js",
+    "postbuild": "bun scripts/postinstall.js --no-download",
     "version": "bun run scripts/prebuild.ts"
   },
   "license": "MIT",

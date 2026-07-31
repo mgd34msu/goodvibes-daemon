@@ -66,8 +66,17 @@
   "publish": {
     "packageName": "goodvibes-daemon",
     "defaultRegistry": "https://registry.npmjs.org",
-    "requiredTarballPaths": [],
-    "forbiddenTarballPrefixes": [".github/", "src/test/"],
+    "requiredTarballPaths": [
+      "README.md",
+      "CHANGELOG.md",
+      "package.json",
+      "src/daemon/cli.ts",
+      "bin/goodvibes-daemon",
+      "bin/launcher-support.js",
+      "scripts/check-bun.sh",
+      "scripts/postinstall.js"
+    ],
+    "forbiddenTarballPrefixes": [".github/", "src/test/", "vendor/", "dist/"],
     "maxTarballBytes": 52428800
   },
   "perJobGreen": {
