@@ -13,6 +13,7 @@
  */
 
 import {
+  bootstrap,
   observability,
   operations,
   security,
@@ -43,6 +44,9 @@ export const RemoteRunnerRegistry = operations.RemoteRunnerRegistry;
 export type RemoteRunnerRegistry = operations.RemoteRunnerRegistry;
 export const RemoteSupervisor = operations.RemoteSupervisor;
 export type RemoteSupervisor = operations.RemoteSupervisor;
+
+// Boot helpers the daemon runs itself (the facade does not know about them).
+export const syncConfiguredServices = bootstrap.synchronizeConfiguredServices;
 
 // Observability.
 export const TelemetryApiService = observability.TelemetryApiService;

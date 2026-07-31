@@ -16,6 +16,7 @@ import { bindFeatureSettingsBridge, createFeatureFlagManager, deriveFeatureState
 import { createRuntimeStore } from '@pellux/goodvibes-sdk/platform/runtime/store';
 import { createRuntimeServices } from '../runtime/services.ts';
 import { startDeviceHousekeeping } from '../runtime/device-posture-composition.ts';
+import { runDaemonBootTasks } from '../runtime/boot-tasks.ts';
 import { DaemonServer, HttpListener } from '@pellux/goodvibes-sdk/platform/daemon';
 import { createHostPowerSeam } from '@pellux/goodvibes-sdk/platform/power';
 import { configureActivityLogger, flushActivityLogSync, logger } from '@pellux/goodvibes-sdk/platform/utils';
@@ -546,6 +547,14 @@ async function main(): Promise<void> {
     daemon.start(),
     config.get('danger.httpListener') ? listener.start() : Promise.resolve(),
   ]);
+
+  // The boot steps the facade does not know about, because they are this
+  // product's rather than the platform's: the legacy memory fold, provider
+  // watching, and the notifier/integration attachments. They run AFTER
+  // daemon.start(), because the fold has to follow the facade's memoryStore
+  // init(), and none of them may keep the daemon from serving — see
+  // runtime/boot-tasks.ts.
+  await runDaemonBootTasks(runtimeServices);
 
   // The DaemonServer facade owns the hourly self-update loop now (fed this
   // binary's version + exec path via updateArtifact above); it checks hourly,
