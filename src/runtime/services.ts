@@ -1,7 +1,7 @@
 import { join } from 'node:path';
 import { ServiceRegistry, SubscriptionManager, ToolLLM } from '@pellux/goodvibes-sdk/platform/config';
 import { AutomationDeliveryManager, AutomationManager } from '@pellux/goodvibes-sdk/platform/automation';
-import { ChannelDeliveryRouter, ChannelPolicyManager } from '@pellux/goodvibes-sdk/platform/channels';
+import { ChannelPolicyManager } from '@pellux/goodvibes-sdk/platform/channels';
 import { ApprovalBroker, GatewayMethodCatalog, SharedSessionBroker, buildSharedSessionAgentSpawnRoutingInput } from '@pellux/goodvibes-sdk/platform/control-plane';
 import { continuationChainOptions } from '@pellux/goodvibes-sdk/platform/agents';
 import { wireIdlePowerAndLiveTurn } from './idle-power-services.ts';
@@ -21,7 +21,8 @@ import { OverflowHandler, ProcessManager, cancelAllAgentRuns, createWorkflowServ
 import { FileStateCache, FileUndoManager, MemoryEmbeddingProviderRegistry, MemoryRegistry, MemoryStore, ModeManager, ProjectIndex, resolveCanonicalMemoryDbPath } from '@pellux/goodvibes-sdk/platform/state';
 import { buildExecPromptAnswerHandler } from '@pellux/goodvibes-sdk/platform/runtime/permissions/exec-prompt-wiring';
 import { buildLocalhostFetchApproval } from '@pellux/goodvibes-sdk/platform/runtime/permissions/localhost-fetch-approval';
-import { createNotificationDispatcher, wireRuntimeNotificationBridge, wireMemoryPressureNotice } from './notification-dispatch.ts';
+import { createBrokeredPermissionManager } from '@pellux/goodvibes-sdk/platform/runtime/client-services';
+import { wireMemoryPressureChannelNotice } from './notification-dispatch.ts';
 import { createDurabilityServices } from './durability-services.ts';
 import { MemorySpineClient, createLocalMemoryAccess } from '@pellux/goodvibes-sdk/platform/runtime/memory-spine';
 import { createWorkspaceCheckpointing } from './workspace-checkpointing.ts';
@@ -62,6 +63,7 @@ import { createDevicePostureServices } from './device-posture-composition.ts';
 export { startDeviceHousekeeping } from './device-posture-composition.ts';
 import { createClusterServices, startClusterServices } from './cluster-group-composition.ts';
 import { WorkspaceTrustManager } from './trust/workspace-trust.ts';
+import { createWorkspaceTrustDecisionAsk, trustGatedApprovalRaiser } from './trust/trust-gated-approvals.ts';
 import { GOODVIBES_DAEMON_SURFACE_ROOT } from '../config/surface.ts';
 import type { RuntimeServicesOptions, RuntimeServices } from './runtime-services-types.ts';
 export type { RuntimeServicesOptions, RuntimeServices } from './runtime-services-types.ts';
@@ -411,12 +413,12 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   const policyRuntimeState = new PolicyRuntimeState();
   const fileCache = new FileStateCache();
   const projectIndex = new ProjectIndex(workingDirectory);
-  const channelDeliveryRouter = new ChannelDeliveryRouter({
-    configManager,
-    secretsManager,
-    serviceRegistry,
-    artifactStore,
-  });
+  // ONE router, not two. This was a second ChannelDeliveryRouter built from the
+  // same four arguments AutomationDeliveryManager builds its own from, so the
+  // router the gateway verbs held and the router replies actually leave through
+  // were different objects — and a delivery strategy registered on one was
+  // invisible to the other. The manager's is the one that replies; it is the one.
+  const channelDeliveryRouter = deliveryManager.getDeliveryRouter();
   const processManager = new ProcessManager();
   // The phase/work-item orchestration engine, constructed before the process
   // registry so its fleet nodes (workstream/phase/work-item) can be folded in
@@ -537,8 +539,35 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   // so every setDependencies site installs the SAME handler; otherwise a
   // wholesale replace drops it and prompts hang.
   const execPromptAnswerHandler = buildExecPromptAnswerHandler({ requestApproval: (input) => approvalBroker.requestApproval(input) });
+  // Tool asks from the runs this daemon HOSTS. Without a manager here, the
+  // background permission gate short-circuits to approved and every hosted
+  // write, command and delegation ran ungated — the workspace trust decision
+  // written by the terminal app was read by nobody in this process.
+  //
+  // The ask seam is the trust gate wrapping the approval broker, which is the
+  // terminal app's layering with its modal replaced by the raise: a workspace
+  // with no decision yet has the question raised as an approval record and
+  // answered by whichever surface is attached (trust-gated-approvals.ts). The
+  // manager's own layers — permission mode, policy, session cache, durable
+  // user rules — still run first and are unchanged.
+  const permissionManager = createBrokeredPermissionManager({
+    requestApproval: trustGatedApprovalRaiser(
+      workspaceTrustManager,
+      (input) => approvalBroker.requestApproval(input),
+      createWorkspaceTrustDecisionAsk({
+        requestApproval: (input) => approvalBroker.requestApproval(input),
+        workingDirectory,
+      }),
+    ),
+    configManager,
+    policyRuntimeState,
+    hookDispatcher,
+    featureFlags,
+    userRuleStore: userPermissionRuleStore,
+  });
   agentOrchestrator.setDependencies({
     surfaceRoot: surface.surfaceRoot,
+    permissionManager,
     execPromptAnswerHandler,
     localhostFetchApproval,
     fileCache,
@@ -579,14 +608,14 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     getConversationTitle: options.getConversationTitle,
   });
 
-  // Curated runtime-domain events become routed notifications. See
-  // notification-dispatch.ts for what the daemon does with a panel_only
-  // decision, which is a surface target it has no screen for.
-  const notificationDispatcher = createNotificationDispatcher(configManager);
-  wireRuntimeNotificationBridge(options.runtimeBus, notificationDispatcher);
-  // OPS_MEMORY_PRESSURE is lifted onto its own targeted bridge (the high-churn
-  // 'ops' domain stays out of the wholesale allowlist).
-  wireMemoryPressureNotice(options.runtimeBus, notificationDispatcher);
+  // This process's own memory pressure, to the operator's configured notice
+  // destination. Targeted at OPS_MEMORY_PRESSURE rather than subscribed to the
+  // whole high-churn 'ops' domain, and sent over the SAME WebhookNotifier the
+  // notification verbs keep live and boot-tasks attaches to the bus. The panel
+  // notification router that used to sit here went with the split: its targets
+  // are all screen targets and this product has no screen — see
+  // notification-dispatch.ts.
+  wireMemoryPressureChannelNotice(options.runtimeBus, webhookNotifier);
 
   // In-process config changes become key-level events on the `config` domain, so
   // a client whose settings live HERE gets live change notices instead of
@@ -602,6 +631,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     surface,
     shellPaths,
     workspaceTrustManager,
+    permissionManager,
     configManager,
     featureFlags,
     runtimeBus: options.runtimeBus,
@@ -617,7 +647,6 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     approvalBroker,
     localhostFetchApproval,
     execPromptAnswerHandler,
-    notificationDispatcher,
     userPermissionRuleStore,
     sessionBroker,
     deliveryManager,

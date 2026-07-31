@@ -29,10 +29,9 @@ import type { AgentMessageBus, AgentOrchestrator, ArchetypeLoader, WrfcControlle
 import type { AgentManager, ContextAccountingHolder, OverflowHandler, ProcessManager, WorkflowServices } from '@pellux/goodvibes-sdk/platform/tools';
 import type { FileUndoManager, MemoryConsolidationScheduler, MemoryEmbeddingProviderRegistry, MemoryRegistry, MemoryStore, ModeManager, ProjectIndex, CodeIndexStore, CodeIndexReindexScheduler } from '@pellux/goodvibes-sdk/platform/state';
 import type { StoreSnapshotScheduler } from '@pellux/goodvibes-sdk/platform/state/store-snapshots';
-import type { UserPermissionRuleStore } from '@pellux/goodvibes-sdk/platform/permissions';
+import type { PermissionManager, UserPermissionRuleStore } from '@pellux/goodvibes-sdk/platform/permissions';
 import type { buildExecPromptAnswerHandler } from '@pellux/goodvibes-sdk/platform/runtime/permissions/exec-prompt-wiring';
 import type { buildLocalhostFetchApproval } from '@pellux/goodvibes-sdk/platform/runtime/permissions/localhost-fetch-approval';
-import type { NotificationDispatcher } from './notification-dispatch.ts';
 import type { createDurabilityServices } from './durability-services.ts';
 import type { MemorySpineClient } from '@pellux/goodvibes-sdk/platform/runtime/memory-spine';
 import type { WorkspaceCheckpointManager } from '@pellux/goodvibes-sdk/platform/workspace';
@@ -123,8 +122,6 @@ export interface RuntimeServices {
   readonly localhostFetchApproval: ReturnType<typeof buildLocalhostFetchApproval>;
   /** Terminal prompt-answer handler that rides the approval broker; shared by the tool registry and orchestrator so an interactive command's prompt gets an ask/card on every surface. */
   readonly execPromptAnswerHandler: ReturnType<typeof buildExecPromptAnswerHandler>;
-  /** Routes curated runtime-domain events into the panel_only notification feed (the panel's live producer). */
-  readonly notificationDispatcher: NotificationDispatcher;
   /** Durable user-origin permission rules (remembered approvals); permissions.rules.* surface. Mirrors the SDK composition. */
   readonly userPermissionRuleStore: UserPermissionRuleStore;
   readonly sessionBroker: SharedSessionBroker;
@@ -247,6 +244,14 @@ export interface RuntimeServices {
   readonly integrationHelpers: IntegrationHelperService;
   /** Per-workspace trust gate — restricts write/execute/delegate tools until the workspace is trusted. */
   readonly workspaceTrustManager: WorkspaceTrustManager;
+  /**
+   * The permission manager the runs this daemon hosts ask through. Its ask seam
+   * is the workspace trust gate over the approval broker, so an undecided
+   * workspace has the trust question raised as an approval record rather than
+   * being treated as trusted (which is what a missing manager means to the
+   * background permission gate) or refused without a word.
+   */
+  readonly permissionManager: PermissionManager;
   /** Re-root path-bound stores (MemoryStore, ProjectIndex) to a new working directory, called by WorkspaceSwapManager after verification; stores needing a process restart just warn-log and keep serving the old path until the daemon restarts with the new --working-dir. */
   rerootStores(newWorkingDir: string): Promise<void>;
   /**

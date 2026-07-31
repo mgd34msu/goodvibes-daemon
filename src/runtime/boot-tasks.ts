@@ -2,6 +2,7 @@ import { Notifier } from '@pellux/goodvibes-sdk/platform/integrations';
 import { syncConfiguredServices } from '@/runtime/index.ts';
 import { logger, summarizeError } from '@pellux/goodvibes-sdk/platform/utils';
 import { runBootMemoryFold } from './memory-fold.ts';
+import { createDaemonPluginLoaderDeps } from './plugin-composition.ts';
 import type { RuntimeServices } from './runtime-services-types.ts';
 
 /**
@@ -94,5 +95,17 @@ export async function runDaemonBootTasks(services: RuntimeServices): Promise<voi
     await syncConfiguredServices(services.runtimeDispatch.syncIntegration, services.serviceRegistry);
   } catch (error) {
     logger.warn('daemon: configured-service integration sync failed (non-fatal)', { error: summarizeError(error) });
+  }
+
+  // Load the plugins this host can serve. The manager was constructed by the
+  // graph and never initialised, so it could list a plugin directory and never
+  // load anything out of it — `enable` persisted a flag that turned nothing on.
+  // Both hosts read the same directories; each takes the registrations it can
+  // serve (plugin-composition.ts). Best-effort like everything else here: a
+  // plugin that will not load is not a reason for the daemon not to start.
+  try {
+    await services.pluginManager.init(createDaemonPluginLoaderDeps(services));
+  } catch (error) {
+    logger.warn('daemon: plugin load failed (non-fatal)', { error: summarizeError(error) });
   }
 }
