@@ -11,6 +11,13 @@
  * Asset names are the ones the daemon has always published
  * (`goodvibes-daemon-<os>-<arch>`), so the curl installer, the release manifest
  * and the daemon's own updater all keep resolving the same files.
+ *
+ * The sqlite-vec native addon gets the same self-heal: `resolveSqliteVecPath()`
+ * (platform/state/sqlite-vec-loader.ts, reached from a compiled binary) expects
+ * it at `<execDir>/lib/sqlite-vec-<platform>-<arch>/vec0.<suffix>` —
+ * `vendor/lib/...` once the binary above is placed there — and a blocked
+ * postinstall never staged it either. Without this, a self-healed install
+ * would get the daemon binary back but stay on lexical-only search forever.
  */
 import { accessSync, chmodSync, constants, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
@@ -18,6 +25,20 @@ import { spawnSync } from 'node:child_process';
 import { join } from 'node:path';
 
 const SUPPORTED_TARGETS = ['linux-x64', 'linux-arm64', 'darwin-x64', 'darwin-arm64'];
+
+/** Names the sqlite-vec addon for a platform/arch — mirrors resolveSqliteVecAsset
+ * in src/runtime/release-artifacts.ts. Reimplemented (rather than imported) so
+ * this launcher never depends on a TypeScript source file: it must keep
+ * working from the packaged bin/ directory alone, with no bundler step and no
+ * node_modules resolution of repo-relative .ts paths. */
+export function resolveSqliteVecAddonName(platform, arch) {
+  if ((platform !== 'linux' && platform !== 'darwin') || (arch !== 'x64' && arch !== 'arm64')) {
+    return null;
+  }
+  const suffix = platform === 'darwin' ? 'dylib' : 'so';
+  const dirName = `sqlite-vec-${platform}-${arch}`;
+  return { assetName: `${dirName}.${suffix}`, dirName, fileName: `vec0.${suffix}` };
+}
 
 export function isExecutable(path) {
   try {
@@ -88,6 +109,56 @@ export async function ensureVendoredBinary({ packageRoot, artifactName }) {
     rmSync(destination, { force: true });
     writeFileSync(destination, readFileSync(tempDestination));
     prepareBinary(destination);
+  } finally {
+    rmSync(tempDestination, { force: true });
+  }
+
+  return destination;
+}
+
+/**
+ * Self-heal counterpart to `ensureVendoredBinary` for the sqlite-vec native
+ * addon. Same shape, same verification posture (a missing manifest entry does
+ * not block the install, matching `ensureVendoredBinary` above), same
+ * vendor/ destination — placed at `vendor/lib/sqlite-vec-<platform>-<arch>/
+ * vec0.<suffix>`, which is exactly where `resolveSqliteVecPath()` looks
+ * relative to the vendored binary this module also places. A platform/arch
+ * with no addon (`resolveSqliteVecAddonName` returns null) is a no-op, not an
+ * error — same as an unsupported binary target.
+ */
+export async function ensureVendoredSqliteVecAddon({ packageRoot, platform, arch }) {
+  const asset = resolveSqliteVecAddonName(platform, arch);
+  if (!asset) return null;
+
+  const addonDir = join(packageRoot, 'vendor', 'lib', asset.dirName);
+  const destination = join(addonDir, asset.fileName);
+  if (fileExists(destination)) {
+    return destination;
+  }
+
+  const pkg = JSON.parse(readFileSync(join(packageRoot, 'package.json'), 'utf8'));
+  const releaseBaseUrl =
+    process.env.GOODVIBES_RELEASE_BASE_URL?.trim() ||
+    `${resolveRepositoryBaseUrl(pkg)}/releases/download/v${pkg.version}`;
+
+  mkdirSync(addonDir, { recursive: true });
+
+  const checksumText = await downloadText(`${releaseBaseUrl}/SHA256SUMS.txt`);
+  const checksums = parseChecksumFile(checksumText);
+
+  const tempDestination = `${destination}.download`;
+  rmSync(tempDestination, { force: true });
+
+  try {
+    const addon = await downloadBuffer(`${releaseBaseUrl}/${asset.assetName}`);
+    const actual = sha256(addon);
+    const expected = checksums.get(asset.assetName);
+    if (expected && expected !== actual) {
+      throw new Error(`checksum mismatch for ${asset.assetName}: expected ${expected}, got ${actual}`);
+    }
+    writeFileSync(tempDestination, addon);
+    rmSync(destination, { force: true });
+    writeFileSync(destination, readFileSync(tempDestination));
   } finally {
     rmSync(tempDestination, { force: true });
   }

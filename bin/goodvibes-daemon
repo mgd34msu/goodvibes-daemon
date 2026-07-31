@@ -29,6 +29,7 @@ import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import {
   ensureVendoredBinary,
+  ensureVendoredSqliteVecAddon,
   isExecutable,
   isSourceCheckout,
   resolveArtifactName,
@@ -68,6 +69,17 @@ if (vendoredBinary && isExecutable(vendoredBinary)) {
 if (artifactName) {
   try {
     const installedBinary = await ensureVendoredBinary({ packageRoot, artifactName });
+    // Best-effort: a failure here must never block the daemon from running on
+    // the binary that just installed successfully above. It only costs
+    // semantic vector search (the daemon logs a warning and falls back to
+    // lexical matching); the binary the user asked to run must still start.
+    try {
+      await ensureVendoredSqliteVecAddon({ packageRoot, platform: process.platform, arch: process.arch });
+    } catch (addonError) {
+      console.error(
+        `goodvibes-daemon: could not install the sqlite-vec addon (semantic search will fall back to lexical matching): ${addonError instanceof Error ? addonError.message : String(addonError)}`,
+      );
+    }
     run(installedBinary, process.argv.slice(2));
   } catch (error) {
     console.error(`goodvibes-daemon: failed to install release binary: ${error instanceof Error ? error.message : String(error)}`);
