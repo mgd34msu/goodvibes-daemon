@@ -28,6 +28,7 @@
     "build:macos-arm64": "goodvibes-build-binaries --target darwin-arm64",
     "smoke": "goodvibes-post-build-smoke",
     "smoke:boot": "bun run scripts/boot-smoke.ts",
+    "smoke:hosted": "bun run scripts/hosted-session-proof.ts",
     "typecheck": "bunx tsc --noEmit",
     "typecheck:test": "bunx tsc --noEmit -p tsconfig.test.json",
     "test": "bun run scripts/run-tests.ts",

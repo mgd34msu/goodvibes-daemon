@@ -8,6 +8,42 @@ All notable changes to the GoodVibes daemon.
 
 ### Changes
 
+- The daemon can run a conversation, not just watch one. Stating how a workspace
+  floor is built (`DaemonConfig.hostedSessions`, wired in
+  `runtime/hosted-session-composition.ts`) turns on the SDK's hosted-session
+  engine and its `sessions.hosted.create/attach/detach/kill/list` verbs: a full
+  loop composed inside this process — the same orchestrator, the same tool
+  registry rooted at the named workspace, the same permission machinery a
+  terminal runs. Driving one uses the verbs that already existed
+  (`sessions.steer`, `sessions.followUp`, `sessions.toolCalls.cancel`,
+  `sessions.queuedMessages.*`), and its streamed output rides the `turn` and
+  `tools` event domains stamped with the session id, so a client watches a
+  hosted turn exactly as it watches a local one.
+
+  What this daemon states is where a hosted run's asks are gated: the workspace
+  trust decision, scoped to the SESSION's workspace rather than the daemon's own
+  directory. An undecided workspace raises the trust question as an approval
+  record any attached surface can answer, a restricted one refuses non-read
+  categories without asking, and a daemon hosting three sessions in three
+  directories asks three separate questions.
+
+  Detaching is governed by `hostedSessions.detachPolicy`, which defaults to
+  `kill` — closing a client has always ended its work. `survive` opts into
+  sessions that outlive both the client and a restart of this daemon; a single
+  session may override the setting when it is created. `hostedSessions.maxSessions`
+  caps how many loops this machine holds at once, and the transcript bound and
+  retention window govern what a restart can restore.
+
+  A floor is also seeded with the local models this daemon discovered, so the
+  machine's own Ollama or LM Studio is routable inside a hosted session rather
+  than only for the daemon's own agents.
+
+- `bun run smoke:hosted` drives the whole story against the COMPILED binary on an
+  isolated home and a high port: create, a real turn through `sessions.steer`
+  against a local stub model, attach with history, detach under both toggle
+  positions, a per-session override, reattach, kill, and the refusal a relative
+  workspace path earns.
+
 - A paired phone is now reachable from a surface that is not this process. Binding the
   gateway catalog to the device posture runtime already served the grants surface;
   it now also serves `devices.capability.request` and `devices.artifacts.list`/`read`,

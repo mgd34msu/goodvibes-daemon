@@ -105,6 +105,15 @@ export function createHostedSessionOptions(services: RuntimeServices): DaemonHos
         // not take the daemon down on a create call.
         providerRegistryFactory: createLaunchTolerantProviderRegistry,
       });
+      // The machine's own local models. The daemon's registry learned them at
+      // boot (the persisted discovery cache) and from the LAN scan; a floor
+      // builds its own registry and would otherwise be the only place on this
+      // box where they are not routable. Servers found by a scan that finishes
+      // AFTER a floor is built reach the next floor, not this one — stated
+      // rather than hidden, because a wrong claim here would look like a model
+      // that exists everywhere except in hosted sessions.
+      const discovered = services.providerRegistry.listDiscoveredServers();
+      if (discovered.length > 0) floor.providerRegistry.registerDiscoveredProviders([...discovered]);
       return {
         services: floor,
         // The daemon has a real review-chain controller; a hosted session's
