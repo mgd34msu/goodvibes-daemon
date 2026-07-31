@@ -185,8 +185,37 @@ All notable changes to the GoodVibes daemon.
   saying so when the two differ.
 
 - The daemon updates itself from this repository. The platform default for
-  `update.releasesUrl` now names `mgd34msu/goodvibes-daemon`, and a daemon update no
-  longer replaces the terminal app binary beside it — each product updates its own.
-  Asset names are unchanged and the service unit's ExecStart is path-stable, so a
-  daemon installed from the old repository hands itself over on its next hourly check
-  with nothing to do by hand.
+  `update.releasesUrl` now names `mgd34msu/goodvibes-daemon`, so a daemon built from
+  this repository resolves its own release line without being configured. Asset names
+  are unchanged and the service unit's ExecStart is path-stable, so replacing the
+  binary at its installed path is all a version change takes.
+
+  **A daemon from the old repository cannot hand ITSELF over, and an earlier draft of
+  this entry said it could.** Every daemon shipped at 1.27.1 or below was compiled
+  against SDK 1.20.0, whose baked `update.releasesUrl` default names
+  `mgd34msu/goodvibes-tui`. That default is compiled in rather than persisted: no
+  settings file carries it and no migration rewrites it. The terminal repository no
+  longer builds daemon binaries, so those daemons resolve a release with no
+  `goodvibes-daemon-<os>-<arch>` asset and fail. Pointing them at this repository
+  instead does not rescue them either — their shipped updater adds the terminal binary
+  beside them to the same all-or-nothing download whenever `goodvibes` sits in the
+  install directory, which `scripts/install.sh` guarantees, and this repository
+  deliberately publishes no terminal binary. There is also no remote write path to
+  reconfigure them: the control plane's `config.set` verb exists as a catalog
+  descriptor with no handler registered behind it.
+
+  What performs the handover is the terminal, once, at launch: it reads the version of
+  the `goodvibes-daemon` binary installed beside it and, when that binary predates this
+  split, downloads the current daemon from this repository's releases,
+  checksum-verifies it against `SHA256SUMS.txt`, swaps it with the outgoing build kept
+  at `<path>.previous`, and restarts the service. It replaces that one file and nothing
+  around it. The mechanism is `src/runtime/daemon-handover.ts` in `goodvibes-tui`; it
+  reaches hosts with that product's next release, and until then a pre-split daemon is
+  moved across by re-running the installer.
+
+  Named rather than implied away: the SDK's `resolveDaemonInstalledFiles` still adds
+  the terminal binary to the daemon's OWN update target set when one sits beside it, so
+  on a three-binary install a daemon from this repository cannot yet complete an
+  unattended self-update either — it asks for a `goodvibes-<os>-<arch>` asset this
+  repository does not publish and takes the 404. Making each product update strictly
+  its own files is an SDK change, not one this repository can make.
