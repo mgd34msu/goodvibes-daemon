@@ -1,175 +1,86 @@
 /**
- * Notification dispatch — the daemon half.
+ * notification-dispatch.ts — the daemon half, which is smaller than it was.
  *
- * The SDK's NotificationRouter decides where each domain notification goes
- * (conversation / status_bar / panel_only) and collapses bursts and batches.
- * This module builds the router, bridges the runtime event bus so real domain
- * events become notifications, and lifts memory pressure onto its own targeted
- * bridge.
+ * The SDK's NotificationRouter decides where a domain notification goes and
+ * collapses bursts and batches. Its three targets — `conversation`,
+ * `status_bar`, `panel_only` — are all SCREEN targets: an inline conversation
+ * line, a status bar, a panel. There is no channel member in that type, and
+ * there never was. Which means the router is a surface mechanism end to end,
+ * and this process has no screen.
  *
- * The `panel_only` target is a SURFACE concept: the panel feed and its panel
- * live in the terminal app, which routes its own notifications for its own
- * screen. The daemon still has to route — channel-targeted and status decisions
- * are its own — and a panel_only decision here lands in a small bounded ring so
- * it is observable in-process rather than silently dropped. That is exactly what
- * it did inside the daemon before the split, where the process-global panel feed
- * had no reader either.
+ * The split carried it here anyway, wired to every curated domain, writing into
+ * a bounded ring whose `list()` had no caller anywhere in this repository. Six
+ * domains of events, for the daemon's whole lifetime, into a buffer nobody read
+ * — and the type declaring it still described the ring as "the panel's live
+ * producer", for a product with no panels. That is the silent-success failure
+ * class the separation exists to remove, so the producer goes.
+ *
+ * What a headless process CAN do with a notice is send it, and the daemon
+ * already does that on the paths that are genuinely channel-shaped: automation
+ * failure notices through the delivery manager, occasion nudges through the
+ * channel delivery router, and the WebhookNotifier attached to the runtime bus
+ * at boot for agent and workflow outcomes.
+ *
+ * One notice had no such path: memory pressure. The MemoryGovernor measures the
+ * process it runs in, so the daemon's pressure is the daemon's own and no
+ * surface can report it — and the daemon that ran out of memory is exactly the
+ * one that cannot tell you afterwards. It now goes out over the operator's
+ * configured notice destination (`notifications.webhookUrls`, the same list the
+ * bus bridge uses), and says so at its own level in the activity log when no
+ * destination is configured. Sent, or written down; never dropped.
  */
 
-import { createNotificationRouter, type NotificationRouter } from '@pellux/goodvibes-sdk/platform/runtime/ui';
-import type { Notification, RoutingDecision, RuntimeEventBus, RuntimeEventDomain } from '@/runtime/index.ts';
-import type { ConfigManager } from '@pellux/goodvibes-sdk/platform/config';
+import { logger } from '@pellux/goodvibes-sdk/platform/utils';
+import type { RuntimeEventBus } from '@/runtime/index.ts';
 import { memoryPressureLine, memoryPressureLevel, type MemoryPressurePayload } from '../core/memory-status.ts';
 
-/** One routed notification, as the ring keeps it. */
-export interface NoticeRingEntry {
-  readonly notification: Notification;
-  readonly decision: RoutingDecision;
+/**
+ * Where a channel-shaped notice leaves the daemon.
+ *
+ * The WebhookNotifier's own shape, narrowed to the two members this needs, so a
+ * test can drive it without an HTTP client and so the composition can pass the
+ * one instance the notification verbs and the bus bridge already share.
+ */
+export interface DaemonNoticeChannel {
+  isConfigured(): boolean;
+  send(text: string): Promise<unknown>;
 }
 
 /**
- * A bounded in-memory ring of routed notices. Bounded because it is written by
- * every curated domain event for the daemon's whole lifetime and read by nobody
- * unless something asks: an unbounded list is a leak with a slow fuse.
+ * Send the daemon's own memory-pressure notice to the operator's configured
+ * notice destination. Returns an unsubscribe function.
+ *
+ * The MemoryGovernor emits OPS_MEMORY_PRESSURE on the 'ops' domain when the
+ * pressure tier changes or the leak tripwire fires. That domain also carries
+ * high-churn audit and metric events, which is why this is a targeted bridge on
+ * one event type rather than a subscription to the domain: the tier change is
+ * the operator's business and the churn is not.
+ *
+ * Delivery failure is logged, never thrown — a webhook endpoint being down is
+ * not a reason for the process reporting memory pressure to also crash.
  */
-export class NoticeRing {
-  private readonly entries: NoticeRingEntry[] = [];
-
-  constructor(private readonly limit = 200) {}
-
-  record(notification: Notification, decision: RoutingDecision): void {
-    this.entries.push({ notification, decision });
-    if (this.entries.length > this.limit) this.entries.splice(0, this.entries.length - this.limit);
-  }
-
-  list(): readonly NoticeRingEntry[] {
-    return [...this.entries];
-  }
-
-  clear(): void {
-    this.entries.length = 0;
-  }
-}
-
-export interface NotificationDispatcher {
-  /** Route a notification; a panel_only (or burst-collapsed) decision lands in the feed. Returns the decision. */
-  dispatch(notification: Notification): RoutingDecision;
-  /** Surface batch-held notifications (call on a timer). */
-  flush(): void;
-  readonly router: NotificationRouter;
-  /** The routed-notice ring this dispatcher writes into. */
-  readonly notices: NoticeRing;
-}
-
-/**
- * The runtime event domains whose events surface as operational notifications.
- * Deliberately a curated set of user-relevant, completion/attention-shaped
- * domains — not every domain — so the panel reflects meaningful operational
- * activity rather than raw event churn. The router's per-domain verbosity and
- * burst/batch policies still collapse floods within these.
- */
-export const NOTIFICATION_BRIDGE_DOMAINS: readonly RuntimeEventDomain[] = [
-  'agents',
-  'tasks',
-  'workflows',
-  'automation',
-  'deliveries',
-  'security',
-];
-
-/** Turn an UPPER_SNAKE event type into a short human title ("AGENT_COMPLETED" → "Agent completed"). */
-export function humanizeEventType(type: string): string {
-  const words = type.toLowerCase().split(/[_\s]+/).filter(Boolean);
-  if (words.length === 0) return type;
-  return words.map((word, index) => (index === 0 ? word[0]!.toUpperCase() + word.slice(1) : word)).join(' ');
-}
-
-/** Derive a notification severity from an event type — errors/failures warn, the rest are informational. */
-export function levelForEventType(type: string): Notification['level'] {
-  const upper = type.toUpperCase();
-  if (/(FAILED|ERROR|CRASH|DENIED|BLOCKED)/.test(upper)) return 'warning';
-  if (/(CRITICAL|FATAL|BREACH)/.test(upper)) return 'critical';
-  return 'info';
-}
-
-export function createNotificationDispatcher(
-  configManager: Pick<ConfigManager, 'get'>,
-  feed: NoticeRing = new NoticeRing(),
-): NotificationDispatcher {
-  const router = createNotificationRouter(undefined, undefined, configManager);
-  const recordIfPanel = (notification: Notification, decision: RoutingDecision): void => {
-    if (decision.suppressed) return;
-    if (decision.target === 'panel_only') feed.record(notification, decision);
-  };
-  return {
-    router,
-    notices: feed,
-    dispatch(notification) {
-      const decision = router.route(notification);
-      recordIfPanel(notification, decision);
-      return decision;
-    },
-    flush() {
-      for (const { notification } of router.flush()) {
-        // A flushed batch head surfaces as a batch-collapsed panel entry; the
-        // feed folds all sharing this batch key into one running-count row.
-        feed.record(notification, {
-          target: 'panel_only',
-          reasonCode: 'batch_window_collapsed',
-          batchKey: `${notification.domain}:${notification.level}`,
-        });
-      }
-    },
-  };
-}
-
-/**
- * Bridge OPS_MEMORY_PRESSURE specifically into the notification feed as an
- * attention line. The MemoryGovernor emits this on the 'ops' domain when the
- * pressure tier changes or the leak tripwire fires; that domain also carries
- * high-churn audit/metric events, so it is deliberately NOT in
- * NOTIFICATION_BRIDGE_DOMAINS — this targeted bridge lifts only the
- * memory-pressure event into notices (critical at the critical tier / on a
- * tripwire, warning at high), leaving the rest of the ops churn out of the
- * feed. Returns an unsubscribe function.
- */
-export function wireMemoryPressureNotice(
+export function wireMemoryPressureChannelNotice(
   runtimeBus: RuntimeEventBus,
-  dispatcher: Pick<NotificationDispatcher, 'dispatch'>,
+  channel: DaemonNoticeChannel,
 ): () => void {
   return runtimeBus.onDomain('ops', (envelope) => {
     if (envelope.type !== 'OPS_MEMORY_PRESSURE') return;
     const payload = envelope.payload as MemoryPressurePayload;
-    dispatcher.dispatch({
-      id: envelope.traceId ?? `ops-OPS_MEMORY_PRESSURE-${envelope.ts}`,
-      domain: 'ops',
-      level: memoryPressureLevel(payload),
-      title: memoryPressureLine(payload),
-      timestamp: envelope.ts,
+    const level = memoryPressureLevel(payload);
+    const line = memoryPressureLine(payload);
+    if (!channel.isConfigured()) {
+      // No destination configured. The notice still exists — at its own
+      // severity, where the operator looks when the daemon misbehaves.
+      if (level === 'critical') logger.error(line);
+      else if (level === 'warning') logger.warn(line);
+      else logger.info(line);
+      return;
+    }
+    void Promise.resolve(channel.send(line)).catch((error: unknown) => {
+      logger.warn('Memory pressure notice could not be delivered', {
+        error: error instanceof Error ? error.message : String(error),
+        notice: line,
+      });
     });
   });
-}
-
-/**
- * Bridge the runtime event bus to the dispatcher: each event in a curated
- * domain becomes a notification and is routed. Returns an unsubscribe function
- * that detaches every domain listener.
- */
-export function wireRuntimeNotificationBridge(
-  runtimeBus: RuntimeEventBus,
-  dispatcher: Pick<NotificationDispatcher, 'dispatch'>,
-  domains: readonly RuntimeEventDomain[] = NOTIFICATION_BRIDGE_DOMAINS,
-): () => void {
-  const unsubscribes = domains.map((domain) =>
-    runtimeBus.onDomain(domain, (envelope) => {
-      dispatcher.dispatch({
-        id: envelope.traceId ?? `${domain}-${envelope.type}-${envelope.ts}`,
-        domain,
-        level: levelForEventType(envelope.type),
-        title: humanizeEventType(envelope.type),
-        timestamp: envelope.ts,
-      });
-    }),
-  );
-  return () => { for (const unsubscribe of unsubscribes) unsubscribe(); };
 }

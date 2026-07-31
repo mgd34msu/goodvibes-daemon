@@ -32,7 +32,6 @@ import type { StoreSnapshotScheduler } from '@pellux/goodvibes-sdk/platform/stat
 import type { PermissionManager, UserPermissionRuleStore } from '@pellux/goodvibes-sdk/platform/permissions';
 import type { buildExecPromptAnswerHandler } from '@pellux/goodvibes-sdk/platform/runtime/permissions/exec-prompt-wiring';
 import type { buildLocalhostFetchApproval } from '@pellux/goodvibes-sdk/platform/runtime/permissions/localhost-fetch-approval';
-import type { NotificationDispatcher } from './notification-dispatch.ts';
 import type { createDurabilityServices } from './durability-services.ts';
 import type { MemorySpineClient } from '@pellux/goodvibes-sdk/platform/runtime/memory-spine';
 import type { WorkspaceCheckpointManager } from '@pellux/goodvibes-sdk/platform/workspace';
@@ -123,8 +122,6 @@ export interface RuntimeServices {
   readonly localhostFetchApproval: ReturnType<typeof buildLocalhostFetchApproval>;
   /** Terminal prompt-answer handler that rides the approval broker; shared by the tool registry and orchestrator so an interactive command's prompt gets an ask/card on every surface. */
   readonly execPromptAnswerHandler: ReturnType<typeof buildExecPromptAnswerHandler>;
-  /** Routes curated runtime-domain events into the panel_only notification feed (the panel's live producer). */
-  readonly notificationDispatcher: NotificationDispatcher;
   /** Durable user-origin permission rules (remembered approvals); permissions.rules.* surface. Mirrors the SDK composition. */
   readonly userPermissionRuleStore: UserPermissionRuleStore;
   readonly sessionBroker: SharedSessionBroker;

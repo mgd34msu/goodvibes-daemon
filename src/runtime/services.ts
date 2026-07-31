@@ -1,7 +1,7 @@
 import { join } from 'node:path';
 import { ServiceRegistry, SubscriptionManager, ToolLLM } from '@pellux/goodvibes-sdk/platform/config';
 import { AutomationDeliveryManager, AutomationManager } from '@pellux/goodvibes-sdk/platform/automation';
-import { ChannelDeliveryRouter, ChannelPolicyManager } from '@pellux/goodvibes-sdk/platform/channels';
+import { ChannelPolicyManager } from '@pellux/goodvibes-sdk/platform/channels';
 import { ApprovalBroker, GatewayMethodCatalog, SharedSessionBroker, buildSharedSessionAgentSpawnRoutingInput } from '@pellux/goodvibes-sdk/platform/control-plane';
 import { continuationChainOptions } from '@pellux/goodvibes-sdk/platform/agents';
 import { wireIdlePowerAndLiveTurn } from './idle-power-services.ts';
@@ -22,7 +22,7 @@ import { FileStateCache, FileUndoManager, MemoryEmbeddingProviderRegistry, Memor
 import { buildExecPromptAnswerHandler } from '@pellux/goodvibes-sdk/platform/runtime/permissions/exec-prompt-wiring';
 import { buildLocalhostFetchApproval } from '@pellux/goodvibes-sdk/platform/runtime/permissions/localhost-fetch-approval';
 import { createBrokeredPermissionManager } from '@pellux/goodvibes-sdk/platform/runtime/client-services';
-import { createNotificationDispatcher, wireRuntimeNotificationBridge, wireMemoryPressureNotice } from './notification-dispatch.ts';
+import { wireMemoryPressureChannelNotice } from './notification-dispatch.ts';
 import { createDurabilityServices } from './durability-services.ts';
 import { MemorySpineClient, createLocalMemoryAccess } from '@pellux/goodvibes-sdk/platform/runtime/memory-spine';
 import { createWorkspaceCheckpointing } from './workspace-checkpointing.ts';
@@ -413,12 +413,12 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   const policyRuntimeState = new PolicyRuntimeState();
   const fileCache = new FileStateCache();
   const projectIndex = new ProjectIndex(workingDirectory);
-  const channelDeliveryRouter = new ChannelDeliveryRouter({
-    configManager,
-    secretsManager,
-    serviceRegistry,
-    artifactStore,
-  });
+  // ONE router, not two. This was a second ChannelDeliveryRouter built from the
+  // same four arguments AutomationDeliveryManager builds its own from, so the
+  // router the gateway verbs held and the router replies actually leave through
+  // were different objects — and a delivery strategy registered on one was
+  // invisible to the other. The manager's is the one that replies; it is the one.
+  const channelDeliveryRouter = deliveryManager.getDeliveryRouter();
   const processManager = new ProcessManager();
   // The phase/work-item orchestration engine, constructed before the process
   // registry so its fleet nodes (workstream/phase/work-item) can be folded in
@@ -608,14 +608,14 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     getConversationTitle: options.getConversationTitle,
   });
 
-  // Curated runtime-domain events become routed notifications. See
-  // notification-dispatch.ts for what the daemon does with a panel_only
-  // decision, which is a surface target it has no screen for.
-  const notificationDispatcher = createNotificationDispatcher(configManager);
-  wireRuntimeNotificationBridge(options.runtimeBus, notificationDispatcher);
-  // OPS_MEMORY_PRESSURE is lifted onto its own targeted bridge (the high-churn
-  // 'ops' domain stays out of the wholesale allowlist).
-  wireMemoryPressureNotice(options.runtimeBus, notificationDispatcher);
+  // This process's own memory pressure, to the operator's configured notice
+  // destination. Targeted at OPS_MEMORY_PRESSURE rather than subscribed to the
+  // whole high-churn 'ops' domain, and sent over the SAME WebhookNotifier the
+  // notification verbs keep live and boot-tasks attaches to the bus. The panel
+  // notification router that used to sit here went with the split: its targets
+  // are all screen targets and this product has no screen — see
+  // notification-dispatch.ts.
+  wireMemoryPressureChannelNotice(options.runtimeBus, webhookNotifier);
 
   // In-process config changes become key-level events on the `config` domain, so
   // a client whose settings live HERE gets live change notices instead of
@@ -647,7 +647,6 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     approvalBroker,
     localhostFetchApproval,
     execPromptAnswerHandler,
-    notificationDispatcher,
     userPermissionRuleStore,
     sessionBroker,
     deliveryManager,
