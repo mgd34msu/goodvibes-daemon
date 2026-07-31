@@ -1,0 +1,69 @@
+{
+  "name": "goodvibes-daemon",
+  "version": "1.28.0",
+  "description": "The GoodVibes daemon — the one long-running host for the control plane, channels, cluster membership, scheduled work, knowledge and memory stores, and the verb families every GoodVibes client calls.",
+  "type": "module",
+  "private": true,
+  "main": "src/daemon/cli.ts",
+  "bin": {
+    "goodvibes-daemon": "bin/goodvibes-daemon"
+  },
+  "files": [
+    "bin",
+    "src",
+    "!src/test",
+    "!src/**/*.test.ts",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "daemon": "bun run src/daemon/cli.ts",
+    "prebuild": "bun run scripts/prebuild.ts",
+    "build": "goodvibes-build-binaries",
+    "build:all": "goodvibes-build-binaries --all",
+    "build:linux-x64": "goodvibes-build-binaries --target linux-x64",
+    "build:linux-arm64": "goodvibes-build-binaries --target linux-arm64",
+    "build:macos-x64": "goodvibes-build-binaries --target darwin-x64",
+    "build:macos-arm64": "goodvibes-build-binaries --target darwin-arm64",
+    "smoke": "goodvibes-post-build-smoke",
+    "typecheck": "bunx tsc --noEmit",
+    "typecheck:test": "bunx tsc --noEmit -p tsconfig.test.json",
+    "test": "bun run scripts/run-tests.ts",
+    "version": "bun run scripts/prebuild.ts"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mgd34msu/goodvibes-daemon.git"
+  },
+  "keywords": [
+    "goodvibes",
+    "daemon",
+    "control-plane",
+    "automation",
+    "channels"
+  ],
+  "engines": {
+    "node": ">=20",
+    "bun": ">=1.3.10"
+  },
+  "dependencies": {
+    "@anthropic-ai/bedrock-sdk": "^0.28.1",
+    "@anthropic-ai/sdk": "^0.82.0",
+    "@anthropic-ai/vertex-sdk": "^0.16.0",
+    "@aws/bedrock-token-generator": "^1.1.0",
+    "@pellux/goodvibes-sdk": "1.21.0",
+    "@pellux/goodvibes-terminal-shell": "1.21.0",
+    "openai": "^6.29.0",
+    "simple-git": "^3.33.0",
+    "sqlite-vec": "^0.1.9"
+  },
+  "devDependencies": {
+    "@pellux/goodvibes-toolchain": "1.21.0",
+    "@types/bun": "^1.3.10",
+    "typescript": "^5.9.3"
+  },
+  "overrides": {
+    "minimatch": "^10.2.5"
+  }
+}

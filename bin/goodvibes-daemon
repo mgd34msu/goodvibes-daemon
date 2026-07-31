@@ -1,0 +1,74 @@
+#!/usr/bin/env bun
+//
+// Launcher for a SOURCE checkout of the daemon repository.
+//
+// The released daemon is a compiled binary placed by the installer (or swapped
+// in by the daemon's own updater); this shim exists so a checkout can be run
+// the same way — it prefers a locally built binary in dist/ and falls back to
+// the TypeScript entrypoint.
+//
+// A prebuilt binary NEVER picks up a dev-linked SDK: it was compiled against
+// whatever SDK was installed at build time. To exercise source against a linked
+// SDK, bypass this launcher entirely:
+//
+//     bun src/daemon/cli.ts --port <port> --hostname 127.0.0.1
+//
+// and isolate it with GOODVIBES_HOME / GOODVIBES_DAEMON_HOME /
+// GOODVIBES_WORKING_DIR so it cannot read the machine's real credentials or
+// claim its service unit.
+//
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { accessSync, constants, existsSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const packageRoot = join(__dirname, '..');
+
+if (process.platform === 'win32') {
+  console.error('goodvibes-daemon: native Windows is not supported.');
+  console.error('Use WSL so the Linux release binary path applies.');
+  process.exit(1);
+}
+
+const ARTIFACTS = {
+  'linux-x64': 'goodvibes-daemon-linux-x64',
+  'linux-arm64': 'goodvibes-daemon-linux-arm64',
+  'darwin-x64': 'goodvibes-daemon-macos-x64',
+  'darwin-arm64': 'goodvibes-daemon-macos-arm64',
+};
+
+function isExecutable(path) {
+  try {
+    accessSync(path, constants.X_OK);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function run(command, args) {
+  const result = spawnSync(command, args, { stdio: 'inherit' });
+  process.exit(result.status ?? 1);
+}
+
+const artifactName = ARTIFACTS[`${process.platform}-${process.arch}`];
+const candidates = [
+  ...(artifactName ? [join(packageRoot, 'dist', artifactName)] : []),
+  join(packageRoot, 'dist', 'goodvibes-daemon'),
+];
+
+for (const candidate of candidates) {
+  if (isExecutable(candidate)) run(candidate, process.argv.slice(2));
+}
+
+const entrypoint = join(packageRoot, 'src', 'daemon', 'cli.ts');
+if (existsSync(entrypoint) && spawnSync('bun', ['--version'], { stdio: 'ignore' }).status === 0) {
+  run('bun', [entrypoint, ...process.argv.slice(2)]);
+}
+
+console.error('goodvibes-daemon: no runnable binary is available.');
+console.error(`platform: ${process.platform}-${process.arch}`);
+console.error(`supported prebuilt targets: ${Object.keys(ARTIFACTS).join(', ')}`);
+console.error('Build one locally with `bun run build`, or install the release binary.');
+process.exit(1);

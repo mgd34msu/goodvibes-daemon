@@ -1,0 +1,83 @@
+{
+  "//": "The daemon's ONLY compiled artifact is the daemon binary, so it is this repo's `appEntrypoint` rather than a second `daemonEntrypoint` leg. The artifact NAMES stay exactly what the TUI's daemon leg produced (goodvibes-daemon-<os>-<arch>) so the installer, the SDK's resolveArtifactNames, and the running daemon's own updater keep resolving assets by the names they already use.",
+  "packageName": "goodvibes-daemon",
+  "sdkPin": {
+    "sdkPackage": "@pellux/goodvibes-sdk",
+    "pinSource": "dependencies",
+    "lockfile": "bun.lock",
+    "overlayMarker": "node_modules/@pellux/goodvibes-sdk/.local-sdk-overlay.json",
+    "sourceRoots": ["src"],
+    "enforceExportsMap": false
+  },
+  "build": {
+    "appEntrypoint": "src/daemon/cli.ts",
+    "outDir": "dist",
+    "addonOutDir": "dist/lib",
+    "prebuild": [["bun", "run", "scripts/prebuild.ts"]],
+    "targets": [
+      {
+        "key": "linux-x64",
+        "bunTarget": "bun-linux-x64",
+        "appArtifact": "goodvibes-daemon-linux-x64",
+        "nativeAddonPackage": "sqlite-vec-linux-x64",
+        "nativeAddonFile": "vec0.so"
+      },
+      {
+        "key": "linux-arm64",
+        "bunTarget": "bun-linux-arm64",
+        "appArtifact": "goodvibes-daemon-linux-arm64",
+        "nativeAddonPackage": "sqlite-vec-linux-arm64",
+        "nativeAddonFile": "vec0.so"
+      },
+      {
+        "key": "darwin-x64",
+        "bunTarget": "bun-darwin-x64",
+        "appArtifact": "goodvibes-daemon-macos-x64",
+        "nativeAddonPackage": "sqlite-vec-darwin-x64",
+        "nativeAddonFile": "vec0.dylib"
+      },
+      {
+        "key": "darwin-arm64",
+        "bunTarget": "bun-darwin-arm64",
+        "appArtifact": "goodvibes-daemon-macos-arm64",
+        "nativeAddonPackage": "sqlite-vec-darwin-arm64",
+        "nativeAddonFile": "vec0.dylib"
+      }
+    ]
+  },
+  "coverage": {
+    "funcsFloor": 0,
+    "linesFloor": 0,
+    "command": ["bun", "test", "--coverage", "src"]
+  },
+  "smoke": {
+    "bannerPrefix": "goodvibes-daemon ",
+    "forbiddenStrings": ["sqlite-vec", "$bunfs/root"],
+    "binaryDefault": "dist/goodvibes-daemon-linux-x64"
+  },
+  "releaseCut": {
+    "branch": "main",
+    "versionFiles": [],
+    "syncCommands": [["bun", "run", "scripts/prebuild.ts"]],
+    "commitPaths": ["package.json", "src/version.ts", "README.md", "CHANGELOG.md"],
+    "changelogHeading": "bracket",
+    "changelogInsertMarker": "first-separator"
+  },
+  "publish": {
+    "packageName": "goodvibes-daemon",
+    "defaultRegistry": "https://registry.npmjs.org",
+    "requiredTarballPaths": [],
+    "forbiddenTarballPrefixes": [".github/", "src/test/"],
+    "maxTarballBytes": 52428800
+  },
+  "perJobGreen": {
+    "owner": "mgd34msu",
+    "repo": "goodvibes-daemon",
+    "workflow": "ci.yml",
+    "event": "push",
+    "pollIntervalMs": 20000,
+    "deadlineMs": 1800000,
+    "retryAttempts": 8,
+    "retryDelayMs": 7000
+  }
+}
