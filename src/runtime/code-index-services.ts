@@ -41,6 +41,7 @@ import { CodeIndexStore, CodeIndexReindexScheduler } from '@pellux/goodvibes-sdk
 import type { MemoryEmbeddingProviderRegistry } from '@pellux/goodvibes-sdk/platform/state';
 import type { ConfigKey, ConfigManager } from '@pellux/goodvibes-sdk/platform/config';
 import { readBooleanConfig } from '../core/alert-gating.ts';
+import { GOODVIBES_DAEMON_SURFACE_ROOT } from '../config/surface.ts';
 
 /**
  * TUI-local synthetic config key (not yet in the SDK's ConfigKey union) that
@@ -99,7 +100,7 @@ export interface CodeIndexServices {
 
 /** Absolute path to the TUI's code-index sqlite file, sibling to memory.sqlite under .goodvibes/tui/. */
 export function codeIndexDbPath(workingDirectory: string): string {
-  return join(workingDirectory, '.goodvibes', 'tui', 'code-index.sqlite');
+  return join(workingDirectory, '.goodvibes', GOODVIBES_DAEMON_SURFACE_ROOT, 'code-index.sqlite');
 }
 
 /**

@@ -14,6 +14,7 @@ import {
 } from './types.ts';
 import { runProcess } from './process-runner.ts';
 import { tokenizeCommand } from './local-process.ts';
+import { GOODVIBES_DAEMON_SURFACE_ROOT } from '../../../../config/surface.ts';
 
 /**
  * Persistent-key material is written to {homeDirectory}/.goodvibes/tui/operator/
@@ -29,7 +30,7 @@ interface PooledIdentity {
 
 export function createSshBackend(ctx: BackendContext): Backend {
   const pool = new Map<string, PooledIdentity>();
-  const keyDir = join(ctx.homeDirectory, '.goodvibes', 'tui', 'operator', 'ssh-keys');
+  const keyDir = join(ctx.homeDirectory, '.goodvibes', GOODVIBES_DAEMON_SURFACE_ROOT, 'operator', 'ssh-keys');
 
   async function ensureIdentity(
     peer: PeerRecord,

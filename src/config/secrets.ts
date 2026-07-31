@@ -14,6 +14,7 @@ import {
   type SecretsManagerOptions as SdkSecretsManagerOptions,
 } from '@pellux/goodvibes-sdk/platform/config';
 import { isSecretRefInput } from '@pellux/goodvibes-sdk/platform/config';
+import { GOODVIBES_DAEMON_SURFACE_ROOT } from './surface.ts';
 
 export type SecretsManagerOptions = Omit<SdkSecretsManagerOptions, 'surfaceRoot'>;
 
@@ -49,7 +50,7 @@ export class SecretsManager extends SdkSecretsManager {
   constructor(options: SecretsManagerOptions) {
     super({
       ...options,
-      surfaceRoot: 'tui',
+      surfaceRoot: GOODVIBES_DAEMON_SURFACE_ROOT,
     });
   }
 

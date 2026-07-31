@@ -31,6 +31,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { readdirSync, readFileSync, renameSync, unlinkSync } from 'node:fs';
 import { atomicWriteFileSync } from '@/config/atomic-write.ts';
 import { basename, dirname, join } from 'node:path';
+import { GOODVIBES_DAEMON_SURFACE_ROOT } from '../config/surface.ts';
 
 /**
  * Age TTL for TERMINAL (done/cancelled) items. Once a completed or cancelled
@@ -321,7 +322,7 @@ export class WorkPlanStore {
 
   constructor(private readonly options: WorkPlanStoreOptions) {
     const fileName = `${safeFileId(options.projectId, options.projectRoot)}.json`;
-    this.filePath = join(options.homeDirectory, '.goodvibes', 'tui', 'work-plans', fileName);
+    this.filePath = join(options.homeDirectory, '.goodvibes', GOODVIBES_DAEMON_SURFACE_ROOT, 'work-plans', fileName);
   }
 
   getActivePlan(): WorkPlan {

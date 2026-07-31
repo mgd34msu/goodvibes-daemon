@@ -16,6 +16,7 @@ import { randomBytes } from 'node:crypto';
 import { dirname, join } from 'node:path';
 import { getOrCreateCompanionToken } from '@pellux/goodvibes-sdk/platform/pairing';
 import type { CompanionPairingResult } from '@pellux/goodvibes-sdk/platform/pairing';
+import { GOODVIBES_DAEMON_SURFACE_ROOT } from '../config/surface.ts';
 
 /**
  * Return the list of absolute operator-tokens.json paths the TUI may have written
@@ -27,7 +28,7 @@ import type { CompanionPairingResult } from '@pellux/goodvibes-sdk/platform/pair
 export function workspaceOperatorTokenCandidates(workingDirectory: string): readonly string[] {
   return [
     join(workingDirectory, '.goodvibes', 'operator-tokens.json'),
-    join(workingDirectory, '.goodvibes', 'tui', 'operator-tokens.json'),
+    join(workingDirectory, '.goodvibes', GOODVIBES_DAEMON_SURFACE_ROOT, 'operator-tokens.json'),
   ];
 }
 

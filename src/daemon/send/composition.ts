@@ -38,6 +38,7 @@ import { ConfigManager, ServiceRegistry, SubscriptionManager } from '@pellux/goo
 import { createShellPathService } from '@/runtime/index.ts';
 import { SecretsManager } from '../../config/secrets.ts';
 import type { SendDeliver } from './command.ts';
+import { GOODVIBES_DAEMON_SURFACE_ROOT } from '../../config/surface.ts';
 
 export interface SendStackRoots {
   readonly workingDirectory: string;
@@ -68,7 +69,7 @@ export function createSendStack(roots: SendStackRoots): SendStack {
   const configManager = new ConfigManager({
     workingDir: roots.workingDirectory,
     homeDir: roots.homeDirectory,
-    surfaceRoot: 'tui',
+    surfaceRoot: GOODVIBES_DAEMON_SURFACE_ROOT,
   });
   const shellPaths = createShellPathService({
     workingDirectory: roots.workingDirectory,
@@ -82,9 +83,9 @@ export function createSendStack(roots: SendStackRoots): SendStack {
     daemonHome: roots.daemonHomeDirectory,
     configManager,
   });
-  const serviceRegistry = new ServiceRegistry(shellPaths.resolveProjectPath('tui', 'services.json'), {
+  const serviceRegistry = new ServiceRegistry(shellPaths.resolveProjectPath(GOODVIBES_DAEMON_SURFACE_ROOT, 'services.json'), {
     secretsManager,
-    subscriptionManager: new SubscriptionManager(shellPaths.resolveUserPath('tui', 'subscriptions.json')),
+    subscriptionManager: new SubscriptionManager(shellPaths.resolveUserPath(GOODVIBES_DAEMON_SURFACE_ROOT, 'subscriptions.json')),
   });
   const router = new ChannelDeliveryRouter({
     configManager,

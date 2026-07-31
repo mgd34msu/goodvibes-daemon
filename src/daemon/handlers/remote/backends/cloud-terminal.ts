@@ -14,6 +14,7 @@ import {
 } from './types.ts';
 import { runProcess } from './process-runner.ts';
 import { tokenizeCommand } from './local-process.ts';
+import { GOODVIBES_DAEMON_SURFACE_ROOT } from '../../../../config/surface.ts';
 
 /**
  * Cloud-terminal backend: executes a command in a managed cloud shell / VM via
@@ -22,7 +23,7 @@ import { tokenizeCommand } from './local-process.ts';
  * file or a provider-specific env var — never as an argv token, never logged.
  */
 export function createCloudTerminalBackend(ctx: BackendContext): Backend {
-  const credDir = join(ctx.homeDirectory, '.goodvibes', 'tui', 'operator', 'cloud-creds');
+  const credDir = join(ctx.homeDirectory, '.goodvibes', GOODVIBES_DAEMON_SURFACE_ROOT, 'operator', 'cloud-creds');
 
   async function writeCredentialFile(peerId: string, value: string): Promise<string> {
     await mkdir(credDir, { recursive: true });

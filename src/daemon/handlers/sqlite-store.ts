@@ -4,6 +4,7 @@ import { existsSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
 import { logger } from '@pellux/goodvibes-sdk/platform/utils';
 import initSqlJs from 'sql.js';
+import { GOODVIBES_DAEMON_SURFACE_ROOT } from '../../config/surface.ts';
 
 type SqlJsStatic = Awaited<ReturnType<typeof initSqlJs>>;
 type SqlDatabase = InstanceType<SqlJsStatic['Database']>;
@@ -60,7 +61,7 @@ export class HandlerSqliteStore {
     this.resolvedPath = join(
       options.workingDirectory,
       '.goodvibes',
-      'tui',
+      GOODVIBES_DAEMON_SURFACE_ROOT,
       'operator',
       options.fileName,
     );

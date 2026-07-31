@@ -29,10 +29,11 @@ import type {
 import { PeerRegistry } from './peer-registry.ts';
 import { RemoteDispatcher, type RemoteWorkEnqueuer } from './dispatcher.ts';
 import { HostDistributedRuntime } from './service.ts';
+import { GOODVIBES_DAEMON_SURFACE_ROOT } from '../../../config/surface.ts';
 
 type DistributedRuntimeManager = operations.DistributedRuntimeManager;
 
-const DISTRIBUTED_RUNTIME_STORE = join('tui', 'remote', 'distributed-runtime.json');
+const DISTRIBUTED_RUNTIME_STORE = join(GOODVIBES_DAEMON_SURFACE_ROOT, 'remote', 'distributed-runtime.json');
 
 export interface RegisterRemoteSurfaceOptions {
   /**

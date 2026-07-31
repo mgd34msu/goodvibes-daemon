@@ -9,7 +9,7 @@ import { resolvePairingWebOrigin } from '../core/pairing-origin.ts';
 import { attachWsOnlyGatewayVerbHandlers } from '@pellux/goodvibes-terminal-shell';
 import { composeMailDeps } from './mail-composition.ts';
 import { composeCredentialServices } from './credential-composition.ts';
-import { createDisposalScope, registerRuntimePollers } from '@pellux/goodvibes-sdk/platform/runtime/disposal';
+import { createDisposalScope, registerDaemonRuntimePollers } from './disposal-wiring.ts';
 import { attachConfigEmitBridge } from '@pellux/goodvibes-sdk/platform/runtime/config';
 import { WatcherRegistry } from '@pellux/goodvibes-sdk/platform/watchers';
 import { ArtifactStore } from '@pellux/goodvibes-sdk/platform/artifacts';
@@ -79,9 +79,8 @@ export type { RuntimeServicesOptions, RuntimeServices } from './runtime-services
  * needs-input push).
  */
 export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeServices {
-  // The SDK's own disposal scope and poller registry. The terminal app kept a
-  // local copy of both, which is how its dispose() came to know about a
-  // different set of pollers than the SDK's did.
+  // The SDK's disposal scope and its all-required poller list, plus the four
+  // pollers only the daemon has — see disposal-wiring.ts.
   const disposalScope = createDisposalScope('RuntimeServices');
   const workingDirectory = options.workingDir;
   const homeDirectory = options.homeDirectory;
@@ -698,7 +697,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     workstreamCommands,
     codeIndexStore,
     codeIndexReindexScheduler,
-    storeSnapshotScheduler, appendOnlyRetentionScheduler, stopDurabilityHousekeeping, stopWakeHousekeeping, stopConfigWatch,
+    storeSnapshotScheduler, appendOnlyRetentionScheduler, stopDurabilityHousekeeping, stopWakeHousekeeping,
     memoryConsolidationScheduler,
     powerManager,
     memoryGovernor,
@@ -721,6 +720,6 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     cancelHostedAgentRuns: () => cancelAllAgentRuns(agentManager),
     dispose: (): void => disposalScope.dispose(),
   };
-  registerRuntimePollers(disposalScope.registry, services);
+  registerDaemonRuntimePollers(disposalScope.registry, services, { stopConfigWatch });
   return services;
 }

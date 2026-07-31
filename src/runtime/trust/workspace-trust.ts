@@ -26,6 +26,7 @@ import { join } from 'node:path';
 import { JsonFileStore } from '@pellux/goodvibes-sdk/platform/state';
 import type { PermissionCategory } from '@pellux/goodvibes-sdk/platform/permissions';
 import type { PermissionPromptRequest, PermissionPromptDecision } from '@pellux/goodvibes-sdk/platform/permissions';
+import { GOODVIBES_DAEMON_SURFACE_ROOT } from '../../config/surface.ts';
 
 type AskCallback = (request: PermissionPromptRequest) => Promise<PermissionPromptDecision>;
 
@@ -94,7 +95,7 @@ export function detectPriorWorkspaceState(workingDirectory: string): boolean {
 
   const fileSignals = [
     join(root, 'checkpoints', 'index.json'),
-    join(root, 'tui', 'onboarding-checked.json'),
+    join(root, GOODVIBES_DAEMON_SURFACE_ROOT, 'onboarding-checked.json'),
     join(root, 'goodvibes.json'),
   ];
   for (const file of fileSignals) {
@@ -134,7 +135,7 @@ export interface PersistedWorkspaceTrustView {
  * use this pure reader instead of constructing a manager.
  */
 export function readPersistedWorkspaceTrust(paths: WorkspaceTrustPaths): PersistedWorkspaceTrustView {
-  const file = paths.resolveProjectPath('tui', TRUST_FILE);
+  const file = paths.resolveProjectPath(GOODVIBES_DAEMON_SURFACE_ROOT, TRUST_FILE);
   try {
     if (!existsSync(file)) return { level: 'undecided', grandfathered: false };
     const parsed = JSON.parse(readFileSync(file, 'utf-8')) as Partial<PersistedWorkspaceTrust>;
@@ -159,7 +160,7 @@ export class WorkspaceTrustManager {
 
   constructor(options: WorkspaceTrustManagerOptions) {
     this.store = new JsonFileStore<PersistedWorkspaceTrust>(
-      options.shellPaths.resolveProjectPath('tui', TRUST_FILE),
+      options.shellPaths.resolveProjectPath(GOODVIBES_DAEMON_SURFACE_ROOT, TRUST_FILE),
     );
   }
 

@@ -227,8 +227,6 @@ export interface RuntimeServices {
   readonly stopDurabilityHousekeeping: () => void;
   /** Stops the wake-word recovery sweep and a pending boot provision; a no-op unless `provisionWakeModelsAtBoot` was set. */
   readonly stopWakeHousekeeping: () => void;
-  /** Stops the live settings-file watch — the handle `ConfigManager.watchConfigFiles()` returned. */
-  readonly stopConfigWatch: () => void;
   readonly memoryConsolidationScheduler: MemoryConsolidationScheduler;
   readonly powerManager: PowerManager;
   /** The daemon's memory governor (default ON). Backs ops.memory.get and defends the daemon's footprint by tier. */

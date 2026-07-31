@@ -25,6 +25,7 @@ import {
   type DaemonConfigMigrationResult,
 } from '@pellux/goodvibes-sdk/platform/config';
 import { logger, summarizeError } from '@pellux/goodvibes-sdk/platform/utils';
+import { GOODVIBES_DAEMON_SURFACE_ROOT } from './surface.ts';
 
 /**
  * Run the daemon-owned-config migration for `homeDir`, tolerating any
@@ -34,7 +35,7 @@ import { logger, summarizeError } from '@pellux/goodvibes-sdk/platform/utils';
  */
 export function runDaemonConfigMigration(homeDir: string): DaemonConfigMigrationResult | null {
   try {
-    return migrateDaemonOwnedConfig({ homeDir, primarySurface: 'tui' });
+    return migrateDaemonOwnedConfig({ homeDir, primarySurface: GOODVIBES_DAEMON_SURFACE_ROOT });
   } catch (error) {
     const markerPath = daemonConfigMovedPath(daemonConfigPath(homeDir));
     logger.warn('daemon-owned config migration failed; continuing with existing config state', {

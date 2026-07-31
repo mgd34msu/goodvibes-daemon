@@ -45,6 +45,8 @@ export const RemoteSupervisor = operations.RemoteSupervisor;
 export type RemoteSupervisor = operations.RemoteSupervisor;
 
 // Observability.
+export const TelemetryApiService = observability.TelemetryApiService;
+export type TelemetryApiService = observability.TelemetryApiService;
 export const ComponentHealthMonitor = observability.ComponentHealthMonitor;
 export type ComponentHealthMonitor = observability.ComponentHealthMonitor;
 export const IdempotencyStore = observability.IdempotencyStore;
@@ -74,3 +76,21 @@ export type RoutingDecision = ui.RoutingDecision;
 export const GlobalNetworkTransportInstaller = transport.GlobalNetworkTransportInstaller;
 export type GlobalNetworkTransportInstaller = transport.GlobalNetworkTransportInstaller;
 
+
+// Runtime event payload unions, re-exported so a consumer names one import path
+// for the bus and the shapes that travel on it.
+export type {
+  AgentEvent,
+  CommunicationEvent,
+  OpsEvent,
+  OrchestrationEvent,
+  PermissionEvent,
+  ProviderEvent,
+  RouteEvent,
+  SessionEvent,
+  TaskEvent,
+  ToolEvent,
+  TransportEvent,
+  TurnEvent,
+  WorkflowEvent,
+} from '@pellux/goodvibes-sdk/events';

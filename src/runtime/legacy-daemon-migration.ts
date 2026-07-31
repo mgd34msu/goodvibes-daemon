@@ -50,6 +50,7 @@ import { ConfigManager } from '@pellux/goodvibes-sdk/platform/config';
 import { PlatformServiceManager, type ManagedServiceStatus } from '@pellux/goodvibes-sdk/platform/daemon';
 import { summarizeError } from '@pellux/goodvibes-sdk/platform/utils';
 import { runDaemonConfigMigration } from '../config/run-daemon-config-migration.ts';
+import { GOODVIBES_DAEMON_SURFACE_ROOT } from '../config/surface.ts';
 
 /** Structurally derived from `PlatformServiceManager`'s own constructor — the
  * SDK's public `platform/daemon` entry point only re-exports the class and
@@ -118,7 +119,7 @@ export function buildManagedDaemonServiceManager(params: BuildManagedDaemonServi
   const configManager = params.configManager ?? new ConfigManager({
     workingDir: workingDirectory,
     homeDir: params.homeDir,
-    surfaceRoot: 'tui',
+    surfaceRoot: GOODVIBES_DAEMON_SURFACE_ROOT,
   });
   // The unit's ExecStart deliberately carries NO endpoint flags
   // (--hostname/--port): the daemon resolves controlPlane.hostMode/host/port
