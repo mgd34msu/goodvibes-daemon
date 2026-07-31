@@ -8,6 +8,73 @@ All notable changes to the GoodVibes daemon.
 
 ### Changes
 
+- The command line is the daemon's, and it is an operator surface rather than a
+  way to start a process. It shipped carrying the terminal app's parser: a table
+  of two dozen command words — `tui`, `run`, `doctor`, `models`, `providers`,
+  `auth`, `secrets`, `plugin` — against an entry point that dispatched on help,
+  version and four service verbs. Everything else fell through to "start a
+  daemon in the foreground", so `goodvibes-daemon status` served, and so did
+  `goodvibes-daemon install-servce`. The parser's own unknown-command error was
+  unreachable, because no word could fail to match.
+
+  The vocabulary is now exactly this binary's real commands, held in one catalog
+  (`src/cli/command-catalog.ts`) that the parser, the help text and the shell
+  completions all read. Serving happens on a bare invocation or on `serve`, and
+  on nothing else; any other unrecognized word exits 2 with `Unknown command: X`
+  and the help. The terminal app's conversation flags — `--resume`, `--continue`,
+  `--fork`, `--print`, `--prompt`, `-o/--output`, `--open`, `--no-alt-screen`,
+  `--session`, `--strict` — were accepted in silence and read by nothing; each is
+  now refused by name and says which surface owns it.
+
+- New commands, all of them things a headless box's operator previously had no
+  way to do:
+
+  - `status [--json]` asks a RUNNING daemon what it is doing: version, uptime,
+    the address it actually bound, its health roll-up, its channels, its place in
+    the cluster, how many sessions it is hosting, and what its last update or
+    rollback did. `--host`/`--port`/`--token` ask a daemon on another machine,
+    over the same convention `cluster` uses.
+  - `sessions list` and `sessions kill <id>` over the daemon's hosted-session
+    verbs, which are ws-only and so are reached over the control-plane socket
+    with the same operator token.
+  - `config list|get|set|unset` reads and writes this machine's settings
+    directly, so it works whether or not a daemon is running. Every value it
+    PRINTS goes through the redaction rules first — a token, a password or an API
+    key reads as `<redacted>` — while `config set` still writes the real value.
+  - `pair` prints the pairing link and QR again, from the same renderer the
+    daemon uses at startup and carrying the same existing token, so the block is
+    no longer lost when the boot banner scrolls away.
+  - `update [--check]` reports the running version, the receipts the daemon wrote
+    about its own swaps and restarts, the version an automatic rollback rejected,
+    and whether a rollback is in force. `--check` states plainly that no verb
+    exists to trigger an early check and names what does work, rather than
+    calling a verb the daemon does not answer.
+  - `start-service`, `stop-service` and `restart-service`, on the same service
+    manager `install-service` already used. A verb aimed at a service that is not
+    installed says so and exits 4 instead of dispatching a doomed platform call.
+  - `completion bash|zsh|fish`, generated from the catalog, and `help <command>`
+    for any command's own arguments and flags.
+
+- `service-status` answers with an exit code — 0 installed and running, 3
+  installed but not running, 4 not installed — and takes `--json`. A script no
+  longer has to read the prose to find out.
+
+- The help text describes the binary that exists: every command, the flags that
+  work, `-y/--yes`, `--config`, `--enable`/`--disable`, `--json`, the exit codes,
+  and a systemd user service, a launchd agent or a Scheduled Task depending on
+  the platform it is printed on — it used to say systemd on every platform,
+  including macOS, where `install-service` writes a launchd agent.
+
+- `status` reads the daemon's identity, health and channel routes with the
+  envelope they actually use. Those routes answer with the payload itself while
+  the cluster routes wrap theirs in `{ ok, data }`, and the wrapped reader turned
+  a healthy 200 into "the daemon refused the request".
+
+- Four never-called functions the terminal app left behind
+  (`applyTuiRuntimeConfigDefaults`, `applyConfiguredHitlMode`,
+  `applyRuntimeConfigDefault`, `applyRuntimeCommandEndpointFlagOverrides`) are
+  gone, verified to have no importers first.
+
 - The daemon can run a conversation, not just watch one. Stating how a workspace
   floor is built (`DaemonConfig.hostedSessions`, wired in
   `runtime/hosted-session-composition.ts`) turns on the SDK's hosted-session

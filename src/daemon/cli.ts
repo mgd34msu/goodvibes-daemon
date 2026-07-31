@@ -26,14 +26,9 @@ import { reportFatalBootFailure, writeExitingStdoutLine, writeFatalLine } from '
 import {
   getOrCreateCompanionToken,
   pruneStaleOperatorTokens,
-  buildPairingHandoffLink,
-  describeOriginPosture,
-  generateQrMatrix,
-  renderQrToString,
 } from '@pellux/goodvibes-sdk/platform/pairing';
 import { ensurePublicBaseUrl } from '../core/pairing-origin.ts';
 import { availablePairingOffers } from '../core/pairing-handoff.ts';
-import { formatPairingOffers, formatPostureCapabilities, pairingPostureNotice } from '../core/pairing-offers.ts';
 import { workspaceOperatorTokenCandidates } from '../runtime/operator-token-cleanup.ts';
 import {
   scan,
@@ -56,15 +51,24 @@ import { resolveDaemonUpdateArtifact } from './lifecycle.ts';
 import { VERSION } from '../version.ts';
 
 import {
-  parseGoodVibesCli,
+  parseDaemonCli,
+  isRawInterceptCommand,
   renderGoodVibesDaemonHelp,
+  renderDaemonCommandHelp,
   renderGoodVibesVersion,
   renderDaemonStartupBanner,
+  runCompletionCommand,
   applyRuntimeConfigOverrides,
   applyRuntimeConfigValue,
   applyRuntimeFeatureFlagOverrides,
   applyRuntimeEndpointFlagOverrides,
 } from '../cli/index.ts';
+import { runConfigCommand } from './config-command.ts';
+import { runPairCommand } from './pair-command.ts';
+import { runSessionsCommand } from './sessions-command.ts';
+import { runStatusCommand, runUpdateCommand, type DaemonCommandResult } from './status-command.ts';
+import { renderPairingBanner } from '../core/pairing-banner.ts';
+import { readOperatorTokenFile } from '@pellux/goodvibes-sdk/platform/workspace';
 type DaemonCliOwnership = {
   readonly workingDirectory: string;
   /** The GoodVibes tree root — settings, workspace, and discovery all hang off this. */
@@ -261,7 +265,15 @@ async function main(): Promise<void> {
 
   // Parse CLI flags first so --daemon-home and --working-dir env vars are set
   // before resolveDaemonCliOwnership() reads them.
-  const cli = parseGoodVibesCli(process.argv.slice(2), 'goodvibes-daemon');
+  //
+  // Everything the vocabulary does not contain is refused HERE, which is the
+  // change that makes the rest of this function honest. An unmatched word used
+  // to become a positional nothing read, and the process fell through to
+  // "start serving": `goodvibes-daemon doctor`, `goodvibes-daemon sessions`
+  // and `goodvibes-daemon install-servce` all silently started a daemon in the
+  // foreground. Serving now happens on a bare invocation or on `serve`, and on
+  // nothing else. See src/cli/command-catalog.ts.
+  const cli = parseDaemonCli(process.argv.slice(2), 'goodvibes-daemon');
   if (cli.errors.length > 0) {
     // A parse refusal is the most common reason a service unit's daemon never
     // starts, so it goes on the descriptor the journal is attached to rather
@@ -277,12 +289,60 @@ async function main(): Promise<void> {
     }
   }
   if (cli.flags.help || cli.command === 'help') {
+    // `help <command>` prints that command's own page; an unrecognized word
+    // gets the same refusal the parser would have given it, not a help page for
+    // something that does not exist.
+    const topic = cli.command === 'help' ? cli.commandArgs[0] : undefined;
+    if (topic !== undefined) {
+      const page = renderDaemonCommandHelp(topic, 'goodvibes-daemon');
+      if (page === null) {
+        writeFatalLine(`Unknown command: ${topic}`);
+        writeFatalLine('');
+        writeFatalLine(renderGoodVibesDaemonHelp('goodvibes-daemon'));
+        process.exit(2);
+      }
+      writeExitingStdoutLine(page);
+      process.exit(0);
+    }
+    // `--help` on a real command prints that command's page too, so
+    // `goodvibes-daemon sessions --help` answers about sessions.
+    if (cli.flags.help && cli.rawCommand !== undefined && cli.command !== 'help') {
+      const page = renderDaemonCommandHelp(cli.command, 'goodvibes-daemon');
+      if (page !== null) {
+        writeExitingStdoutLine(page);
+        process.exit(0);
+      }
+    }
     writeExitingStdoutLine(renderGoodVibesDaemonHelp('goodvibes-daemon'));
     process.exit(0);
   }
   if (cli.flags.version || cli.command === 'version') {
     writeExitingStdoutLine(renderGoodVibesVersion('goodvibes-daemon'));
     process.exit(0);
+  }
+  // `cluster`, `send`, `webui` and `provision-wake-model` are handled at the top
+  // of this function, off the raw argument list, for the reasons stated there —
+  // which means they only work as the FIRST word. Reaching one here means a
+  // global flag was written in front of it. Refusing says so; falling through
+  // would start a daemon in the foreground, which is the exact behaviour this
+  // vocabulary exists to end.
+  if (isRawInterceptCommand(cli.command)) {
+    writeFatalLine(
+      `\`${cli.command}\` has to be the first argument: goodvibes-daemon ${cli.command} …`,
+    );
+    writeFatalLine(
+      'It is dispatched before the daemon parses anything, so it keeps its own flags '
+      + '(and, for `send`, message text that starts with a dash).',
+    );
+    process.exit(2);
+  }
+  if (cli.command === 'completion') {
+    const result = runCompletionCommand(cli.commandArgs, 'goodvibes-daemon');
+    for (const line of result.lines) {
+      if (result.exitCode === 0) writeExitingStdoutLine(line);
+      else writeFatalLine(line);
+    }
+    process.exit(result.exitCode);
   }
   const cliFlags = cli.flags;
   if (cliFlags.daemonHome !== undefined) {
@@ -339,21 +399,87 @@ async function main(): Promise<void> {
     applyRuntimeConfigValue(config, 'provider.model', registryKey);
     logger.info('daemon: provider/model flags applied', { provider, model: registryKey });
   }
-  const endpointOverrideErrors = applyRuntimeEndpointFlagOverrides(config, 'controlPlane', cliFlags);
-  if (endpointOverrideErrors.length > 0) {
-    writeFatalLine(endpointOverrideErrors.join('\n'));
-    process.exit(2);
-  }
-  if (cliFlags.port !== undefined) logger.info('daemon: --port flag applied', { port: cliFlags.port });
-  if (cliFlags.hostname !== undefined) {
-    process.env['GOODVIBES_DAEMON_HOST'] = cliFlags.hostname;
-    logger.info('daemon: --hostname flag applied', { hostname: cliFlags.hostname });
+  // `--hostname`/`--port` name the address this process BINDS, and only `serve`
+  // binds anything. On `status`, `sessions`, `pair` and `update` the same
+  // `--port` names the daemon to CALL (see the remote-target convention), so
+  // writing it into this process's control-plane config would be answering a
+  // different question than the one asked. The catalog keeps the two apart by
+  // command; this keeps the write to the one command it belongs to.
+  if (cli.command === 'serve') {
+    const endpointOverrideErrors = applyRuntimeEndpointFlagOverrides(config, 'controlPlane', cliFlags);
+    if (endpointOverrideErrors.length > 0) {
+      writeFatalLine(endpointOverrideErrors.join('\n'));
+      process.exit(2);
+    }
+    if (cliFlags.port !== undefined) logger.info('daemon: --port flag applied', { port: cliFlags.port });
+    if (cliFlags.hostname !== undefined) {
+      process.env['GOODVIBES_DAEMON_HOST'] = cliFlags.hostname;
+      logger.info('daemon: --hostname flag applied', { hostname: cliFlags.hostname });
+    }
   }
 
-  // Service lifecycle: `install-service` / `uninstall-service` / `service-status` manage
-  // the systemd USER unit for the shared daemon. They run BEFORE the daemon boots —
-  // no runtime/services are constructed — and exit with the honest result code.
-  const serviceSubcommand = cli.positionals[0];
+  // The commands that talk to a daemon rather than being one, plus `config`,
+  // which talks to the settings files directly. All of them run BEFORE any
+  // runtime is composed: composing a second runtime graph on a machine that
+  // already has one is a second set of state, and every one of these commands
+  // exists precisely because a daemon is already there.
+  const remoteFlags = {
+    host: cliFlags.host,
+    port: cliFlags.port,
+    token: cliFlags.token,
+    json: cliFlags.json,
+  };
+  const remoteDeps = {
+    configManager: config,
+    daemonHomeDir: daemonHomeDirectory,
+    controlPlaneConfigDir: config.getControlPlaneConfigDir(),
+  };
+  const exitWith = (result: DaemonCommandResult): never => {
+    // Descriptor writes, not stream writes: each of these exits immediately
+    // afterwards, which is exactly the race a buffered console.log loses. See
+    // fatal-boot-report.ts.
+    for (const line of result.lines) {
+      if (result.exitCode === 0) writeExitingStdoutLine(line);
+      else writeFatalLine(line);
+    }
+    process.exit(result.exitCode);
+  };
+
+  if (cli.command === 'status') {
+    exitWith(await runStatusCommand({ ...remoteDeps, flags: remoteFlags }));
+  }
+  if (cli.command === 'update') {
+    exitWith(await runUpdateCommand({ ...remoteDeps, flags: { ...remoteFlags, check: cliFlags.check } }));
+  }
+  if (cli.command === 'sessions') {
+    exitWith(await runSessionsCommand({
+      ...remoteDeps,
+      flags: { ...remoteFlags, all: cliFlags.all },
+      args: cli.commandArgs,
+    }));
+  }
+  if (cli.command === 'pair') {
+    exitWith(runPairCommand({
+      configManager: config,
+      daemonHomeDir: daemonHomeDirectory,
+      version: VERSION,
+      readToken: readOperatorTokenFile,
+      flags: remoteFlags,
+    }));
+  }
+  if (cli.command === 'config') {
+    exitWith(runConfigCommand(cli.commandArgs, {
+      configManager: config,
+      json: cliFlags.json,
+      binary: 'goodvibes-daemon',
+    }));
+  }
+
+  // Service lifecycle: install / uninstall / start / stop / restart / status /
+  // migrate manage this host's service definition for the shared daemon. They
+  // run BEFORE the daemon boots — no runtime/services are constructed — and
+  // exit with the honest result code.
+  const serviceSubcommand = cli.command;
   if (isDaemonServiceSubcommand(serviceSubcommand)) {
     // The host/port baked into the unit's ExecStart (and displayed) come from
     // the SAME hostMode-aware resolution the SDK bind path uses — never from
@@ -380,10 +506,12 @@ async function main(): Promise<void> {
       // migrate-service only: never auto-migrate — requires the same explicit
       // consent as any other non-interactive destructive confirmation.
       confirmMigration: cliFlags.yes,
+      // service-status only.
+      json: cliFlags.json,
     });
-    // install-service / uninstall-service / service-status print the unit path,
-    // the follow-up commands and the honest result, then exit immediately —
-    // exactly the race a stream write loses. Descriptor writes instead.
+    // These print the unit path, the follow-up commands and the honest result,
+    // then exit immediately — exactly the race a stream write loses. Descriptor
+    // writes instead.
     for (const line of result.lines) {
       writeExitingStdoutLine(line);
     }
@@ -708,25 +836,19 @@ async function main(): Promise<void> {
     relayEnabled: config.get('relay.enabled') === true,
     stepUpAvailable: true,
   });
-  const deepLink = buildPairingHandoffLink({ webOrigin: webOrigin.origin, token: companionTokenRecord.token, offers });
-  const qrString = renderQrToString(generateQrMatrix(deepLink));
-  // The banner renders the SAME SDK posture the pairing verb carries: the labeled
-  // capability list, and the one honest LAN line only when the posture holds it.
-  const posture = describeOriginPosture(webOrigin.origin);
-  const capabilities = formatPostureCapabilities(posture);
-  const notice = pairingPostureNotice(posture);
-  const bannerLines = [
-    `GoodVibes daemon ${VERSION} — scan to pair a device (opens the web app signed in):`,
-    '',
-    `  ${webOrigin.origin}`,
-    '',
-    ...(offers.length > 0 ? ['Offers (each declinable in the web app):', ...formatPairingOffers(offers), ''] : []),
-    ...(capabilities.length > 0 ? ['This device will get:', ...capabilities, ''] : []),
-    ...(notice ? [notice, ''] : []),
-    qrString,
-  ];
+  // Rendered by core/pairing-banner.ts, which `goodvibes-daemon pair` also
+  // calls — so the block printed here and the one printed on demand are the
+  // same block, from the same token, and cannot drift.
+  const banner = renderPairingBanner({
+    version: VERSION,
+    origin: webOrigin.origin,
+    token: companionTokenRecord.token,
+    offers,
+  });
   // eslint-disable-next-line no-console
-  console.log(bannerLines.join('\n'));
+  console.log(banner.lines.join('\n'));
+  // eslint-disable-next-line no-console
+  console.log('(print this again at any time: goodvibes-daemon pair)');
 }
 
 void main().catch((error) => {
