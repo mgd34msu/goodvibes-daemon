@@ -38,7 +38,7 @@ import type {
   RewindConversationPort,
   RewindConversationPreview,
 } from '@pellux/goodvibes-sdk/platform/rewind';
-import { resolveTurnAnchor } from '../core/rewind-turn-anchors.ts';
+import { resolveTurnAnchor } from '@pellux/goodvibes-sdk/platform/rewind';
 
 /** Whatever a conversation is serialized as by the process that owns it. */
 type ConversationJson = unknown;

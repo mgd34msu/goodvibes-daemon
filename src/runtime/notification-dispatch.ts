@@ -32,7 +32,7 @@
 
 import { logger } from '@pellux/goodvibes-sdk/platform/utils';
 import type { RuntimeEventBus } from '@/runtime/index.ts';
-import { memoryPressureLine, memoryPressureLevel, type MemoryPressurePayload } from '../core/memory-status.ts';
+import { memoryPressureLine, memoryPressureLevel, type MemoryPressurePayload } from '@pellux/goodvibes-sdk/platform/runtime/memory';
 
 /**
  * Where a channel-shaped notice leaves the daemon.

@@ -25,7 +25,7 @@
  */
 import { describe, expect, test, afterAll } from 'bun:test';
 import { getTestRuntimeServices, disposeTestRuntimeServicesAfterAll } from '../helpers/runtime-services.ts';
-import { recordTurnAnchor, clearTurnAnchors } from '../../core/rewind-turn-anchors.ts';
+import { recordTurnAnchor, clearTurnAnchors } from '@pellux/goodvibes-sdk/platform/rewind';
 import {
   registerSessionConversation,
   unregisterSessionConversation,

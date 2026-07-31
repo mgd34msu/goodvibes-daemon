@@ -19,7 +19,7 @@ import { SessionLiveTurnControlsHolder } from '@pellux/goodvibes-sdk/platform/co
 import { PowerManager, wireRuntimePower, createUnavailablePowerSeam } from '@pellux/goodvibes-sdk/platform/power';
 import { FeatureAnnouncementStore, featureAnnouncementsPath } from '@pellux/goodvibes-sdk/platform/runtime/feature-announcements';
 import type { RuntimeEventBus } from '@pellux/goodvibes-sdk/platform/runtime/state';
-import { formatConsolidationReceipt } from '../core/consolidation-receipt.ts';
+import { formatConsolidationReceipt } from '@pellux/goodvibes-sdk/platform/state';
 
 export interface IdlePowerServicesDeps {
   readonly configManager: ConfigManager;

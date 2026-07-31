@@ -32,7 +32,7 @@ import type { StoreSnapshotScheduler } from '@pellux/goodvibes-sdk/platform/stat
 import type { PermissionManager, UserPermissionRuleStore } from '@pellux/goodvibes-sdk/platform/permissions';
 import type { buildExecPromptAnswerHandler } from '@pellux/goodvibes-sdk/platform/runtime/permissions/exec-prompt-wiring';
 import type { buildLocalhostFetchApproval } from '@pellux/goodvibes-sdk/platform/runtime/permissions/localhost-fetch-approval';
-import type { createDurabilityServices } from './durability-services.ts';
+import type { operations } from '@pellux/goodvibes-sdk/platform/runtime';
 import type { MemorySpineClient } from '@pellux/goodvibes-sdk/platform/runtime/memory-spine';
 import type { WorkspaceCheckpointManager } from '@pellux/goodvibes-sdk/platform/workspace';
 import type { DomainDispatch, RuntimeStore } from '@pellux/goodvibes-sdk/platform/runtime/store';
@@ -53,8 +53,8 @@ import type { McpRegistry } from '@pellux/goodvibes-sdk/platform/mcp';
 import type { BenchmarkStore, CacheHitTracker, FavoritesStore, ModelLimitsService, ProviderCapabilityRegistry, ProviderOptimizer, ProviderRegistry } from '@pellux/goodvibes-sdk/platform/providers';
 import type { AdaptivePlanner, DeterministicReplayEngine, ExecutionPlanManager, SessionLineageTracker, SessionMemoryStore } from '@pellux/goodvibes-sdk/platform/core';
 import type { ArchivableProcessRegistry } from '@pellux/goodvibes-sdk/platform/runtime/fleet';
-import type { OrchestrationEngine, WorkstreamCommandService } from './workstream-services.ts';
-import type { WorkPlanStore } from './work-plan-store.ts';
+import type { OrchestrationEngine, WorkstreamCommandService } from '@pellux/goodvibes-sdk/platform/orchestration';
+import type { WorkPlanStore } from '@pellux/goodvibes-sdk/platform/workflow';
 import type { DaemonHandlerSurfaces } from '../daemon/handlers/index.ts';
 import type { ClusterGroupComposition } from './cluster-group-composition.ts';
 import type { ClusterCoordinator } from '@pellux/goodvibes-sdk/platform/cluster';
@@ -219,7 +219,7 @@ export interface RuntimeServices {
   readonly codeIndexReindexScheduler: CodeIndexReindexScheduler; // tool-site reindex
   /** Daily snapshots of every SQLite store this runtime writes, with bounded retention; unref'd timers (mirrors the SDK composition — hosts that tear down a runtime stop() it themselves). */
   readonly storeSnapshotScheduler: StoreSnapshotScheduler;
-  readonly appendOnlyRetentionScheduler: ReturnType<typeof createDurabilityServices>['appendOnlyRetentionScheduler']; // periodic append-only sweep; unref'd timers, stop() on teardown
+  readonly appendOnlyRetentionScheduler: operations.DurabilityServices['appendOnlyRetentionScheduler']; // periodic append-only sweep; unref'd timers, stop() on teardown
   /** Stops the recurring crash-residue sweep; idempotent, unref'd timer (hosts that tear a runtime down call it). */
   readonly stopDurabilityHousekeeping: () => void;
   /** Stops the wake-word recovery sweep and a pending boot provision; a no-op unless `provisionWakeModelsAtBoot` was set. */

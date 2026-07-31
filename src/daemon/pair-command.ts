@@ -21,8 +21,7 @@
  * than declining to answer.
  */
 import type { ConfigManager } from '@pellux/goodvibes-sdk/platform/config';
-import { availablePairingOffers } from '../core/pairing-handoff.ts';
-import { resolvePairingWebOrigin } from '../core/pairing-origin.ts';
+import { availablePairingOffers, resolvePairingWebOrigin } from '@pellux/goodvibes-sdk/platform/pairing';
 import { renderPairingBanner } from '../core/pairing-banner.ts';
 import { extractOperatorToken } from '../cluster/remote-daemon-target.ts';
 import type { DaemonCommandResult, RemoteCommandFlags } from './status-command.ts';

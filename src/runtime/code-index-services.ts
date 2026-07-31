@@ -40,7 +40,7 @@ import { join } from 'node:path';
 import { CodeIndexStore, CodeIndexReindexScheduler } from '@pellux/goodvibes-sdk/platform/state';
 import type { MemoryEmbeddingProviderRegistry } from '@pellux/goodvibes-sdk/platform/state';
 import type { ConfigKey, ConfigManager } from '@pellux/goodvibes-sdk/platform/config';
-import { readBooleanConfig } from '../core/alert-gating.ts';
+import { operations } from '@pellux/goodvibes-sdk/platform/runtime';
 import { GOODVIBES_DAEMON_SURFACE_ROOT } from '../config/surface.ts';
 
 /**
@@ -128,7 +128,7 @@ export function createStoreRerooter(deps: {
  * config key + default this module decides auto-start from.
  */
 export function isCodeIndexAutoStartEnabled(configManager: Pick<ConfigManager, 'get'>): boolean {
-  return readBooleanConfig(
+  return operations.readBooleanConfig(
     (key) => configManager.get(key as ConfigKey),
     CODE_INDEX_ENABLED_CONFIG_KEY,
     false,

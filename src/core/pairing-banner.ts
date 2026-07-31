@@ -15,11 +15,13 @@
 import {
   buildPairingHandoffLink,
   describeOriginPosture,
+  formatPairingOffers,
+  formatPostureCapabilities,
   generateQrMatrix,
+  pairingPostureNotice,
   renderQrToString,
   type PairingHandoffOfferKind,
 } from '@pellux/goodvibes-sdk/platform/pairing';
-import { formatPairingOffers, formatPostureCapabilities, pairingPostureNotice } from './pairing-offers.ts';
 
 export interface PairingBannerInput {
   /** The daemon version, stated so a scanned link is attributable to a build. */

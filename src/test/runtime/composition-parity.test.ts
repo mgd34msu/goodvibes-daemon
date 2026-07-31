@@ -65,26 +65,26 @@ describe('composition parity — observed foreign-agent detection is daemon-side
   });
 });
 
-describe('composition parity — retention janitor and live config apply run on TUI-composed runtimes', () => {
-  const durability = read('src/runtime/durability-services.ts');
+describe('composition parity — the retention janitor and live config apply are composed here', () => {
+  // createDurabilityServices itself (the sweep roots, the append-only startup
+  // sweep, the config watch) is SDK-owned and covered by the SDK's own suite.
+  // What this repository has to keep true is that its composition root calls
+  // it, and hands it the inputs the sweep derives every root from.
+  const services = read('src/runtime/services.ts');
 
-  test('the startup append-only sweep runs with the FULL roots set', () => {
-    expect(durability).toContain('runStartupAppendOnlySweep');
-    // Every root the SDK passes must be present — omitting any silently skips
-    // that store class on every sweep.
-    for (const root of ['workingDirectory', 'surfaceRoot', 'homeDirectory', 'logDir', 'telemetryDir']) {
-      expect(durability, `sweep root ${root} missing`).toContain(`${root}:`);
+  test('createRuntimeServices composes the durability services', () => {
+    expect(services).toContain('operations.createDurabilityServices({');
+  });
+
+  test('the durability call is fed the shell paths and the session surface the sweep roots derive from', () => {
+    const call = services.slice(services.indexOf('operations.createDurabilityServices({'));
+    for (const input of ['surface,', 'shellPaths,', 'configManager,', 'memoryDbPath,', 'codeIndexDbPath:']) {
+      expect(call.slice(0, 600), `durability input ${input} missing`).toContain(input);
     }
   });
 
-  test('live config-file watching is composed (external edits apply without a restart)', () => {
-    expect(durability).toContain('configManager.watchConfigFiles()');
-  });
-
-  test('services.ts feeds the durability helper the sweep roots', () => {
-    const services = read('src/runtime/services.ts');
-    expect(services).toContain('surfaceRoot:');
-    expect(services).toContain('shellPaths,');
+  test('the running session is exempted from crash-residue reaping', () => {
+    expect(services).toContain('currentSessionId: options.currentSessionId');
   });
 });
 

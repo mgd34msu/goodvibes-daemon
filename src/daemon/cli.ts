@@ -24,12 +24,12 @@ import { configureActivityLogger, flushActivityLogSync, logger } from '@pellux/g
 import { summarizeError } from '@pellux/goodvibes-sdk/platform/utils';
 import { reportFatalBootFailure, writeExitingStdoutLine, writeFatalLine } from '@pellux/goodvibes-sdk/platform/daemon';
 import {
+  availablePairingOffers,
+  ensurePublicBaseUrl,
   getOrCreateCompanionToken,
   pruneStaleOperatorTokens,
 } from '@pellux/goodvibes-sdk/platform/pairing';
-import { ensurePublicBaseUrl } from '../core/pairing-origin.ts';
-import { availablePairingOffers } from '../core/pairing-handoff.ts';
-import { workspaceOperatorTokenCandidates } from '../runtime/operator-token-cleanup.ts';
+import { operations } from '@pellux/goodvibes-sdk/platform/runtime';
 import {
   scan,
   loadPersistedProviders,
@@ -696,7 +696,7 @@ async function main(): Promise<void> {
   // token files so only the canonical <daemonHomeDir>/operator-tokens.json survives.
   const prune = pruneStaleOperatorTokens({
     daemonHomeDir,
-    candidatePaths: workspaceOperatorTokenCandidates(workingDir),
+    candidatePaths: operations.workspaceOperatorTokenCandidates(workingDir, GOODVIBES_DAEMON_SURFACE_ROOT),
   });
   if (prune.prunedPaths.length > 0) {
     logger.info('daemon: pruned stale operator-token files', { count: prune.prunedPaths.length, paths: prune.prunedPaths });

@@ -6,7 +6,7 @@ import { ApprovalBroker, GatewayMethodCatalog, SharedSessionBroker, buildSharedS
 import { AcpHostService } from '@pellux/goodvibes-sdk/platform/acp';
 import { continuationChainOptions } from '@pellux/goodvibes-sdk/platform/agents';
 import { wireIdlePowerAndLiveTurn } from './idle-power-services.ts';
-import { resolvePairingWebOrigin } from '../core/pairing-origin.ts';
+import { resolvePairingWebOrigin } from '@pellux/goodvibes-sdk/platform/pairing';
 import { attachWsOnlyGatewayVerbHandlers } from '@pellux/goodvibes-terminal-shell';
 import { composeMailDeps } from './mail-composition.ts';
 import { composeCredentialServices } from './credential-composition.ts';
@@ -24,7 +24,7 @@ import { buildExecPromptAnswerHandler } from '@pellux/goodvibes-sdk/platform/run
 import { buildLocalhostFetchApproval } from '@pellux/goodvibes-sdk/platform/runtime/permissions/localhost-fetch-approval';
 import { createBrokeredPermissionManager } from '@pellux/goodvibes-sdk/platform/runtime/client-services';
 import { wireMemoryPressureChannelNotice } from './notification-dispatch.ts';
-import { createDurabilityServices } from './durability-services.ts';
+import { operations } from '@pellux/goodvibes-sdk/platform/runtime';
 import { MemorySpineClient, createLocalMemoryAccess } from '@pellux/goodvibes-sdk/platform/runtime/memory-spine';
 import { createWorkspaceCheckpointing } from './workspace-checkpointing.ts';
 import { createSessionConversationRewindPort } from './conversation-rewind-port.ts';
@@ -52,7 +52,7 @@ import { createChannelComposition } from './channel-composition.ts';
 import { applyProviderOptimizerConfigMode, bindProviderOptimizerFeatureFlag } from './provider-optimizer-wiring.ts';
 import { createFleetServices } from './fleet-services.ts';
 import { createTriggerServices } from './trigger-services.ts';
-import { createWorkstreamServices } from './workstream-services.ts';
+import { createWorkstreamServices } from '@pellux/goodvibes-sdk/platform/orchestration';
 import { wireFleetNeedsInputPush } from './fleet-needs-input-push.ts';
 import { codeIndexDbPath, createCodeIndexServices, createStoreRerooter, isCodeInjectionSettingEnabled } from './code-index-services.ts';
 import { createDaemonHandlerComposition } from './daemon-handler-composition.ts';
@@ -431,7 +431,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   // above. Auto-build is config-gated (default off) — see code-index-services.ts.
   const { codeIndexStore, codeIndexReindexScheduler } = createCodeIndexServices({ workingDirectory, configManager, memoryEmbeddingRegistry, isReindexPaused: () => pauseController.isPaused('code-index-reindex'), admitExpensiveWork });
   // Store snapshots, the periodic append-only sweep, durable remembered-approval rules + the live credential chain — see durability-services.ts.
-  const { storeSnapshotScheduler, appendOnlyRetentionScheduler, userPermissionRuleStore, stopDurabilityHousekeeping, stopConfigWatch } = createDurabilityServices({
+  const { storeSnapshotScheduler, appendOnlyRetentionScheduler, userPermissionRuleStore, stopDurabilityHousekeeping, stopConfigWatch } = operations.createDurabilityServices({
     configManager, secretsManager, providerRegistry, memoryDbPath, codeIndexDbPath: codeIndexDbPath(workingDirectory), surface, shellPaths, // + retention-sweep roots & live config watch (mirrors the SDK)
     ...(options.currentSessionId ? { currentSessionId: options.currentSessionId } : {}), // exempts the running session from crash-residue reaping
   });
