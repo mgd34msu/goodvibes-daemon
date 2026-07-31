@@ -1,6 +1,6 @@
 /**
- * TUI wiring — `goodvibes-daemon install-service | uninstall-service
- * | service-status`.
+ * Service-lifecycle subcommands — `goodvibes-daemon install-service |
+ * uninstall-service | service-status`.
  *
  * The daemon is a SYSTEM SERVICE. These subcommands install it as a durable host
  * service (systemd user unit on Linux, launchd agent on macOS, a Scheduled Task
@@ -114,9 +114,27 @@ export function isDaemonServiceSubcommand(value: string | undefined): value is D
 export interface DaemonServiceCliInput {
   readonly subcommand: DaemonServiceSubcommand;
   readonly binaryPath: string;
+  /** The GoodVibes tree home (GOODVIBES_HOME-overridable) — config/state root only, never unit-path resolution. See `unitHomeDir`. */
   readonly homeDir: string;
+  /**
+   * The LOGIN user's home — where the systemd/launchd/Windows unit actually
+   * lives, regardless of any GOODVIBES_HOME/GOODVIBES_DAEMON_HOME override.
+   * Required (no default to `homeDir`) so a unit-management subcommand can
+   * never silently search for its unit under a relocated tree home instead of
+   * where the service manager actually looks (D12).
+   */
+  readonly unitHomeDir: string;
   readonly host: string;
   readonly port: number;
+  /**
+   * D4: whether the invoking CLI line carried an explicit `--hostname`/`--port`
+   * flag (not merely whether `host`/`port` above are set — those are always
+   * set, resolved from config either way). `install-service`/`migrate-service`
+   * refuse when either is true — see `validateServiceEndpointFlags`. Defaults
+   * to false (no flag), matching every subcommand these two don't apply to.
+   */
+  readonly hostnameFlagProvided?: boolean | undefined;
+  readonly portFlagProvided?: boolean | undefined;
   /** Defaults to `homeDir` — overridable so tests can scope both to one tempdir. */
   readonly workingDirectory?: string | undefined;
   /** Injected in tests; a real `ConfigManager` rooted at `homeDir` otherwise. */
@@ -162,6 +180,7 @@ function buildManager(input: DaemonServiceCliInput): PlatformServiceManager {
   return buildManagedDaemonServiceManager({
     binaryPath: input.binaryPath,
     homeDir: input.homeDir,
+    unitHomeDir: input.unitHomeDir,
     host: input.host,
     port: input.port,
     workingDirectory: input.workingDirectory,
@@ -242,6 +261,38 @@ function failed(action: 'install' | 'uninstall' | 'status', status: ManagedServi
 }
 
 /**
+ * D4: `install-service` and `migrate-service` refuse an explicit
+ * `--hostname`/`--port` flag rather than silently accepting it. Both flags are
+ * RUNTIME-ONLY overrides applied to this one invocation's in-memory config
+ * (`applyRuntimeEndpointFlagOverrides` in `src/daemon/cli.ts`) — but the unit
+ * this subcommand writes carries no endpoint flags at all (see
+ * `buildManagedDaemonServiceManager`'s ExecStart doc): the daemon always
+ * re-resolves `controlPlane.host`/`port`/`hostMode` from PERSISTED settings at
+ * boot. A flag accepted here would print/probe a binding the installed unit
+ * will never actually have — an honest gap, not a cosmetic one, since the
+ * printed value is exactly what an operator would expect the running service
+ * to bind to. Refusing with a pointer to the persistent config path is
+ * strictly better than silently doing nothing with the flag.
+ */
+export function validateServiceEndpointFlags(
+  subcommand: DaemonServiceSubcommand,
+  flags: { readonly hostnameProvided: boolean; readonly portProvided: boolean },
+): readonly string[] {
+  if (subcommand !== 'install-service' && subcommand !== 'migrate-service') return [];
+  if (!flags.hostnameProvided && !flags.portProvided) return [];
+  const flagNames = [flags.hostnameProvided ? '--hostname' : null, flags.portProvided ? '--port' : null]
+    .filter((name): name is string => name !== null)
+    .join('/');
+  return [
+    `${subcommand} refused: ${flagNames} only override this process's runtime config — the installed unit carries ` +
+      'no endpoint flags and re-resolves controlPlane.host/port/hostMode from persisted settings at boot, so the ' +
+      'override would never take effect there.',
+    `Set the persistent binding instead: goodvibes-daemon config set controlPlane.host / controlPlane.port (or ` +
+      `controlPlane.hostMode), then re-run ${subcommand} without ${flagNames}.`,
+  ];
+}
+
+/**
  * `migrate-service`: the guided, consented takeover of the legacy
  * `goodvibes-daemon.service` unit. Thin wrapper over
  * `runLegacyDaemonMigration` (`../runtime/legacy-daemon-migration.ts`) — see
@@ -272,6 +323,13 @@ function runMigrateService(
 /** Dispatch a daemon service subcommand to the SDK's `PlatformServiceManager`. */
 export async function runDaemonServiceCli(input: DaemonServiceCliInput): Promise<DaemonServiceCliResult> {
   const manager = buildManager(input);
+  const flagErrors = validateServiceEndpointFlags(input.subcommand, {
+    hostnameProvided: input.hostnameFlagProvided ?? false,
+    portProvided: input.portFlagProvided ?? false,
+  });
+  if (flagErrors.length > 0) {
+    return { ok: false, exitCode: 1, lines: [...flagErrors], status: manager.status() };
+  }
   const legacy = detectLegacyUnit(input);
   switch (input.subcommand) {
     case 'migrate-service':
@@ -290,7 +348,7 @@ export async function runDaemonServiceCli(input: DaemonServiceCliInput): Promise
           ok: false,
           exitCode: 1,
           lines: [
-            `service install refused: a service is already installed as ${LEGACY_SERVICE_UNIT_NAME}.service (the unit name the goodvibes install script manages).`,
+            `service install refused: a service is already installed as ${LEGACY_SERVICE_UNIT_NAME}.service (the unit name an older install script/release used).`,
             legacyUnitNote(legacy, resolvedName),
             `Installing this tool's ${resolvedName}.service alongside it risks two daemons competing for the same port.`,
           ],

@@ -6,11 +6,14 @@
  *
  * NAMING, load-bearing: this module's identifiers say "legacy" because the
  * engine migrates AWAY from the `goodvibes-daemon.service` unit name toward
- * the runtime-managed unit — but that same name is what scripts/install.sh
- * actively creates for curl-installed hosts TODAY. It is a parallel,
- * first-class install path, not an obsolete one. User-facing copy therefore
- * describes it as "the install-script unit" and never labels it legacy or
- * implies it should be removed unless the user is explicitly migrating.
+ * the runtime-managed unit — that name was used by an older install script/
+ * release (scripts/install.sh now creates `goodvibes.service` and treats
+ * `goodvibes-daemon.service` as the retired name it migrates existing hosts
+ * away from; see migrate_legacy_installer_unit there). An already-installed
+ * `goodvibes-daemon.service` unit is still real and may still be running,
+ * though, so user-facing copy describes it as "the install-script unit" and
+ * never labels it legacy or implies it should be removed unless the user is
+ * explicitly migrating.
  *
  * This lives under `src/runtime/` — not `src/daemon/` — specifically so the
  * `input` layer can consume it directly: the architecture gate's
@@ -94,7 +97,26 @@ export function resolveConfiguredServiceName(config: { get(key: string): unknown
 
 export interface BuildManagedDaemonServiceManagerParams {
   readonly binaryPath: string;
+  /**
+   * The GoodVibes tree home — GOODVIBES_HOME-overridable, used to root the
+   * ConfigManager and the daemon's own `--daemon-home` state directory. NEVER
+   * used for unit-file path resolution: see `unitHomeDir` for that. A unit
+   * path search rooted here would look for `~/.config/systemd/user/` under
+   * whatever GOODVIBES_HOME points at instead of the real login home systemd
+   * actually reads (D12) — the same class of bug the boot-time reconcile in
+   * `src/daemon/cli.ts` already guards against with the identical split.
+   */
   readonly homeDir: string;
+  /**
+   * The LOGIN user's home — where `~/.config/systemd/user/` (or the launchd/
+   * Windows equivalent) actually lives, regardless of any GOODVIBES_HOME/
+   * GOODVIBES_DAEMON_HOME override in effect. Threaded through to
+   * `PlatformServiceManager`'s own `homeDirectory` option, which resolves the
+   * unit file PATH directly from it. Required (no default to `homeDir`) so a
+   * caller cannot silently reintroduce the GOODVIBES_HOME-rooted bug by
+   * omission.
+   */
+  readonly unitHomeDir: string;
   readonly host: string;
   readonly port: number;
   /** Defaults to `homeDir` — overridable so tests can scope both to one tempdir. */
@@ -153,7 +175,9 @@ export function buildManagedDaemonServiceManager(params: BuildManagedDaemonServi
   };
   return new PlatformServiceManager(configManager, {
     workingDirectory,
-    homeDirectory: params.homeDir,
+    // Unit paths resolve from the LOGIN home, never the (possibly
+    // GOODVIBES_HOME-relocated) tree home above — see `unitHomeDir`'s doc.
+    homeDirectory: params.unitHomeDir,
     definitionOverride: definition,
     defaultServiceName: MANAGED_SERVICE_NAME,
     defaultServiceDescription: MANAGED_SERVICE_DESCRIPTION,
@@ -224,7 +248,14 @@ export function legacyUnitPath(homeDir: string): string {
 }
 
 export interface DetectLegacyUnitInput {
-  readonly homeDir: string;
+  /**
+   * The LOGIN user's home — where the legacy unit file would actually live
+   * (`~/.config/systemd/user/goodvibes-daemon.service`), never the
+   * GOODVIBES_HOME-overridable tree home. See
+   * `BuildManagedDaemonServiceManagerParams.unitHomeDir` for the identical
+   * split and why it matters (D12).
+   */
+  readonly unitHomeDir: string;
   /** Injectable existsSync so tests never touch the host filesystem. */
   readonly legacyUnitFileExists?: ((path: string) => boolean) | undefined;
   /** Injectable systemctl/launchctl/schtasks runner so tests never touch the host. */
@@ -238,7 +269,7 @@ export interface DetectLegacyUnitInput {
  * `systemctl --user is-active` query through the injected actionRunner.
  */
 export function detectLegacyUnit(input: DetectLegacyUnitInput): LegacyUnitInfo {
-  const path = legacyUnitPath(input.homeDir);
+  const path = legacyUnitPath(input.unitHomeDir);
   const fileExists = input.legacyUnitFileExists ?? existsSync;
   if (!fileExists(path)) return { present: false, active: false, path };
   const run: ManagedServiceActionRunner = input.actionRunner ?? defaultActionRunner(SYSTEMCTL_TIMEOUT_MS);
@@ -286,7 +317,7 @@ export function legacyUnitNote(legacy: LegacyUnitInfo, trackedServiceName: strin
   const stateWord = legacy.active ? 'installed and RUNNING' : 'installed (not currently active)';
   return (
     `note: a separate service named ${LEGACY_SERVICE_UNIT_NAME}.service is ${stateWord} at ${legacy.path} — ` +
-    `that unit name is managed by the goodvibes install script (older installs used it too), while this tool manages ` +
+    `that unit name was used by an older install script/release, while this tool manages ` +
     `${trackedServiceName}.service and will not touch the other unit automatically. Keep whichever one you use; running ` +
     `both would start two daemons competing for the same port. To retire the install-script unit in favor of this ` +
     `tool's: systemctl --user disable --now ${LEGACY_SERVICE_UNIT_NAME}.service && rm ${legacy.path} && systemctl --user daemon-reload`
@@ -418,8 +449,9 @@ export async function runLegacyDaemonMigration(
           "That looks like a process this tool doesn't manage (for example, a manually-started `nohup` daemon) rather " +
             'than a systemd unit — there is nothing here to stop or disable, and this tool will not attempt to kill an ' +
             'unrecognized process.',
-          'Stop that process yourself (or point this TUI at it instead — see the onboarding "connect to an existing ' +
-            'daemon" option), then re-run migrate-service or install-service once the port is free.',
+          'Stop that process yourself, then re-run migrate-service or install-service once the port is free — or, if ' +
+            "it's already the daemon you want running, leave it alone: a client surface can still reach it at this " +
+            "host:port directly, with no service unit required for this tool to manage.",
         ],
         status: currentStatus,
       };
