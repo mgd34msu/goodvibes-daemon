@@ -1,7 +1,7 @@
 {
   "name": "goodvibes-daemon",
   "version": "1.28.0",
-  "description": "The GoodVibes daemon — the one long-running host for the control plane, channels, cluster membership, scheduled work, knowledge and memory stores, and the verb families every GoodVibes client calls.",
+  "description": "The GoodVibes daemon \u2014 the one long-running host for the control plane, channels, cluster membership, scheduled work, knowledge and memory stores, and the verb families every GoodVibes client calls.",
   "type": "module",
   "main": "src/daemon/cli.ts",
   "bin": {
@@ -60,15 +60,30 @@
     "bun": ">=1.3.10"
   },
   "dependencies": {
+    "@agentclientprotocol/sdk": "^0.21.0",
     "@anthropic-ai/bedrock-sdk": "^0.28.1",
     "@anthropic-ai/sdk": "^0.82.0",
-    "@anthropic-ai/vertex-sdk": "^0.16.0",
-    "@aws/bedrock-token-generator": "^1.1.0",
+    "@ast-grep/napi": "^0.42.0",
     "@pellux/goodvibes-sdk": "1.21.0",
     "@pellux/goodvibes-terminal-shell": "1.21.0",
+    "bash-language-server": "^5.6.0",
+    "fuse.js": "^7.1.0",
+    "graphql": "^16.13.2",
+    "jszip": "^3.10.1",
+    "node-edge-tts": "^1.2.10",
     "openai": "^6.29.0",
+    "pyright": "^1.1.408",
     "simple-git": "^3.33.0",
-    "sqlite-vec": "^0.1.9"
+    "sql.js": "^1.14.1",
+    "sqlite-vec": "^0.1.9",
+    "tree-sitter-css": "^0.25.0",
+    "tree-sitter-javascript": "^0.25.0",
+    "tree-sitter-json": "^0.24.8",
+    "tree-sitter-python": "^0.25.0",
+    "tree-sitter-typescript": "^0.23.2",
+    "typescript-language-server": "^5.1.3",
+    "vscode-langservers-extracted": "^4.10.0",
+    "web-tree-sitter": "^0.26.7"
   },
   "devDependencies": {
     "@pellux/goodvibes-toolchain": "1.21.0",
