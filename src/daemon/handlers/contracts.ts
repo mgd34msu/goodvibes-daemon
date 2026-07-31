@@ -25,53 +25,19 @@ export type {
 } from '@pellux/goodvibes-sdk/platform/channels';
 
 /**
- * Per-peer authentication envelope passed to peer-scoped remote routes.
- *
- * The daemon-sdk ships `RemotePeerAuth` only as an UNEXPORTED local alias
- * inside `@pellux/goodvibes-daemon-sdk/remote-routes` (it is `unknown` there),
- * so it cannot be re-exported. We mirror that exact shape here for the host
- * implementation. This is an implementable runtime contract, not a method
- * descriptor or schema — declaring it does not violate the no-re-declaration
- * rule for catalog methods.
- */
-export type RemotePeerAuth = unknown;
-
-/**
- * Remote distributed-runtime route service the HOST must implement and supply
- * as `RuntimeServices.distributedRuntime`. The SDK facade injects the instance
- * into `DaemonRemoteRouteContext.distributedRuntime` so the published
+ * The two remote-route contracts a host has to name: the per-peer auth
+ * envelope, and the distributed-runtime service the SDK facade injects into
+ * `DaemonRemoteRouteContext.distributedRuntime` so the published
  * `remote.peers.*` HTTP routes can dispatch to it.
  *
- * The daemon-sdk declares this interface locally in
- * `@pellux/goodvibes-daemon-sdk/remote-routes` but does NOT export it (the
- * module ends with `export {}`), so it cannot be imported. This declaration
- * mirrors the SDK's exact structural shape (17 methods, verbatim signatures)
- * so a host implementation is assignable to the SDK's context field. The SDK
- * ships no docker/ssh/cloud backend — the host owns the implementation.
+ * Both were declared here, by hand, as a verbatim structural mirror of the
+ * daemon-sdk's own declarations — seventeen methods copied signature for
+ * signature — for one reason: neither carried the `export` keyword upstream,
+ * so neither could be imported. Both do now, and a mirror that can drift out of
+ * agreement with the interface it must satisfy is worse than no mirror at all.
+ *
+ * They are re-exported under the same names so every implementer in this
+ * product keeps naming them the way it already does. The SDK ships no
+ * docker/ssh/cloud backend — the host still owns the implementation.
  */
-export interface DistributedRuntimeRouteService {
-  listPairRequests(): unknown;
-  approvePairRequest(requestId: string, input: Record<string, unknown>): Promise<unknown | null>;
-  rejectPairRequest(requestId: string, input: Record<string, unknown>): Promise<unknown | null>;
-  listPeers(): unknown;
-  rotatePeerToken(peerId: string, input: Record<string, unknown>): Promise<unknown | null>;
-  revokePeerToken(peerId: string, input: Record<string, unknown>): Promise<unknown | null>;
-  disconnectPeer(peerId: string, input: Record<string, unknown>): Promise<unknown | null>;
-  listWork(): unknown;
-  invokePeer(input: Record<string, unknown>): Promise<unknown>;
-  cancelWork(workId: string, input: Record<string, unknown>): Promise<unknown | null>;
-  getNodeHostContract(): unknown;
-  requestPairing(input: Record<string, unknown>): Promise<unknown>;
-  verifyPairRequest(
-    requestId: string,
-    challenge: string,
-    input: Record<string, unknown>,
-  ): Promise<unknown | null>;
-  heartbeatPeer(auth: RemotePeerAuth, input: Record<string, unknown>): Promise<unknown>;
-  claimWork(auth: RemotePeerAuth, input: Record<string, unknown>): Promise<unknown>;
-  completeWork(
-    auth: RemotePeerAuth,
-    workId: string,
-    input: Record<string, unknown>,
-  ): Promise<unknown | null>;
-}
+export type { DistributedRuntimeRouteService, RemotePeerAuth } from '@pellux/goodvibes-daemon-sdk/remote-routes';
