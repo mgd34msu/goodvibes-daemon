@@ -118,9 +118,15 @@ goodvibes-daemon webui status         # is the browser surface served, from wher
 goodvibes-daemon provision-wake-model
 ```
 
-State lives under `~/.goodvibes` (`GOODVIBES_HOME` relocates the tree; `GOODVIBES_DAEMON_HOME`
-relocates only the daemon's own identity directory — its operator tokens, its users, its daemon
-settings).
+## Documentation
+
+- [Getting Started](docs/getting-started.md) — install, first boot, pairing, where state lives, health checks
+- [Command Reference](docs/commands-reference.md) — every command, its flags, and its exit codes
+- [Configuration](docs/configuration.md) — the settings this daemon reads, by key
+- [Service and Deployment](docs/service-and-deployment.md) — the host service, migration from an older install, `--daemon-home` vs the data home
+- [Updates and Rollback](docs/updates-and-rollback.md) — the hourly self-update loop, automatic crash-loop rollback, `.previous`
+- [Daemon-Hosted Sessions](docs/hosted-sessions.md) — conversations that run inside the daemon and outlive any one client
+- [Troubleshooting](docs/troubleshooting.md) — startup failures, log locations, port conflicts, service-status oddities
 
 ## License
 
