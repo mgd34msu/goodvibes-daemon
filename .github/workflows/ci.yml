@@ -86,7 +86,10 @@ jobs:
           retention-days: 1
 
   # ── boot smoke: proves the COMPILED binary serves HTTP, reports an honest
-  #    banner, and fails loudly on a broken settings file — see scripts/boot-smoke.ts. ─
+  #    banner, and fails loudly on a broken settings file — see scripts/boot-smoke.ts.
+  #    Also runs the hosted-session proof (scripts/hosted-session-proof.ts): the
+  #    same binary actually creating, steering, detaching, and reattaching a
+  #    hosted session end to end. ────────────────────────────────────────────
   boot-smoke:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -105,6 +108,8 @@ jobs:
         run: chmod +x dist/goodvibes-daemon-linux-x64
       - name: Boot smoke
         run: bun run smoke:boot
+      - name: Hosted-session smoke
+        run: bun run smoke:hosted
 
   # ---------------------------------------------------------------------------
   # Zero-touch release. Runs only after EVERY gating job above is green (its

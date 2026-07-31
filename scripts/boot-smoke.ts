@@ -2,8 +2,8 @@
  * boot-smoke — proves the COMPILED daemon binary boots, serves, and fails loudly.
  *
  * The version smoke (`bun run smoke`) proves the binary starts and prints its
- * banner. This one proves the three things that only a real boot can show, and
- * that a source-level test provably cannot:
+ * banner. This one proves the things that only a real boot can show, and that a
+ * source-level test provably cannot:
  *
  *   1. It serves. An isolated home, a fixed port, and `/status` answering 200
  *      with `status: running`.
@@ -17,6 +17,15 @@
  *      crash-looped 77 times overnight with nothing anywhere saying why. The
  *      identical source run under `bun` printed the reason, which is why this
  *      check has to run the compiled artifact.
+ *   4. Its sqlite-vec addon actually loads and serves semantic search. Recovered
+ *      from the pre-split `scripts/post-build-smoke.ts` (deleted when the TUI
+ *      became a daemon client), whose sole job was proving the native `vec0`
+ *      extension dlopen()s inside a shipped binary rather than just existing on
+ *      disk — the compiled binary's own module resolution (`$bunfs`-aware) is
+ *      exactly what a source-level test cannot exercise. Adapted to this repo's
+ *      current wire surface (`/api/control-plane/methods/<id>/invoke`, the same
+ *      one scripts/hosted-session-proof.ts drives) rather than the routes the
+ *      pre-split test used.
  *
  * Every run is isolated: its own home, its own daemon home, its own working
  * directory, its own token and a high fixed port. It never touches the machine's
@@ -29,9 +38,9 @@
  */
 
 import { spawn, spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 
 const root = process.cwd();
 const args = process.argv.slice(2);
@@ -52,10 +61,24 @@ const BINARY = binaryIndex !== -1 && args[binaryIndex + 1] ? args[binaryIndex + 
 
 /** High enough to stay clear of the daemon's own default, so a live daemon on this machine is untouched. */
 const SMOKE_PORT = 47931;
+const VECTOR_SMOKE_PORT = 47933;
 const SMOKE_TOKEN = 'boot-smoke-token-local';
 const STARTUP_TIMEOUT_MS = 45_000;
 const POLL_INTERVAL_MS = 400;
 const FATAL_TIMEOUT_MS = 30_000;
+
+/**
+ * Resolves the sqlite-vec addon path the SAME way `resolveSqliteVecPath()`
+ * (platform/state/sqlite-vec-loader.ts) resolves it inside a compiled
+ * binary: relative to the binary's OWN directory, never a hardcoded `dist/`
+ * — `--binary` can point at a vendored npm install (`vendor/`) just as well
+ * as a fresh build (`dist/`), and the addon must be found either way.
+ */
+function resolveAddonPath(binaryPath: string): string {
+  const platformTag = process.platform === 'darwin' ? 'darwin' : 'linux';
+  const suffix = process.platform === 'darwin' ? 'dylib' : 'so';
+  return join(dirname(binaryPath), 'lib', `sqlite-vec-${platformTag}-${process.arch}`, `vec0.${suffix}`);
+}
 
 const failures: string[] = [];
 
@@ -187,6 +210,94 @@ function checkFailsLoudly(): void {
   }
 }
 
+// ---------------------------------------------------------------------------
+// 4: the sqlite-vec addon is present AND actually loads inside the binary
+// ---------------------------------------------------------------------------
+
+async function invokeMethod(port: number, methodId: string, body: Record<string, unknown>): Promise<{ status: number; text: string }> {
+  const response = await fetch(
+    `http://127.0.0.1:${port}/api/control-plane/methods/${encodeURIComponent(methodId)}/invoke`,
+    {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${SMOKE_TOKEN}` },
+      body: JSON.stringify({ body }),
+    },
+  );
+  const text = await response.text();
+  return { status: response.status, text };
+}
+
+/** True when a payload names sqlite-vec alongside an error/failure word — the exact shape a broken native addon reports. */
+function looksLikeSqliteVecError(text: string): boolean {
+  const lower = text.toLowerCase();
+  return lower.includes('sqlite-vec') && (lower.includes('error') || lower.includes('fail'));
+}
+
+async function checkVectorSearch(): Promise<void> {
+  const addonPath = resolveAddonPath(BINARY);
+  if (!existsSync(addonPath)) {
+    fail(`sqlite-vec addon missing: ${addonPath} — regression: the binary build (goodvibes-build-binaries) did not stage it beside the binary`);
+    return;
+  }
+  pass(`sqlite-vec addon is staged at ${addonPath}`);
+
+  const paths = makeIsolatedHome();
+  let stdout = '';
+  let stderr = '';
+  const child = spawn(BINARY, ['--port', String(VECTOR_SMOKE_PORT), '--hostname', '127.0.0.1'], {
+    env: isolatedEnv(paths),
+    cwd: paths.workingDir,
+  });
+  child.stdout.on('data', (chunk: Buffer) => { stdout += chunk.toString(); });
+  child.stderr.on('data', (chunk: Buffer) => { stderr += chunk.toString(); });
+
+  try {
+    const status = await waitForStatus(VECTOR_SMOKE_PORT, STARTUP_TIMEOUT_MS);
+    if (!status) {
+      fail(`the daemon did not answer /status within ${STARTUP_TIMEOUT_MS}ms for the vector-search check\n--- stdout ---\n${stdout}\n--- stderr ---\n${stderr}`);
+      return;
+    }
+
+    const added = await invokeMethod(VECTOR_SMOKE_PORT, 'memory.records.add', {
+      cls: 'fact',
+      scope: 'session',
+      summary: 'boot-smoke: the sqlite-vec addon must serve semantic search in a shipped binary',
+    });
+    if (added.status < 200 || added.status >= 300) {
+      fail(`memory.records.add did not succeed: ${added.status} ${added.text.slice(0, 300)}`);
+      return;
+    }
+    if (looksLikeSqliteVecError(added.text)) {
+      fail(`memory.records.add reported a sqlite-vec error: ${added.text.slice(0, 300)}`);
+      return;
+    }
+
+    const searched = await invokeMethod(VECTOR_SMOKE_PORT, 'memory.records.search-semantic', {
+      query: 'sqlite-vec addon semantic search',
+    });
+    if (searched.status < 200 || searched.status >= 300) {
+      fail(`memory.records.search-semantic did not succeed: ${searched.status} ${searched.text.slice(0, 300)}`);
+      return;
+    }
+    if (looksLikeSqliteVecError(searched.text)) {
+      fail(`memory.records.search-semantic reported a sqlite-vec error: ${searched.text.slice(0, 300)}`);
+      return;
+    }
+    pass('memory.records.add + memory.records.search-semantic round-trip with no sqlite-vec error');
+
+    if (looksLikeSqliteVecError(stderr)) {
+      fail(`sqlite-vec error detected in daemon stderr:\n${stderr}`);
+    } else {
+      pass('no sqlite-vec errors in daemon stderr');
+    }
+  } finally {
+    child.kill('SIGTERM');
+    await new Promise((resolve) => setTimeout(resolve, 1_500));
+    if (child.exitCode === null) child.kill('SIGKILL');
+    rmSync(paths.home, { recursive: true, force: true });
+  }
+}
+
 const bootProbe = spawnSync(BINARY, ['--version'], { encoding: 'utf-8' });
 if (bootProbe.error) {
   console.error(`[boot-smoke] FAIL cannot run ${BINARY}: ${bootProbe.error.message}`);
@@ -196,6 +307,7 @@ if (bootProbe.error) {
 
 await checkServes();
 checkFailsLoudly();
+await checkVectorSearch();
 
 if (failures.length > 0) {
   console.error(`[boot-smoke] ${failures.length} check(s) failed`);
