@@ -2633,13 +2633,22 @@ run_uninstall() {
 
   uninstall_services_and_processes
 
-  # Binaries the installer places.
+  # Binaries the installer places, plus the updater's parked rollback copy
+  # beside each one (<path>.previous — see self-update.ts's swapFileAtomically/
+  # PREVIOUS_FILE_SUFFIX contract). Leaving these behind was the same class of
+  # miss the playwright-core.previous handling below already covers.
   for name in goodvibes goodvibes-daemon goodvibes-agent; do
     bin_path="$INSTALL_DIR/$name"
     if [ -e "$bin_path" ]; then
       rm -f "$bin_path"
       say "  removed    $bin_path"
       record_removed "$bin_path"
+    fi
+    previous_path="$INSTALL_DIR/$name.previous"
+    if [ -e "$previous_path" ]; then
+      rm -f "$previous_path"
+      say "  removed    $previous_path"
+      record_removed "$previous_path"
     fi
   done
 
