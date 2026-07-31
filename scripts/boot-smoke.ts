@@ -233,6 +233,29 @@ function looksLikeSqliteVecError(text: string): boolean {
   return lower.includes('sqlite-vec') && (lower.includes('error') || lower.includes('fail'));
 }
 
+/**
+ * `/status` answering 200 does not mean the MemoryStore's own async init()
+ * has finished — a call landing in that window gets a transient
+ * "MemoryStore: not initialized" 400, not a real defect. Retries ONLY that
+ * exact transient shape for a bounded window; any other failure (including a
+ * real sqlite-vec error) returns immediately on the first attempt so a genuine
+ * defect is never masked by a retry loop.
+ */
+async function invokeMethodTolerantOfStoreInit(
+  port: number,
+  methodId: string,
+  body: Record<string, unknown>,
+  deadlineMs = 10_000,
+): Promise<{ status: number; text: string }> {
+  const deadline = Date.now() + deadlineMs;
+  for (;;) {
+    const result = await invokeMethod(port, methodId, body);
+    const transientNotInitialized = result.status === 400 && result.text.includes('not initialized');
+    if (!transientNotInitialized || Date.now() >= deadline) return result;
+    await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
+  }
+}
+
 async function checkVectorSearch(): Promise<void> {
   const addonPath = resolveAddonPath(BINARY);
   if (!existsSync(addonPath)) {
@@ -258,7 +281,7 @@ async function checkVectorSearch(): Promise<void> {
       return;
     }
 
-    const added = await invokeMethod(VECTOR_SMOKE_PORT, 'memory.records.add', {
+    const added = await invokeMethodTolerantOfStoreInit(VECTOR_SMOKE_PORT, 'memory.records.add', {
       cls: 'fact',
       scope: 'session',
       summary: 'boot-smoke: the sqlite-vec addon must serve semantic search in a shipped binary',
