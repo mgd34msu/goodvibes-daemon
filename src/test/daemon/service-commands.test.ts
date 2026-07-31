@@ -59,7 +59,7 @@ describe('isDaemonServiceSubcommand', () => {
 });
 
 /**
- * D4: install-service/migrate-service refuse an explicit --hostname/--port
+ * install-service/migrate-service refuse an explicit --hostname/--port
  * rather than printing/probing a binding the installed unit will never
  * actually have (the unit re-resolves controlPlane.* from persisted settings
  * at boot — see buildManagedDaemonServiceManager's ExecStart doc).
@@ -375,7 +375,7 @@ describe('runDaemonServiceCli (systemd path, real PlatformServiceManager, stubbe
 });
 
 /**
- * D12: unit-file paths must resolve from the LOGIN home (`unitHomeDir`)
+ * Unit-file paths must resolve from the LOGIN home (`unitHomeDir`)
  * everywhere on the service-subcommand path, never from the
  * GOODVIBES_HOME-overridable tree home (`homeDir`) — the exact split the
  * boot-time reconcile in `src/daemon/cli.ts` already gets right (`homeDir:
@@ -388,7 +388,7 @@ describe('runDaemonServiceCli (systemd path, real PlatformServiceManager, stubbe
  * `~/.config/systemd/user/` systemd actually reads — a unit that looks
  * installed to this tool and invisible to the real service manager.
  */
-describe('runDaemonServiceCli — D12: unit paths use the login home, never the tree home', () => {
+describe('runDaemonServiceCli — unit paths use the login home, never the tree home', () => {
   let treeHome = '';
   let loginHome = '';
 

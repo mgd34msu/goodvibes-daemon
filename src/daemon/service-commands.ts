@@ -147,7 +147,7 @@ export interface DaemonServiceCliInput {
   readonly host: string;
   readonly port: number;
   /**
-   * D4: whether the invoking CLI line carried an explicit `--hostname`/`--port`
+   * Whether the invoking CLI line carried an explicit `--hostname`/`--port`
    * flag (not merely whether `host`/`port` above are set — those are always
    * set, resolved from config either way). `install-service`/`migrate-service`
    * refuse when either is true — see `validateServiceEndpointFlags`. Defaults
@@ -385,7 +385,7 @@ function failed(action: 'install' | 'uninstall' | 'status', status: ManagedServi
 }
 
 /**
- * D4: `install-service` and `migrate-service` refuse an explicit
+ * `install-service` and `migrate-service` refuse an explicit
  * `--hostname`/`--port` flag rather than silently accepting it. Both flags are
  * RUNTIME-ONLY overrides applied to this one invocation's in-memory config
  * (`applyRuntimeEndpointFlagOverrides` in `src/daemon/cli.ts`) — but the unit
