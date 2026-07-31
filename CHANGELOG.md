@@ -4,7 +4,7 @@ All notable changes to the GoodVibes daemon.
 
 ---
 
-## [Unreleased]
+## [1.28.0] - 2026-07-30
 
 ### Changes
 

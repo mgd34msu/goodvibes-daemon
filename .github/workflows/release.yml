@@ -1,0 +1,285 @@
+name: Release
+
+# By-reference release (see goodvibes-cicd-design). The tagged commit's push-CI
+# run is verified per-job green (reusable-release-verify) instead of re-running
+# gates; then the binary matrix, GH release, and the npm publish (GH Release
+# BEFORE the registry) run in order. Single npm package — this repo has no
+# platform-specific sub-packages.
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "dry-run (default; build/smoke preview, no publish) or release (publish the dispatched tag)"
+        required: false
+        type: choice
+        options:
+          - dry-run
+          - release
+        default: dry-run
+      ref:
+        description: "Git ref to dry-run (ignored in release mode, which uses the dispatched tag ref)"
+        required: false
+        default: "main"
+  push:
+    tags:
+      - 'v*'
+
+concurrency:
+  group: daemon-release-${{ (github.event_name == 'workflow_dispatch' && github.event.inputs.mode == 'release' && github.ref_name) || github.event.inputs.ref || github.ref_name || github.run_id }}
+  # Never cancel an in-progress release — a half-published release is worse than
+  # a duplicate run (publishes are idempotent).
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  # ── Tag must equal package.json version before anything else runs. ─────────
+  verify-tag-version:
+    if: >-
+      github.event_name == 'push' ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.mode == 'release')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          ref: ${{ github.ref }}
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: "1.3.14"
+      - name: Verify git tag matches package.json version
+        run: bun scripts/verify-release-tag-version.ts
+
+  # ── By-reference validation (push/tag only). Replaces a serialized re-run:
+  #    verify the tagged commit's push-CI run was per-job green. ─────────────
+  release-verify:
+    if: >-
+      github.event_name == 'push' ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.mode == 'release')
+    needs: [verify-tag-version]
+    # Caller permissions must be a superset of what the called workflow's jobs
+    # request, or GitHub rejects the whole workflow at startup (jobs: []).
+    permissions:
+      contents: read
+      actions: read
+      checks: read
+    uses: mgd34msu/goodvibes-sdk/.github/workflows/reusable-release-verify.yml@main
+    with:
+      sha: ${{ github.sha }}
+      workflow: ci.yml
+      event: push
+      toolchain-source: registry
+      bun-version: "1.3.14"
+    secrets:
+      token: ${{ secrets.GITHUB_TOKEN }}
+
+  # ── 4-target binary matrix (necessary builds only). On a tag push it gates on
+  #    release-verify; on a manual dispatch it builds for dry validation. Only
+  #    the linux-x64 leg runs the toolchain's banner smoke — the other three
+  #    targets cannot execute on a linux runner. ─────────────────────────────
+  binaries:
+    needs: [release-verify]
+    # A non-release dispatch (the default dry-run mode) always builds for dry
+    # validation, same as before. A release-mode dispatch behaves like a push:
+    # it must wait on release-verify succeeding before the binary matrix builds.
+    if: >-
+      always() &&
+      (
+        (github.event_name == 'workflow_dispatch' && github.event.inputs.mode != 'release') ||
+        needs.release-verify.result == 'success'
+      )
+    uses: mgd34msu/goodvibes-sdk/.github/workflows/reusable-binary-matrix.yml@main
+    with:
+      # Smoke legs must name their own built artifact (binary is required when
+      # smoke is true — each leg only builds its own suffixed artifact, so the
+      # config's smoke.binaryDefault can never serve the matrix path).
+      targets: >-
+        [{"key":"linux-x64","runner":"ubuntu-latest","smoke":true,"binary":"dist/goodvibes-daemon-linux-x64"},
+         {"key":"linux-arm64","runner":"ubuntu-latest","smoke":false},
+         {"key":"darwin-x64","runner":"ubuntu-latest","smoke":false},
+         {"key":"darwin-arm64","runner":"ubuntu-latest","smoke":false}]
+      artifact-prefix: binaries
+      artifact-glob: |
+        dist/goodvibes-daemon-*
+        dist/lib
+      bun-version: "1.3.14"
+
+  # ── Daemon HTTP smoke on linux-x64 (adapted from the TUI's daemon-smoke job):
+  #    boots the compiled binary, proves it serves /status, reports an honest
+  #    banner, and fails loudly on a broken settings file. ───────────────────
+  daemon-smoke:
+    needs: [binaries]
+    if: ${{ always() && needs.binaries.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          # Release-mode dispatch runs at the tag ref (github.ref, since the
+          # auto-release job dispatches with --ref refs/tags/vX.Y.Z); a
+          # non-release dispatch uses its ref input; a push uses the pushed tag.
+          ref: ${{ (github.event_name == 'workflow_dispatch' && github.event.inputs.mode == 'release' && github.ref) || github.event.inputs.ref || github.ref }}
+      - name: Setup
+        uses: ./.github/actions/setup
+      - name: Download linux-x64 binaries
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: binaries-linux-x64
+          path: dist/
+      - name: Restore executable bit
+        run: chmod +x dist/goodvibes-daemon-linux-x64
+      - name: Daemon boot smoke (linux-x64)
+        run: bun run smoke:boot
+
+  # ── npm-install smoke (push/tag/release-mode dispatch only). ──────────────
+  install-smoke:
+    name: npm install smoke
+    needs: [binaries]
+    if: >-
+      always() && needs.binaries.result == 'success' &&
+      (
+        github.event_name == 'push' ||
+        (github.event_name == 'workflow_dispatch' && github.event.inputs.mode == 'release') ||
+        startsWith(github.event.inputs.ref, 'v') ||
+        startsWith(github.event.inputs.ref, 'refs/tags/v')
+      )
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          ref: ${{ github.ref }}
+      - name: Setup Node
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: "22"
+      - name: Download all artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          path: dist/
+          merge-multiple: true
+      - name: Setup
+        uses: ./.github/actions/setup
+      - name: Pack npm tarball
+        run: npm pack
+      - name: Install tarball in clean temp project
+        run: |
+          # Release-mode dispatch resolves GITHUB_REF_NAME to the dispatched
+          # tag (same as push) — it must NOT fall into the inputs.ref branch,
+          # whose default is "main" and would resolve no version at all.
+          if [ "${GITHUB_EVENT_NAME}" = "push" ] || [ "${{ github.event.inputs.mode }}" = "release" ]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+          else
+            TAG="${{ github.event.inputs.ref }}"
+            TAG="${TAG#refs/tags/}"
+            VERSION="${TAG#v}"
+          fi
+          TMPROOT="${GITHUB_WORKSPACE}/.test-tmp/install-smoke"
+          rm -rf "$TMPROOT"
+          mkdir -p "$TMPROOT/home" "$TMPROOT/project"
+          TMPDIR="$TMPROOT/project"
+          HOME="$TMPROOT/home"
+          cd "$TMPDIR"
+          npm init -y
+          GOODVIBES_ASSET_SOURCE_DIR="${GITHUB_WORKSPACE}/dist" HOME="$HOME" npm install "${GITHUB_WORKSPACE}/goodvibes-daemon-${VERSION}.tgz"
+          test -x node_modules/.bin/goodvibes-daemon
+          test -x node_modules/goodvibes-daemon/vendor/goodvibes-daemon-linux-x64
+          test "$(node_modules/.bin/goodvibes-daemon --version)" = "goodvibes-daemon ${VERSION}"
+
+  # ── Stage flat release assets (push/tag only): merge all target artifacts,
+  #    flatten each platform's sqlite-vec addon to an installer-parseable name,
+  #    and hand the 4 binaries + 4 addons to the reusable GH-release as one
+  #    artifact. A missing addon is fatal. ────────────────────────────────────
+  stage-release-assets:
+    needs: [binaries, install-smoke, daemon-smoke]
+    if: >-
+      github.event_name == 'push' ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.mode == 'release')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Resolve version from the tag
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+      - name: Download all target artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          path: dist/
+          merge-multiple: true
+      - name: Flatten sqlite-vec addons as flat release assets
+        run: |
+          set -eu
+          cd dist
+          stage() {
+            src="lib/$1/vec0.$2"
+            dest="$1.$2"
+            if [ ! -f "$src" ]; then
+              echo "FATAL: expected sqlite-vec addon missing: dist/$src" >&2
+              exit 1
+            fi
+            cp "$src" "$dest"
+            echo "staged $dest"
+          }
+          stage sqlite-vec-linux-x64 so
+          stage sqlite-vec-linux-arm64 so
+          stage sqlite-vec-darwin-x64 dylib
+          stage sqlite-vec-darwin-arm64 dylib
+      - name: Upload staged release assets
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-assets
+          path: |
+            dist/goodvibes-daemon-*
+            dist/sqlite-vec-*
+          if-no-files-found: error
+          retention-days: 1
+
+  # ── GitHub Release (push/tag only): reusable changelog excerpt + SHA256SUMS
+  #    over the 4 binaries + 4 addons + pinned softprops upload. ──────────────
+  gh-release:
+    needs: [stage-release-assets]
+    if: >-
+      github.event_name == 'push' ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.mode == 'release')
+    # The called workflow's job requests contents:write (release creation).
+    permissions:
+      contents: write
+    uses: mgd34msu/goodvibes-sdk/.github/workflows/reusable-gh-release.yml@main
+    with:
+      tag: ${{ github.ref_name }}
+      artifact-name: release-assets
+      assets-glob: |
+        dist/goodvibes-daemon-*
+        dist/sqlite-vec-*
+      bun-version: "1.3.14"
+
+  # ── Publish to npmjs (AFTER the GH release — pinned publish topology). ─────
+  publish-npm:
+    name: Publish to npm
+    needs: [gh-release]
+    if: >-
+      (
+        github.event_name == 'push' ||
+        (github.event_name == 'workflow_dispatch' && github.event.inputs.mode == 'release')
+      ) && vars.PUBLISH_NPM == 'true'
+    # The called workflow's job requests id-token:write (npm provenance).
+    permissions:
+      contents: read
+      id-token: write
+    uses: mgd34msu/goodvibes-sdk/.github/workflows/reusable-npm-publish.yml@main
+    with:
+      package-name: "goodvibes-daemon"
+      environment: production
+      registry: "https://registry.npmjs.org"
+      publish-command: "GOODVIBES_SKIP_NPM_AUTH_CHECK=1 bun run publish:check && bunx @pellux/goodvibes-toolchain goodvibes-publish-package --poll"
+      bun-version: "1.3.14"
+    secrets:
+      npm-token: ${{ secrets.NPM_TOKEN }}
