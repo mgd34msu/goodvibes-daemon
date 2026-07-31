@@ -26,6 +26,7 @@ import { join } from 'node:path';
 import { ConfigManager } from '@pellux/goodvibes-sdk/platform/config';
 import { configureActivityLogger } from '@pellux/goodvibes-sdk/platform/utils';
 import { resolveGoodVibesHomeOwnership } from '../../../config/goodvibes-home.ts';
+import { GOODVIBES_DAEMON_SURFACE_ROOT } from '../../../config/surface.ts';
 import { reportFatalBootFailure } from '@pellux/goodvibes-sdk/platform/daemon';
 
 async function main(): Promise<void> {
@@ -34,7 +35,7 @@ async function main(): Promise<void> {
   configureActivityLogger(join(workingDir, '.goodvibes', 'logs'));
   // The construction that throws on an unreadable daemon tier — the exact call
   // src/daemon/cli.ts makes, with the same surfaceRoot.
-  const config = new ConfigManager({ workingDir, homeDir: homeDirectory, surfaceRoot: 'tui' });
+  const config = new ConfigManager({ workingDir, homeDir: homeDirectory, surfaceRoot: GOODVIBES_DAEMON_SURFACE_ROOT });
   process.stdout.write(`BOOTED controlPlane.port=${String(config.get('controlPlane.port'))}\n`);
   await Promise.resolve();
 }
