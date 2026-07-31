@@ -257,7 +257,7 @@ export function computeBudgetBreach(sessionCost: number, budgetThreshold: number
   return budgetThreshold > 0 && sessionCost > budgetThreshold;
 }
 
-/** Read/write access to the `behavior.budgetAlertUsd` TUI-local config key. Plain
+/** Read/write access to the `behavior.budgetAlertUsd` local config key. Plain
  * callbacks (rather than a ConfigManager reference) so callers can pass a
  * generic-key-cast wrapper without this module depending on the SDK config types. */
 export interface BudgetAlertConfigAccess {

@@ -1,7 +1,7 @@
 // ---------------------------------------------------------------------------
 // workstream-services.ts — phase/work-item orchestration engine
 //
-// Constructs the TUI's OrchestrationEngine instance (@pellux/goodvibes-sdk/
+// Constructs this daemon's OrchestrationEngine instance (@pellux/goodvibes-sdk/
 // platform/orchestration, landed on SDK main as) and a thin
 // command-facing facade around it. Extracted into its own module rather than
 // built inline in services.ts: services.ts sits at the architecture check's
@@ -13,21 +13,21 @@
 // construction call with no auto-start and NO concept of a not-yet-launched
 // "proposal" a human can review/edit before anything is spent — its only
 // creation entry point, createWorkstream(), immediately materializes a real,
-// ticking-eligible Workstream. The /workstream command module
-// (input/commands/workstream-runtime.ts) needs a create -> propose -> approve
-// -> launch flow (Pillar-3 doctrine: render the plan in the transcript before
-// spending anything, mirroring /plan's approve step). REALITY-WINS DIVERGENCE
-// from the design brief: the brief recommended an ENGINE-owned draft; the
-// real engine (verified against the linked SDK build) exposes no pre-creation
-// draft concept at all, so WorkstreamDraft below is TUI-owned state, held on
-// this module's facade instance (constructed once, threaded onto
-// CommandContext) — never a module-level ambient global. Durability is
-// likewise TUI-owned: rather than leaving the brief's restart requirement
-// unmet, the facade journals every draft to disk through
+// ticking-eligible Workstream. The `/workstream` command needs a
+// create -> propose -> approve -> launch flow (Pillar-3 doctrine: render the
+// plan in the transcript before spending anything, mirroring `/plan`'s
+// approve step). REALITY-WINS DIVERGENCE from the design brief: the brief
+// recommended an ENGINE-owned draft; the real engine (verified against the
+// linked SDK build) exposes no pre-creation draft concept at all, so
+// WorkstreamDraft below is state this facade owns itself, held on this
+// module's facade instance (constructed once, threaded onto CommandContext)
+// — never a module-level ambient global. Durability is likewise this
+// facade's own responsibility: rather than leaving the brief's restart
+// requirement unmet, it journals every draft to disk through
 // workstream-draft-store.ts (a drafts/ subdirectory ALONGSIDE the engine's own
 // workstream snapshots) and reloads them at construction, so a create / reshape
 // / approve done before a restart is still here to launch afterward. The engine
-// gains no draft concept; the TUI persists its OWN facade state. A journal
+// gains no draft concept; this facade persists its OWN state. A journal
 // write that fails degrades to in-memory-only for that one draft — never a
 // crash — and the store never resurrects a launched draft (its snapshot is
 // removed the moment the engine takes ownership).
@@ -181,7 +181,7 @@ function createWorkstreamCommandService(
 ): WorkstreamCommandService {
   const drafts = new Map<string, WorkstreamDraft>();
 
-  // TUI-side draft journal (workstream-draft-store.ts). Load every persisted
+  // This facade's draft journal (workstream-draft-store.ts). Load every persisted
   // proposal at construction so a create/reshape/approve done before a restart
   // is still here to launch afterward — the plan-review gate survives restart,
   // exactly as the live-workstream snapshots do via resumeAllFromDisk().
@@ -335,7 +335,7 @@ function createWorkstreamCommandService(
 }
 
 /**
- * Constructs the TUI's OrchestrationEngine instance and its command-facing
+ * Constructs this daemon's OrchestrationEngine instance and its command-facing
  * facade. `persist` and `createWorktree` are left at the engine's own
  * defaults: journal-backed snapshots under .goodvibes/orchestration/ (so
  * resumeAllFromDisk below has something to resume) and a plain

@@ -1,7 +1,7 @@
 /**
  * channel-composition — route bindings, surface registry, and channel plugin
- * registry for the TUI composition root (split out of services.ts for the
- * line cap).
+ * registry for this daemon's composition root (split out of services.ts for
+ * the line cap).
  *
  * RECORDED DIVERGENCE from the SDK composition root: SurfaceRegistry and
  * ChannelPluginRegistry are constructed WITHOUT the gate manager. The SDK's

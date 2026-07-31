@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// voice-setup-services.ts — managed local-voice provisioning composition (TUI wiring)
+// voice-setup-services.ts — managed local-voice provisioning composition
 //
 // Backs the daemon's voice.local.status / voice.local.install verbs. The
 // provisioning policy — a single-flight one-act install that provisions the
@@ -9,10 +9,10 @@
 // new managed paths; genuinely user-set values still win; a user-cleared
 // installer value stays cleared), a no-network status() read, and critical-tier
 // admission gating — lives in the SDK's createVoiceSetupService. Earlier the
-// composer was not exported, so the TUI rebuilt it from the voice primitives;
-// SDK 1.10.1 exports it through ./platform/runtime/voice-setup, so this module
-// is now a thin adapter that maps the TUI's injected seams (configManager,
-// shellPaths, voiceProviders) onto the SDK service's flat deps.
+// composer was not exported, so this module rebuilt it from the voice
+// primitives; SDK 1.10.1 exports it through ./platform/runtime/voice-setup, so
+// this module is now a thin adapter that maps its own injected seams
+// (configManager, shellPaths, voiceProviders) onto the SDK service's flat deps.
 //
 // Extracted into its own module rather than built inline in services.ts, which
 // sits at the architecture check's 800-line cap (scripts/check-architecture.ts)

@@ -17,7 +17,7 @@ import type { FocusTracker } from './focus-tracker.ts';
 /** Minimal config-read surface every gating check needs. */
 export type ConfigGet = (key: string) => unknown;
 
-/** Read a TUI-local synthetic boolean setting, defaulting when absent/invalid. */
+/** Read a local synthetic boolean setting, defaulting when absent/invalid. */
 export function readBooleanConfig(configGet: ConfigGet, key: string, defaultValue: boolean): boolean {
   const raw = configGet(key);
   if (typeof raw === 'boolean') return raw;

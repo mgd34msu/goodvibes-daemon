@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// knowledge-services.ts — the knowledge/wiki + home-graph stack (TUI wiring)
+// knowledge-services.ts — the knowledge/wiki + home-graph stack
 //
 // Constructs the three KnowledgeStores (regular wiki, agent, home-graph), their
 // semantic services, the ingest services, the home-graph service, and the

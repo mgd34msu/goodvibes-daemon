@@ -27,7 +27,7 @@ export interface WorkstreamDraftProvenance {
   readonly fallbackReason?: string | undefined;
 }
 
-/** A not-yet-launched /workstream proposal. TUI-owned (the engine has no draft concept) and journaled to disk via workstream-draft-store.ts so it survives a restart. See workstream-services.ts's header doc. */
+/** A not-yet-launched /workstream proposal. Owned by this facade (the engine has no draft concept) and journaled to disk via workstream-draft-store.ts so it survives a restart. See workstream-services.ts's header doc. */
 export interface WorkstreamDraft {
   readonly id: string;
   task: string;

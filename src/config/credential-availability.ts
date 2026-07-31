@@ -1,11 +1,12 @@
 /**
  * credential-availability.ts — client-side credential-status read.
  *
- * When the TUI acts as a CLIENT of an adopted external daemon (the host-service
- * `mode === 'external'` topology — see runtime/bootstrap.ts), provider/model/secret
- * STATUS is read from that daemon's `credentials.get` wire method rather than from
- * the TUI's own surfaceRoot ('tui') store. This module folds a `credentials.get`
- * outcome into an honest availability value, mirroring the goodvibes-webui v1.0.1
+ * When a client surface acts as a CLIENT of an adopted external daemon (the
+ * host-service `mode === 'external'` topology — see runtime/bootstrap.ts),
+ * provider/model/secret STATUS is read from that daemon's `credentials.get`
+ * wire method rather than from its own surfaceRoot ('tui') store. This module
+ * folds a `credentials.get` outcome into an honest availability value,
+ * mirroring the goodvibes-webui v1.0.1
  * `deriveCredentialAvailability` contract exactly:
  *
  *   - a 503 CREDENTIAL_STORE_UNAVAILABLE (matched by machine code), a METHOD_NOT_FOUND
@@ -55,7 +56,7 @@ function readString(record: Record<string, unknown> | null, key: string): string
 
 /**
  * Map the authoritative host-service mode string to the credential-read posture.
- * Only 'external' (a separately-running daemon this TUI adopted) reads credential
+ * Only 'external' (a separately-running daemon this surface adopted) reads credential
  * STATUS over the wire; every other mode ('embedded'/'disabled'/'blocked'/
  * 'incompatible'/'unavailable') is the local host reading its own store.
  */

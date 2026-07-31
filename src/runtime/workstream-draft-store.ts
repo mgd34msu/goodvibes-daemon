@@ -1,10 +1,10 @@
 // ---------------------------------------------------------------------------
 // workstream-draft-store.ts — durable journal for not-yet-launched proposals
 //
-// A /workstream proposal (WorkstreamDraft, workstream-services.ts) is TUI-owned
-// state the OrchestrationEngine has no concept of — its only creation entry
-// point materializes a real, ticking workstream with no pre-launch "draft"
-// stage (see that module's REALITY-WINS header). Earlier waves therefore held
+// A /workstream proposal (WorkstreamDraft, workstream-services.ts) is state
+// this facade owns — the OrchestrationEngine has no concept of it — its only
+// creation entry point materializes a real, ticking workstream with no
+// pre-launch "draft" stage (see that module's REALITY-WINS header). Earlier waves therefore held
 // drafts in memory only, and a restart between create and launch silently lost
 // them. This store journals each draft to disk so the plan-review gate survives
 // a restart and is resumable: the same reshaped, approved proposal is still

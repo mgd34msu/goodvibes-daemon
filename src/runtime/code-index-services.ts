@@ -1,7 +1,7 @@
 // ---------------------------------------------------------------------------
-// code-index-services.ts — repo source-tree code index (TUI wiring)
+// code-index-services.ts — repo source-tree code index
 //
-// Constructs the TUI's repo source-tree code index: CodeIndexStore
+// Constructs this daemon's repo source-tree code index: CodeIndexStore
 // (@pellux/goodvibes-sdk/platform/state). Extracted into its own module rather than built inline in
 // services.ts: services.ts sits at the architecture check's 800-line cap
 // (scripts/check-architecture.ts), so any new service gets its own
@@ -21,8 +21,8 @@
 // REALITY-WINS DIVERGENCE from the SDK's own shape: the SDK's
 // RuntimeServicesOptions exposes autoStartCodeIndex as a constructor-time
 // boolean because that call site is a library entrypoint threaded by each
-// embedder. This TUI's createRuntimeServices has no such per-call knob —
-// auto-start is decided from a TUI-local config key instead
+// embedder. This repo's createRuntimeServices has no such per-call knob —
+// auto-start is decided from a local config key instead
 // (CODE_INDEX_ENABLED_CONFIG_KEY, default OFF), so every construction path
 // (interactive main.ts, the daemon, and every test fixture) shares one
 // honest, user-visible on/off switch rather than needing to thread a new
@@ -44,7 +44,7 @@ import { readBooleanConfig } from '../core/alert-gating.ts';
 import { GOODVIBES_DAEMON_SURFACE_ROOT } from '../config/surface.ts';
 
 /**
- * TUI-local synthetic config key (not yet in the SDK's ConfigKey union) that
+ * Local synthetic config key (not yet in the SDK's ConfigKey union) that
  * gates the code index's auto-build on construction. Default OFF — see this
  * module's header doc. Surfaced in /config via a synthetic entry
  * (settings-modal-data.ts) exactly like behavior.notifyAfterSeconds.
@@ -98,7 +98,7 @@ export interface CodeIndexServices {
   readonly codeIndexReindexScheduler: CodeIndexReindexScheduler;
 }
 
-/** Absolute path to the TUI's code-index sqlite file, sibling to memory.sqlite under .goodvibes/tui/. */
+/** Absolute path to this daemon's code-index sqlite file, sibling to memory.sqlite under .goodvibes/tui/ (GOODVIBES_DAEMON_SURFACE_ROOT — the historical directory name kept for storage compatibility). */
 export function codeIndexDbPath(workingDirectory: string): string {
   return join(workingDirectory, '.goodvibes', GOODVIBES_DAEMON_SURFACE_ROOT, 'code-index.sqlite');
 }
@@ -136,7 +136,7 @@ export function isCodeIndexAutoStartEnabled(configManager: Pick<ConfigManager, '
 }
 
 /**
- * Constructs the TUI's CodeIndexStore. Schema-init runs unconditionally
+ * Constructs this daemon's CodeIndexStore. Schema-init runs unconditionally
  * (init() never throws — it degrades to an honest `available: false` +
  * recorded error on failure, mirrored by CodeIndexStats/describeDegradation);
  * the initial full build only fires when isCodeIndexAutoStartEnabled() is
