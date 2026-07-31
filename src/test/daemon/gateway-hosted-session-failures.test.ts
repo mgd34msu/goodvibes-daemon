@@ -163,8 +163,8 @@ describe('the three refusals a client has to handle', () => {
     // the engine and left out of what consumers are handed.
     expect(HOSTED_SESSION_FAILURE_FIXTURES.map((entry) => entry.code).sort()).toEqual([
       'HOSTED_SESSION_LIMIT_REACHED',
-      'SESSION_NOT_FOUND',
       'HOSTED_SESSION_UNAVAILABLE',
+      'SESSION_NOT_FOUND',
     ]);
     for (const entry of HOSTED_SESSION_FAILURE_FIXTURES) {
       expect(HOSTED_SESSION_METHOD_IDS).toContain(entry.methodId);
