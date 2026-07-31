@@ -231,3 +231,54 @@ All notable changes to the GoodVibes daemon.
   unattended self-update either — it asks for a `goodvibes-<os>-<arch>` asset this
   repository does not publish and takes the 404. Making each product update strictly
   its own files is an SDK change, not one this repository can make.
+
+- The daemon stopped keeping its own copy of code the platform owns. Forty-five
+  modules under `src/` held the same implementation `@pellux/goodvibes-sdk` or
+  `@pellux/goodvibes-terminal-shell` exports, because both products grew out of
+  one repository and the split copied files rather than pointing at them. Each
+  is now deleted here and imported from where it lives: the transcript journal,
+  the durability sweep and its housekeeping, the session-liveness markers, the
+  work-plan store, the workstream engine and its draft journal, the turn
+  anchors, the versioned-read quarantine, the atomic write, the pairing family
+  (stable host, handoff mint, offer copy, web origin), the session-cost
+  resolver, the credential-availability read, the memory-status projection, the
+  alert gate, the focus tracker, the consolidation receipt, the grid types, the
+  cluster command family and its remote-target convention, the CLI redaction,
+  endpoint resolution and config overrides, and thirteen composition helpers
+  that construct the platform's own objects.
+
+  Nothing about where this daemon keeps its state changed. The hoisted modules
+  that used to spell the storage scope now take it as a parameter, and every
+  call site here passes the daemon's own — the work plan, the session surface,
+  the workspace trust file, the code-index database and the operator-token
+  pruning candidates all resolve to exactly the paths they resolved to before.
+
+  Two behaviours the shared modules do not carry are stated here instead of
+  dropped: `src/cluster/raw-reply-route.ts`, because `/status`, `/api/health`
+  and `/api/channels/status` answer with their payload rather than the wrapped
+  `{ ok, data }` every `/api/cluster/*` route uses, and reading one as the
+  other called a healthy daemon a refusing one; and `src/cli/config-value.ts`,
+  because `config set <key> <value>` needs a settings value coerced on its own,
+  which the shared override path only does for whole `key=value` strings.
+
+- The command line is parsed by the shared argument engine, driven by this
+  binary's catalog. `src/cli/parser.ts` was a full engine — the command-word
+  pre-scan, arity skipping, `--`, inline `=value`, per-kind application — with
+  a switch over one product's flag field names. The engine is now
+  `parseWithCatalog`, and `src/cli/command-catalog.ts` is the vocabulary it
+  reads: the same commands, the same aliases, the same flags per command, the
+  same refusal that an unrecognized word exits 2 rather than starting a daemon.
+  One sentence reads differently — a conversation flag this binary does not
+  have is now refused as "`--resume` is not a goodvibes-daemon flag — resuming
+  a conversation, a terminal app concern that belongs to another surface."
+
+- The packages a hosted session's tools need are pinned by this product rather
+  than inherited as optional. A session this daemon hosts parses with
+  tree-sitter, spawns language servers, reads sql.js, matches with fuse.js and
+  bundles with jszip; the platform declares all of them optional, which is
+  right for a surface that never opens a file and leaves a hosted turn without
+  its tools when an optional install quietly fails. They are declared here at
+  the ranges the platform states, and a dependency check makes a missing one
+  fail at build time instead of at the first hosted turn. `@anthropic-ai/vertex-sdk`
+  and `@aws/bedrock-token-generator` are removed — nothing in this repository or
+  the platform imports either.
