@@ -38,7 +38,7 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 
 const root = process.cwd();
 const args = process.argv.slice(2);
@@ -55,7 +55,7 @@ function defaultBinary(): string {
 }
 
 const binaryIndex = args.indexOf('--binary');
-const BINARY = binaryIndex !== -1 && args[binaryIndex + 1] ? args[binaryIndex + 1]! : defaultBinary();
+const BINARY = resolve(binaryIndex !== -1 && args[binaryIndex + 1] ? args[binaryIndex + 1]! : defaultBinary());
 
 /** High enough to stay clear of the daemon's own default, so a live daemon on this machine is untouched. */
 const SMOKE_PORT = 47931;
