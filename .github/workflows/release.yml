@@ -220,7 +220,7 @@ jobs:
           HOME="$TMPROOT/home"
           cd "$TMPDIR"
           npm init -y
-          GOODVIBES_ASSET_SOURCE_DIR="${GITHUB_WORKSPACE}/dist" HOME="$HOME" npm install "${GITHUB_WORKSPACE}/goodvibes-daemon-${VERSION}.tgz"
+          GOODVIBES_ASSET_SOURCE_DIR="${GITHUB_WORKSPACE}/dist" HOME="$HOME" npm install "${GITHUB_WORKSPACE}/pellux-goodvibes-daemon-${VERSION}.tgz"
           test -x node_modules/.bin/goodvibes-daemon
           test -x node_modules/goodvibes-daemon/vendor/goodvibes-daemon-linux-x64
           test "$(node_modules/.bin/goodvibes-daemon --version)" = "goodvibes-daemon ${VERSION}"
@@ -417,7 +417,7 @@ jobs:
       id-token: write
     uses: mgd34msu/goodvibes-sdk/.github/workflows/reusable-npm-publish.yml@main
     with:
-      package-name: "goodvibes-daemon"
+      package-name: "@pellux/goodvibes-daemon"
       environment: production
       registry: "https://registry.npmjs.org"
       publish-command: "GOODVIBES_SKIP_NPM_AUTH_CHECK=1 bun run publish:check && bunx @pellux/goodvibes-toolchain goodvibes-publish-package --poll"

@@ -6,6 +6,15 @@ All notable changes to the GoodVibes daemon.
 
 ## [Unreleased]
 
+## [1.28.1] - 2026-08-01
+
+- Changed: the npm package is `@pellux/goodvibes-daemon`, scoped like every other
+  package on the platform. The executable, the service unit, and the release
+  assets keep their names; only the registry entry moved.
+  `npm install -g @pellux/goodvibes-daemon` is the npm-channel install from here
+  on. The 1.28.0 registry entry under the same scoped name carries identical
+  contents.
+
 ### Changes
 
 - `pair --host <name>` now reaches a DIFFERENT daemon instead of being refused.

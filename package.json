@@ -1,6 +1,6 @@
 {
-  "name": "goodvibes-daemon",
-  "version": "1.28.0",
+  "name": "@pellux/goodvibes-daemon",
+  "version": "1.28.1",
   "description": "The GoodVibes daemon \u2014 the one long-running host for the control plane, channels, cluster membership, scheduled work, knowledge and memory stores, and the verb families every GoodVibes client calls.",
   "type": "module",
   "main": "src/daemon/cli.ts",

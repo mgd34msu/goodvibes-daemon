@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/mgd34msu/goodvibes-daemon/actions/workflows/ci.yml/badge.svg)](https://github.com/mgd34msu/goodvibes-daemon/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/version-1.28.0-blue.svg)](https://github.com/mgd34msu/goodvibes-daemon)
+[![Version](https://img.shields.io/badge/version-1.28.1-blue.svg)](https://github.com/mgd34msu/goodvibes-daemon)
 
 The GoodVibes daemon: one long-running process per machine that holds the control plane every
 GoodVibes client talks to. It answers the operator verb families over HTTP, reads and replies on
@@ -68,7 +68,7 @@ network — the shipped binding is loopback and the installer does not change it
 Or install from the npm registry with [Bun](https://bun.sh):
 
 ```sh
-bun add -g goodvibes-daemon
+bun add -g @pellux/goodvibes-daemon
 bun pm trust -g goodvibes-daemon
 goodvibes-daemon install-service
 ```
@@ -76,7 +76,7 @@ goodvibes-daemon install-service
 Bun blocks lifecycle scripts for untrusted global packages, so the second line
 lets the package's postinstall place the matching daemon binary. If you skip it,
 the `goodvibes-daemon` launcher still self-heals on first run by fetching and
-checksum-verifying the binary. `npm install -g goodvibes-daemon` also works when
+checksum-verifying the binary. `npm install -g @pellux/goodvibes-daemon` also works when
 `bun` is already on `PATH`.
 
 The npm package carries the product source and the launcher; the daemon itself is

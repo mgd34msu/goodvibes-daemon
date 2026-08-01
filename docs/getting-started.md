@@ -58,7 +58,7 @@ again by `GOODVIBES_UNINSTALL=1`.
 ### The npm/Bun alternative
 
 ```sh
-bun add -g goodvibes-daemon
+bun add -g @pellux/goodvibes-daemon
 bun pm trust -g goodvibes-daemon
 goodvibes-daemon install-service
 ```
@@ -67,7 +67,7 @@ Bun blocks lifecycle scripts for untrusted global packages, so the second line l
 package's postinstall place the matching daemon binary (a GitHub release asset of this
 repository — the npm package itself carries the product source and a launcher, not the
 compiled daemon). If you skip trusting it, the `goodvibes-daemon` launcher self-heals on
-first run by fetching and checksum-verifying the binary. `npm install -g goodvibes-daemon`
+first run by fetching and checksum-verifying the binary. `npm install -g @pellux/goodvibes-daemon`
 also works once `bun` is on `PATH`.
 
 ## First boot
