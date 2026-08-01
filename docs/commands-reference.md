@@ -152,15 +152,28 @@ could not be reached.
 ### `pair`
 
 ```
-goodvibes-daemon pair [--json] [--host <name>] [--port <n>] [--token <t>]
+goodvibes-daemon pair [--json] [--host <name>] [--port <n>] [--token <t>] [-y]
 ```
 
-Print the same pairing block a daemon prints once at startup, reusing the existing
-shared token (never minting a new one), so a link printed here and one printed at boot
-are identical. It is a local command: the link is assembled from this machine's own
-token store, and `--host` naming a different machine is refused with the reason —
-this process cannot read that machine's token store, and a link built from the wrong
-token would just be rejected by that machine's daemon.
+Two forms.
+
+**Local** — no `--host`, or one naming this machine: print the same pairing block a
+daemon prints once at startup, reusing the existing shared token (never minting a new
+one), so a link printed here and one printed at boot are identical. The link is
+assembled from this machine's own token store.
+
+**Remote** — `--host` naming a different machine: ask THAT daemon to mint a brand-new
+per-device pairing token over `pairing.handoff.create` and print the pairing block for
+it. Minting is a different act than reprinting: it is a fresh token, and every token
+that daemon already issued — its shared token included — is left untouched. Because it
+changes state on a daemon that may not be this process's own, it states the plan and
+asks for confirmation before acting; `-y`/`--yes` answers non-interactively, the same
+convention `migrate-service` uses. Without `-y` nothing is called and nothing changes.
+
+An unreachable daemon, a rejected token, and a daemon too old to serve the mint verb are
+each refused by name, never a stack trace. A target daemon with no web origin
+configured still gets its token and pairing fragment printed honestly — there is
+nothing to build a scannable link or QR from in that case, so none is fabricated.
 
 ### `sessions`
 

@@ -8,6 +8,18 @@ All notable changes to the GoodVibes daemon.
 
 ### Changes
 
+- `pair --host <name>` now reaches a DIFFERENT daemon instead of being refused.
+  It asks that daemon to mint a brand-new per-device pairing token over
+  `pairing.handoff.create` and prints the pairing block for it — a different
+  act than the plain `pair` reprint, which still just reprints this machine's
+  existing shared token and never mints. Because it changes state on a daemon
+  that may not be this process's own, it states the plan and asks for
+  confirmation first; `-y`/`--yes` answers non-interactively, same as
+  `migrate-service`. An unreachable daemon, a rejected token, and a daemon too
+  old to serve the verb are each refused by name, never a stack trace, and a
+  target with no web origin configured still gets its token and fragment
+  printed honestly rather than a fabricated link.
+
 - Three config modules the terminal app carried a byte-identical copy of are the
   SDK's: `config/goodvibes-home.ts` (tree-root and daemon-home resolution),
   `config/provider-model.ts` (`provider:model` parsing) and `config/index.ts`
