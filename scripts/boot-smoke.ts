@@ -17,15 +17,13 @@
  *      crash-looped 77 times overnight with nothing anywhere saying why. The
  *      identical source run under `bun` printed the reason, which is why this
  *      check has to run the compiled artifact.
- *   4. Its sqlite-vec addon actually loads and serves semantic search. Recovered
- *      from the pre-split `scripts/post-build-smoke.ts` (deleted when the TUI
- *      became a daemon client), whose sole job was proving the native `vec0`
- *      extension dlopen()s inside a shipped binary rather than just existing on
- *      disk — the compiled binary's own module resolution (`$bunfs`-aware) is
- *      exactly what a source-level test cannot exercise. Adapted to this repo's
- *      current wire surface (`/api/control-plane/methods/<id>/invoke`, the same
- *      one scripts/hosted-session-proof.ts drives) rather than the routes the
- *      pre-split test used.
+ *   4. Its sqlite-vec addon actually loads and serves semantic search. Its sole
+ *      job is proving the native `vec0` extension dlopen()s inside a shipped
+ *      binary rather than just existing on disk — the compiled binary's own
+ *      module resolution (`$bunfs`-aware) is exactly what a source-level test
+ *      cannot exercise. Runs against this repo's current wire surface
+ *      (`/api/control-plane/methods/<id>/invoke`, the same one
+ *      scripts/hosted-session-proof.ts drives).
  *
  * Every run is isolated: its own home, its own daemon home, its own working
  * directory, its own token and a high fixed port. It never touches the machine's

@@ -7,8 +7,8 @@
  * answered twice. The SDK's cluster coordinator elects exactly one node to be
  * responsible for inbound consumption; everything else stays warm and silent.
  *
- * This file exists because the goodvibes-tui daemon does NOT get that for free
- * from the SDK facade. The facade gates the consumers IT owns (Telegram
+ * This file exists because this daemon does NOT get that for free from the
+ * SDK facade. The facade gates the consumers IT owns (Telegram
  * ingress, the ntfy/Slack/Discord provider runtime), but this repository
  * composes an inbound consumer of its own — the Slack/Discord/email inbox
  * poller in daemon/handlers/inbox — and the facade knows nothing about it.

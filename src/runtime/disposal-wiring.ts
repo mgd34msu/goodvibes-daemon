@@ -59,7 +59,7 @@ export interface DaemonRuntimePollerOwners extends Omit<RuntimePollerOwners, 'st
    */
   readonly daemonHandlers: { readonly unregister: () => void };
   /**
-   * Fork-only: the paired-phone feature's housekeeping timer
+   * This daemon only: the paired-phone feature's housekeeping timer
    * (device-posture-composition.ts). Started by whichever entry point boots the
    * host, so the stop belongs on this list rather than in one shutdown path.
    */
@@ -67,8 +67,8 @@ export interface DaemonRuntimePollerOwners extends Omit<RuntimePollerOwners, 'st
 }
 
 /**
- * The poller owners this fork holds that are NOT reachable from the assembled
- * graph — handles the factory keeps as locals.
+ * The poller owners this daemon holds that are NOT reachable from the
+ * assembled graph — handles the factory keeps as locals.
  */
 export interface RuntimeDisposalExtras {
   /** Handle returned by `ConfigManager.watchConfigFiles()`. */

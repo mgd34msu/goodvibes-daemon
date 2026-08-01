@@ -10,8 +10,10 @@
  * command replaces a swap for each kind.
  *
  * The self-update download/verify/swap orchestration that USES these lives
- * in src/input/commands/update-runtime.ts; this module only decides "is
- * there a newer version" and "can this install be swapped in place".
+ * in this daemon's own hourly loop (`src/daemon/lifecycle.ts`); this module
+ * only decides "is there a newer version" and "can this install be swapped
+ * in place". The terminal app's own manual `/update` command solves the same
+ * problem for its own users, independently.
  */
 export {
   compareVersions,

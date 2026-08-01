@@ -1,8 +1,11 @@
 /**
- * The `goodvibes-daemon.service` detect/migrate engine, shared
- * by the daemon CLI (`src/daemon/service-commands.ts`, the `migrate-service`
- * subcommand) and the interactive TUI's onboarding guided UX
- * (`src/input/handler-onboarding-daemon-adopt.ts`).
+ * The `goodvibes-daemon.service` detect/migrate engine, used by the daemon
+ * CLI (`src/daemon/service-commands.ts`, the `migrate-service` subcommand)
+ * and by this daemon's own boot-time reconcile (`legacy-daemon-reconcile.ts`).
+ * The terminal app ships an independent implementation of the same
+ * detect/migrate contract for its own onboarding guided UX — not shared
+ * code, but the two are meant to agree on what "legacy" means and how a
+ * migration is carried out.
  *
  * NAMING, load-bearing: this module's identifiers say "legacy" because the
  * engine migrates AWAY from the `goodvibes-daemon.service` unit name toward
@@ -15,12 +18,10 @@
  * never labels it legacy or implies it should be removed unless the user is
  * explicitly migrating.
  *
- * This lives under `src/runtime/` — not `src/daemon/` — specifically so the
- * `input` layer can consume it directly: the architecture gate's
- * `input-no-entrypoints` rule forbids `src/input/**` from importing
- * `src/daemon/**` (input must stay a pure event-handling layer, never
- * depending on CLI/daemon entrypoint concerns), and `src/runtime/**` is the
- * shared, entrypoint-agnostic layer both sides are already allowed to import.
+ * This lives under `src/runtime/` — not `src/daemon/` — because both
+ * `src/daemon/service-commands.ts` (the CLI subcommand) and
+ * `src/runtime/legacy-daemon-reconcile.ts` (the boot-time reconcile) need it,
+ * and `src/runtime/**` is this repository's shared layer both can import.
  *
  * An earlier release shipped DETECT + DISCLOSE only: a read-only check for
  * the prior generation's systemd unit name plus a manual-removal hint, never
@@ -65,9 +66,11 @@ type ManagedServiceDefinition = NonNullable<ManagedServiceManagerOptions['defini
 export type ManagedServiceActionRunner = NonNullable<ManagedServiceManagerOptions['actionRunner']>;
 type ManagedServiceActionResult = ReturnType<ManagedServiceActionRunner>;
 
-// The one unit name/description this tool manages — shared by the daemon CLI
-// (`goodvibes-daemon install-service|uninstall-service|service-status|migrate-service`)
-// and the TUI onboarding UX, so both build the EXACT same service definition.
+// The one unit name/description this tool manages — used by the daemon CLI
+// (`goodvibes-daemon install-service|uninstall-service|service-status|migrate-service`).
+// The terminal app's own onboarding UX builds the exact same service
+// definition independently, so a migration triggered from either surface
+// installs an identical unit.
 // `service.serviceName`/nothing-set config default is 'goodvibes'
 // (schema-domain-runtime.ts), which is what PlatformServiceManager actually
 // resolves to in the common case via `resolveServiceName()`'s `config.get(...)
@@ -129,11 +132,11 @@ export interface BuildManagedDaemonServiceManagerParams {
 
 /**
  * Build the ONE `PlatformServiceManager` this tool manages — the single
- * source of truth for the unit's definition (`ExecStart` command/args,
- * name, description). Both `src/daemon/service-commands.ts` (the CLI) and
- * `src/input/handler-onboarding-daemon-adopt.ts` (the onboarding guided UX)
- * call this so a migration triggered from either surface installs the
- * identical unit — no risk of the two consumers drifting apart.
+ * source of truth, in this repository, for the unit's definition
+ * (`ExecStart` command/args, name, description). Both
+ * `src/daemon/service-commands.ts` (the CLI) and this daemon's own
+ * boot-time reconcile call this so every path in this repository installs
+ * the identical unit — no risk of consumers drifting apart.
  */
 export function buildManagedDaemonServiceManager(params: BuildManagedDaemonServiceManagerParams): PlatformServiceManager {
   const workingDirectory = params.workingDirectory ?? params.homeDir;
@@ -205,12 +208,10 @@ export interface ResolveDaemonBinaryOptions {
  *   3. `process.execPath` when this IS the compiled daemon binary.
  *   4. Bare `goodvibes-daemon` (resolved on PATH by systemd's service environment).
  *
- * Lives here (not in `src/daemon/service-commands.ts`) so both consumers can
- * call it: it only needs the CALLER's own `import.meta.url` to locate the
- * packaged `bin/` directory two levels up from ANY `src/<layer>/*.ts` file
- * (`src/daemon/service-commands.ts` and `src/input/handler-onboarding-daemon-adopt.ts`
- * are equally one level deep under `src/`), so the resolution has no actual
- * CLI/daemon-specific dependency.
+ * Lives here (not in `src/daemon/service-commands.ts`) so it carries no
+ * CLI-specific dependency: it only needs the CALLER's own `import.meta.url`
+ * to locate the packaged `bin/` directory two levels up from ANY
+ * `src/<layer>/*.ts` file in this repository.
  */
 export function resolveInstalledDaemonBinary(options: ResolveDaemonBinaryOptions = {}): string {
   const env = options.env ?? process.env;

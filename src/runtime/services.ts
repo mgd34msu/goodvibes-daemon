@@ -70,16 +70,13 @@ export type { RuntimeServicesOptions, RuntimeServices } from './runtime-services
 /**
  * createRuntimeServices — the daemon's service graph.
  *
- * This is the one composition root the daemon has. It used to exist twice, once
- * in the terminal app's repository and once in the agent's, and the two drifted:
- * each had capabilities the other lacked and each had its own wiring for things
- * both did. Where they differed, exactly one implementation survives here — the
- * SDK-public path where the agent had it (memory governance, disposal, the
- * continuation runner's conversation gating and spawn routing, the
- * launch-tolerant provider registry, the trigger family, registration-gated
- * checkpoints), and the terminal app's where the agent had nothing (cluster,
- * mail, crash-residue housekeeping, device housekeeping, presence-aware
- * needs-input push).
+ * This is the one composition root the daemon has. Capabilities a client and
+ * the daemon both need live in the SDK and are composed from there (memory
+ * governance, disposal, the continuation runner's conversation gating and
+ * spawn routing, the launch-tolerant provider registry, the trigger family,
+ * registration-gated checkpoints). Capabilities only this daemon needs are
+ * composed locally (cluster, mail, crash-residue housekeeping, device
+ * housekeeping, presence-aware needs-input push).
  */
 export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeServices {
   // The SDK's disposal scope and its all-required poller list, plus the four
@@ -175,8 +172,6 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   const toolLLM = new ToolLLM({
     configManager,
     providerRegistry,
-    // The bus the agent's composition passed and the terminal app's did not, so
-    // tool-LLM activity was observable in one process and invisible in the other.
     runtimeBus: options.runtimeBus,
   });
   const localUserAuthManager = options.localUserAuthManager ?? new UserAuthManager({
@@ -236,8 +231,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
       // the channel confirmation the owner gave, or the schedule/trigger that
       // was confirmed when it was created — or for a follow-up typed on a local
       // surface. Both `conversationGate.mode` and the gated-surfaces list are
-      // read live. The terminal app's daemon had none of this and opened a chain
-      // for every inbound message.
+      // read live.
       ...continuationChainOptions(input, {
         configReader: {
           get: (key: string) => configManager.get(key as never),
@@ -246,9 +240,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
       }),
       // Spawn routing through the SDK's shared model-reference resolver
       // (unique-across-registry auto-qualifies; ambiguous and unknown ids throw
-      // errors naming real candidates), against the live registry's models. The
-      // terminal app's daemon passed routing fields through raw, so a bare model
-      // id on an inbound continuation was a format-only rejection.
+      // errors naming real candidates), against the live registry's models.
       ...buildSharedSessionAgentSpawnRoutingInput(input.routing, { restrictTools: true, modelCandidates: providerRegistry.listModels() }),
       context: `shared-session:${input.sessionId}`,
     });
@@ -434,10 +426,9 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     ...(options.currentSessionId ? { currentSessionId: options.currentSessionId } : {}), // exempts the running session from crash-residue reaping
   });
   const codeInjectionOrchestratorDeps = { codeIndex: codeIndexStore, isCodeInjectionSettingEnabled: () => isCodeInjectionSettingEnabled(configManager), codeIndexReindexScheduler };
-  // The trigger family the agent composed and the terminal app's daemon never
-  // had: stream watchers, on-exit process triggers, condition checks — fed to
-  // the fleet below as its trigger supervisor, so a trigger is visible and
-  // steerable like every other running thing.
+  // The trigger family: stream watchers, on-exit process triggers, condition
+  // checks — fed to the fleet below as its trigger supervisor, so a trigger
+  // is visible and steerable like every other running thing.
   const triggerManager = createTriggerServices({
     configManager, shellPaths, surfaceRoot: GOODVIBES_DAEMON_SURFACE_ROOT,
     agentManager, processManager, sessionBroker,
@@ -479,9 +470,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   // Construct + start the MemoryGovernor (default ON — a safety feature) with the
   // standard KNOWN cache adapters (knowledge stores + shared session broker),
   // then late-bind the admission gate the expensive entry points captured
-  // earlier. The SDK owns this wiring; the terminal app had a fork wrapper around
-  // it that the agent did not, so the two processes defended their footprint
-  // slightly differently.
+  // earlier. The SDK owns this wiring.
   const { memoryGovernor } = wireDaemonMemoryGovernance({
     config: {
       budgetMb: configManager.get('memory.budgetMb'),
@@ -554,12 +543,12 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   // Tool asks from the runs this daemon HOSTS. Without a manager here, the
   // background permission gate short-circuits to approved and every hosted
   // write, command and delegation ran ungated — the workspace trust decision
-  // written by the terminal app was read by nobody in this process.
+  // was read by nobody in this process.
   //
-  // The ask seam is the trust gate wrapping the approval broker, which is the
-  // terminal app's layering with its modal replaced by the raise: a workspace
+  // The ask seam is the trust gate wrapping the approval broker: a workspace
   // with no decision yet has the question raised as an approval record and
-  // answered by whichever surface is attached (trust-gated-approvals.ts). The
+  // answered by whichever surface is attached (trust-gated-approvals.ts) —
+  // there is no screen here to show a modal on, so the raise replaces it. The
   // manager's own layers — permission mode, policy, session cache, durable
   // user rules — still run first and are unchanged.
   const permissionManager = createBrokeredPermissionManager({
@@ -623,10 +612,9 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   // This process's own memory pressure, to the operator's configured notice
   // destination. Targeted at OPS_MEMORY_PRESSURE rather than subscribed to the
   // whole high-churn 'ops' domain, and sent over the SAME WebhookNotifier the
-  // notification verbs keep live and boot-tasks attaches to the bus. The panel
-  // notification router that used to sit here went with the split: its targets
-  // are all screen targets and this product has no screen — see
-  // notification-dispatch.ts.
+  // notification verbs keep live and boot-tasks attaches to the bus. There is
+  // no panel notification router here: its targets are all screen targets and
+  // this product has no screen — see notification-dispatch.ts.
   wireMemoryPressureChannelNotice(options.runtimeBus, webhookNotifier);
 
   // In-process config changes become key-level events on the `config` domain, so

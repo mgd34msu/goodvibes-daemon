@@ -9,12 +9,10 @@ import type { ShellPathService } from '@/runtime/index.ts';
  * The trigger family: stream watchers, on-exit process triggers, and condition
  * checks, supervised as one.
  *
- * Only one of the two forks had this. The agent composed the full family and fed
- * the manager to the fleet as its trigger supervisor; the terminal app's daemon
- * had nothing beyond the workflow trigger manager, so a trigger defined against
- * the daemon simply never fired there. The daemon is the process that should own
- * it — it is the one that stays running — so the agent's composition is the one
- * that survives.
+ * This daemon composes the full family and feeds the manager to the fleet as
+ * its trigger supervisor, so a trigger defined against the daemon fires
+ * reliably. The daemon is the right process to own it — it is the one that
+ * stays running.
  *
  * Two things about the shape are load-bearing:
  *  - `config` is a CLOSURE over the config manager rather than a snapshot, so

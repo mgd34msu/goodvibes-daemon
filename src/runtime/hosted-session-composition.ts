@@ -10,8 +10,8 @@
  * about who may write files and run commands in a directory a client named over
  * the wire.
  *
- * This daemon's answer is the gate it already had. Phase A put the workspace
- * trust question in front of every ask a hosted run makes (trust/trust-gated-
+ * This daemon's answer is the gate it already had: the workspace trust
+ * question is put in front of every ask a hosted run makes (trust/trust-gated-
  * approvals.ts): an undecided workspace raises the question as an ordinary
  * approval record for whichever surface is attached to answer, a trusted one is
  * exactly as permissive as before, and a restricted one refuses non-read

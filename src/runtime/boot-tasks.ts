@@ -11,10 +11,8 @@ import type { RuntimeServices } from './runtime-services-types.ts';
  *
  * The daemon facade starts the brokers, the automation manager and the memory
  * store; these are the ones it does not know about because they are this
- * product's, and each one used to run only in the terminal app's bootstrap. That
- * mattered less when the terminal app WAS the daemon in the embedded topology.
- * With the daemon standalone, a step left in a client's bootstrap is a step that
- * stops happening.
+ * product's own. A step that only runs in a client's bootstrap instead of
+ * here is a step that never happens for this daemon.
  *
  * Every one of them is best-effort: none of them is a reason for the daemon not
  * to start, and each says so in the log if it fails.

@@ -8,12 +8,12 @@ import type { DaemonCommand } from './command-catalog.ts';
  * the catalog is what decides which flags could have set them. A command's
  * dispatcher reads only the fields its own catalog entry declares.
  *
- * The fields the terminal app's version of this record carried — prompt,
- * print, outputFormat, noAltScreen, open, continueLast, resume, session, fork,
- * strict — are gone. Every one of them described starting or resuming a
- * conversation, which this binary does not do; they were parsed, stored, and
- * read by nothing. See REJECTED_TERMINAL_FLAGS in ./command-catalog.ts for the
- * refusal that replaced them.
+ * Fields describing starting or resuming a conversation — prompt, print,
+ * outputFormat, noAltScreen, open, continueLast, resume, session, fork,
+ * strict — are not here. This binary does not start or resume conversations,
+ * so those flags are parsed, stored, and read by nothing. See
+ * REJECTED_TERMINAL_FLAGS in ./command-catalog.ts for the refusal that
+ * replaced them.
  */
 export interface DaemonCliFlags {
   readonly daemonHome: string | undefined;

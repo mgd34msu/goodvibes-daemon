@@ -23,9 +23,8 @@
  *
  * sessionPresence is the SDK's own hasFreshSurfaceParticipant: a session counts
  * as attended when any participant heartbeated within the SDK's freshness
- * window. The terminal app carried a reimplementation of it while the helper was
- * SDK-private, and the agent left presence out entirely and pushed on every
- * block — one verb, two behaviours. This is the one implementation, imported.
+ * window. This is the one implementation, imported, so every surface's
+ * push/suppress behavior agrees.
  */
 import { attachFleetEmitBridge } from '@pellux/goodvibes-sdk/platform/runtime/fleet';
 import type { ArchivableProcessRegistry } from '@pellux/goodvibes-sdk/platform/runtime/fleet';

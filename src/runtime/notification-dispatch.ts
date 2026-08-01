@@ -1,5 +1,5 @@
 /**
- * notification-dispatch.ts — the daemon half, which is smaller than it was.
+ * notification-dispatch.ts — how this daemon dispatches notices without a screen.
  *
  * The SDK's NotificationRouter decides where a domain notification goes and
  * collapses bursts and batches. Its three targets — `conversation`,
@@ -8,12 +8,12 @@
  * there never was. Which means the router is a surface mechanism end to end,
  * and this process has no screen.
  *
- * The split carried it here anyway, wired to every curated domain, writing into
- * a bounded ring whose `list()` had no caller anywhere in this repository. Six
- * domains of events, for the daemon's whole lifetime, into a buffer nobody read
- * — and the type declaring it still described the ring as "the panel's live
- * producer", for a product with no panels. That is the silent-success failure
- * class the separation exists to remove, so the producer goes.
+ * This module used to wire the router to every curated domain anyway, writing
+ * into a bounded ring whose `list()` had no caller anywhere in this repository.
+ * Six domains of events, for the daemon's whole lifetime, into a buffer nobody
+ * read — and the type declaring it still described the ring as "the panel's
+ * live producer", for a product with no panels. That silent-success failure
+ * class is exactly what this module removes: the producer goes.
  *
  * What a headless process CAN do with a notice is send it, and the daemon
  * already does that on the paths that are genuinely channel-shaped: automation

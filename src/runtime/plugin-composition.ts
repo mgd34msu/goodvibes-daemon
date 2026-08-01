@@ -2,10 +2,10 @@
  * plugin-composition.ts — what a plugin dropped into the plugin directory gets
  * to register when the host loading it is the daemon.
  *
- * A plugin registers into whatever registries the host hands its loader. While
- * the terminal app hosted a daemon, one host held all of them. It does not any
- * more, and the decision recorded with the conversion
- * (goodvibes-tui/docs/decisions/2026-07-30-plugin-registrations-split-verb-side-and-surface-side.md)
+ * A plugin registers into whatever registries the host hands its loader. Two
+ * hosts load a plugin today — the terminal app and this daemon — and neither
+ * holds every registry a plugin might want. The design (see
+ * goodvibes-tui/docs/decisions/2026-07-30-plugin-registrations-split-verb-side-and-surface-side.md)
  * is: one plugin package, loaded by both hosts, each loading the registrations
  * it can serve and ignoring the rest.
  *
@@ -29,8 +29,8 @@
  * registration and goes nowhere.
  *
  * What it must not be is silent. Accepting a registration that reaches nothing,
- * with a cheerful success line, is the exact failure the separation exists to
- * remove. Both stand-ins below say what they took and that nothing here will
+ * with a cheerful success line, is exactly the failure this module exists to
+ * prevent. Both stand-ins below say what they took and that nothing here will
  * run it, naming the plugin, so the same plugin loaded by a surface is visibly
  * where that half happens.
  */

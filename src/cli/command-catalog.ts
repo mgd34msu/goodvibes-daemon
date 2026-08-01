@@ -13,10 +13,10 @@
  *
  * WHY THIS EXISTS AT ALL
  *
- * The binary shipped with the terminal app's alias table — `tui`, `run`,
- * `doctor`, `models`, `providers`, `auth`, `secrets`, `tasks`, `hooks`,
- * `plugin` and two dozen more — while the entry point dispatched on help,
- * version and four service subcommands. Everything else fell through to
+ * This binary's own alias table used to list `tui`, `run`, `doctor`, `models`,
+ * `providers`, `auth`, `secrets`, `tasks`, `hooks`, `plugin` and two dozen
+ * more, while the entry point actually dispatched on help, version and four
+ * service subcommands. Everything else fell through to
  * "start a daemon in the foreground": `goodvibes-daemon doctor` served,
  * `goodvibes-daemon install-servce` (typo) served, and the unknown-command
  * error the parser carried was unreachable because no token could ever fail
@@ -248,8 +248,7 @@ const SERVE_FLAGS: readonly DaemonCommandFlagSpec[] = [
 ];
 
 /**
- * Flags this binary once accepted in silence because it was carrying the
- * terminal app's parser.
+ * Flags this binary once accepted in silence, without acting on them.
  *
  * Every one of them means "start or resume a conversation", which this binary
  * does not do — and each was accepted, stored in a flag record nothing read,

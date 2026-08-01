@@ -67,9 +67,9 @@ import {
   type ManagedServiceActionRunner,
 } from '../runtime/legacy-daemon-migration.ts';
 
-// `resolveInstalledDaemonBinary` lives in the runtime module (shared with the
-// onboarding guided UX) — re-exported here so this module stays the CLI's
-// stable public surface (and so existing test imports keep working).
+// `resolveInstalledDaemonBinary` lives in the runtime module — re-exported
+// here so this module stays the CLI's stable public surface (and so existing
+// test imports keep working).
 export {
   resolveInstalledDaemonBinary,
   type ResolveDaemonBinaryOptions,
@@ -92,12 +92,12 @@ export type { ManagedServiceActionRunner } from '../runtime/legacy-daemon-migrat
 //
 // The detection (`detectLegacyUnit`/`legacyUnitNote`) and the guided
 // migration engine (`runLegacyDaemonMigration`) both live in
-// `../runtime/legacy-daemon-migration.ts` rather than here, so the TUI's
-// onboarding UX (`src/input/handler-onboarding-daemon-adopt.ts`) can reuse
-// them directly — the architecture gate forbids `src/input/**` from
-// importing `src/daemon/**` (input must stay entrypoint-agnostic), so the
-// shared engine lives in the entrypoint-agnostic `runtime` layer instead and
-// this CLI module is just one of its two consumers.
+// `../runtime/legacy-daemon-migration.ts` rather than here, because this
+// daemon's own boot-time reconcile (`../runtime/legacy-daemon-reconcile.ts`)
+// needs them too — the entrypoint-agnostic `runtime` layer is what both of
+// this repository's consumers can import, so this CLI module is just one of
+// them. The terminal app's own onboarding guided UX solves the same problem
+// independently, under its own architecture constraints.
 //
 // This detection is entirely independent of PlatformServiceManager's own
 // status() — it does not rely on (or get invalidated by) the parallel SDK

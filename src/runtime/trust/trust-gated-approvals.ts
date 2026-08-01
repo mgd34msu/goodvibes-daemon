@@ -3,10 +3,10 @@
  * question, and how the answer reaches the runs it hosts.
  *
  * The terminal app composes the trust gate at the permission machinery's final
- * ask layer and raises the question as a modal on its own screen
- * (bootstrap-core.ts). The daemon has the same gate — `trustGatedAsk` next
- * door, reading the same `<cwd>/.goodvibes/<surface>/trust.json` the terminal
- * writes — and no screen to raise anything on. Before this module it therefore
+ * ask layer and raises the question as a modal on its own screen. The daemon
+ * has the same gate — `trustGatedAsk` next door, reading the same
+ * `<cwd>/.goodvibes/<surface>/trust.json` the terminal app writes — and no
+ * screen to raise anything on. Before this module it therefore
  * did neither: the gate was constructed, never loaded, never consulted, and no
  * hosted run passed through it.
  *

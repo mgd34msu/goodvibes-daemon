@@ -8,11 +8,9 @@ import { createWorkspaceRegistrationLiveChecker, type StoreShellPaths } from './
 /**
  * The workspace checkpoint manager, gated on live registration.
  *
- * Two forks built this and each had half of it. The terminal app scoped the
- * checkpoint git store to the surface's own directory but took automatic
- * snapshots in any workspace at all; the agent gated every snapshot on the
- * owner's registered-workspaces-only ruling. The daemon has both: the
- * surface-scoped store, and the gate.
+ * This daemon's checkpoint manager scopes the checkpoint git store to the
+ * surface's own directory AND gates every automatic snapshot on the owner's
+ * registered-workspaces-only ruling.
  *
  * The gate is a LIVE re-check rather than a construction-time decision. The
  * manager only subscribes to turn/agent-lifecycle events when it is built with a

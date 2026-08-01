@@ -360,11 +360,11 @@ async function main(): Promise<void> {
   // Give the shared logger a destination before anything else runs. It never
   // had one in this entrypoint: `logger` only writes to a file once
   // `configureActivityLogger()` has named one, so every logger.info/warn/error
-  // in the standalone daemon — including the fatal handler at the bottom of
-  // this file and every flushActivityLogSync() call — went nowhere at all.
-  // That is why a crash-looping daemon left an empty activity log next to a
-  // silent console. src/cli/entrypoint.ts does the same for the interactive
-  // process; this is the daemon finally matching it.
+  // in this daemon — including the fatal handler at the bottom of this file
+  // and every flushActivityLogSync() call — went nowhere at all. That is why
+  // a crash-looping daemon left an empty activity log next to a silent
+  // console. The terminal app's own src/cli/entrypoint.ts configures its
+  // logger the same way at the same point in startup.
   configureActivityLogger(join(workingDir, '.goodvibes', 'logs'));
   runDaemonConfigMigration(homeDirectory);
   // `daemonTierPath` named explicitly (SDK 1.21.0) rather than left to
@@ -599,13 +599,13 @@ async function main(): Promise<void> {
     // temp tree still read the real home's daemon secrets, so "isolating" a
     // test daemon left it holding the owner's live credentials.
     daemonHomeDirectory,
-    // The standalone daemon observes externally-launched coding-agent sessions
-    // on the host read-only (fleet visibility + steer; never counted, never
+    // This daemon observes externally-launched coding-agent sessions on the
+    // host read-only (fleet visibility + steer; never counted, never
     // stopped). Daemon-side only — the interactive process reads this snapshot
     // rather than double-detecting. Mirrors the SDK daemon cli.
     observeExternalAgents: true,
     // Opt into the REAL host power seam (Linux logind: systemd-inhibit children
-    // + the dbus-monitor sleep-edge watcher) so the standalone daemon holds live
+    // + the dbus-monitor sleep-edge watcher) so this daemon holds live
     // keep-awake/idle-inhibit. SDK 1.9.0's runtime-services factory defaults to
     // the non-spawning unavailable seam; only daemon compositions opt in. Mirrors
     // the SDK daemon cli's createHostPowerSeam() (sdk commit 3a5ea26d).
@@ -620,7 +620,7 @@ async function main(): Promise<void> {
   });
 
   // Load persisted providers from disk so the provider registry is pre-populated
-  // on standalone daemon startup (same machinery the TUI uses after /scan).
+  // at this daemon's startup (same machinery the TUI uses after /scan).
   const discoveryRoots = { homeDirectory, surfaceRoot: GOODVIBES_DAEMON_SURFACE_ROOT };
   const persistedProviders = loadPersistedProviders(discoveryRoots);
   if (persistedProviders.length > 0) {
@@ -694,8 +694,9 @@ async function main(): Promise<void> {
   // file, not a description of who owns it.
   const daemonHomeDir = daemonHomeDirectory;
   const companionTokenRecord = getOrCreateCompanionToken('tui', { daemonHomeDir });
-  // Fix (TUI 0.19.20): remove stale pre-0.21.28 workspace-scoped operator
-  // token files so only the canonical <daemonHomeDir>/operator-tokens.json survives.
+  // Cleanup: remove stale pre-0.21.28 workspace-scoped operator token files
+  // left behind by very old installs, so only the canonical
+  // <daemonHomeDir>/operator-tokens.json survives.
   const prune = pruneStaleOperatorTokens({
     daemonHomeDir,
     candidatePaths: operations.workspaceOperatorTokenCandidates(workingDir, GOODVIBES_DAEMON_SURFACE_ROOT),
