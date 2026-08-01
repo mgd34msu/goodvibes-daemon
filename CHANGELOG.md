@@ -8,6 +8,65 @@ All notable changes to the GoodVibes daemon.
 
 ### Changes
 
+- The unified inbox is served. `channels.inbox.list` has had a handler in this
+  repository for a while and no client could reach it: the SDK descriptor
+  carried `invokable: false`, so the method-dispatch endpoint refused the call
+  before the handler was consulted, and `GET /api/channels/inbox` was in no
+  route table. The agent's inbox asked on every refresh and wrote down
+  `method_unavailable` every time. It answers now, over both the gateway invoke
+  and the advertised REST path.
+
+  What a client gets is one merged timeline, newest first, across every
+  provider — items interleave by arrival rather than being grouped, and each
+  carries its own `provider`, so an inbox reads like an inbox. Pages are bounded
+  and walked with an opaque `nextCursor`; `cursor` stays what it was, the
+  freshness watermark you hand back as `since`. That is a keyset, not an offset:
+  the feed is written to while it is read, and an offset page re-anchors on
+  every insert, so a caller walking pages during a poll would see items twice
+  and miss others.
+
+  The answer is served from this daemon's SYNCED MIRROR — the sqlite store the
+  Slack, Discord and IMAP adapters already write into on their own cadences —
+  and not from a fresh remote fetch per call. Four reasons, all of them about
+  what a fetch-per-call would cost: a third-party rate limit would sit behind a
+  read verb any client may call at any rate; the cluster hands FETCHING for each
+  inbox account to one elected node, and a read that fetched would make every
+  standby fetch too, which is the double-read the election exists to prevent;
+  triage scores are applied as items are persisted, so inline-fetched items
+  would come back unscored and the verb would answer two shapes depending on
+  timing; and a provider outage would turn a read into a hang instead of an
+  answer.
+
+  The price of serving a mirror is that its age is invisible in the items, so it
+  is not left implicit. Every call reports `providers`: one entry per provider
+  this daemon knows about, whether or not it contributed anything, with its
+  state, when it last synced, how much of the mirror is its, and whether this
+  node is the one fetching it. `ready`, `empty`, `unconfigured`, `error` and
+  `pending` are five different things, and a caller does something different
+  about each — a fresh install with no tokens is not an outage, and a node that
+  has not looked yet is not a node reporting an empty inbox. A provider whose
+  sync failed contributes no items, says why, and sets `partial`, so a short
+  list is never mistaken for a quiet week. Nothing configured is an empty list
+  with three unconfigured statuses, not an error: the verb is callable in every
+  state.
+
+- Two saves of one daemon SQLite store in the same millisecond raced. The temp
+  filename was `<path>.<pid>.<Date.now()>.tmp`, so both writes picked the same
+  path, the first rename moved it away, and the second failed with ENOENT on a
+  file it had just written. Not hypothetical: the inbox poller flushes once per
+  provider and polls every provider concurrently, so an ordinary two-provider
+  startup hit it — and once `channels.inbox.list` began reporting per-provider
+  health, the failure showed up as a provider reporting a filesystem error for
+  its feed. The temp name now carries a per-process counter. Every store on
+  `HandlerSqliteStore` shared the hazard, so the fix is there.
+
+- A gateway invocation that carries no context no longer throws a TypeError out
+  of the handler wrapper. `normalizeContext` read `.metadata` off the context
+  unconditionally, and an in-process invoke that builds the invocation by hand
+  can omit it; an absent context now reads as the empty one — no principal, no
+  scopes, not admin, nobody claiming a person asked — which can only cost a
+  caller an authorization it never proved, never grant one.
+
 - Three config modules the terminal app carried a byte-identical copy of are the
   SDK's: `config/goodvibes-home.ts` (tree-root and daemon-home resolution),
   `config/provider-model.ts` (`provider:model` parsing) and `config/index.ts`
