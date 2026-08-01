@@ -56,6 +56,14 @@ async function loadSqlJs(): Promise<SqlJsStatic> {
  * {workingDirectory}/.goodvibes/tui/operator/{fileName}.
  */
 export class HandlerSqliteStore {
+  /**
+   * Makes every temp filename this process writes distinct. Static rather than
+   * per-instance because two INSTANCES pointed at one file (two surfaces
+   * sharing a store path) would otherwise collide with each other exactly as
+   * two saves of one instance did. See save().
+   */
+  private static saveSequence = 0;
+
   private readonly options: SqliteStoreOptions;
   private readonly resolvedPath: string;
   private db: SqlDatabase | null = null;
@@ -251,12 +259,24 @@ export class HandlerSqliteStore {
     return rows.length > 0 ? rows[0]! : null;
   }
 
-  /** Serialize and atomically persist to dbPath (tmp + rename). */
+  /**
+   * Serialize and atomically persist to dbPath (tmp + rename).
+   *
+   * The temp filename carries a per-process counter, not just pid + clock. Two
+   * saves of the same store in the SAME millisecond produced the same temp path
+   * before it did: both wrote it, the first rename moved it away, and the
+   * second failed with ENOENT on a file it had just written. That is not a
+   * hypothetical race — the inbox poller flushes once per provider and polls
+   * every provider concurrently, so it hit on an ordinary two-provider startup,
+   * and the failure surfaced as a provider reporting a filesystem error for its
+   * feed. Every store on this base shares the hazard, so the counter lives here.
+   */
   async save(): Promise<void> {
     const db = this.requireDb();
     await mkdir(dirname(this.resolvedPath), { recursive: true });
     const data = db.export();
-    const tmpPath = `${this.resolvedPath}.${process.pid}.${Date.now()}.tmp`;
+    HandlerSqliteStore.saveSequence += 1;
+    const tmpPath = `${this.resolvedPath}.${process.pid}.${Date.now()}.${HandlerSqliteStore.saveSequence}.tmp`;
     await writeFile(tmpPath, data);
     await rename(tmpPath, this.resolvedPath);
   }
