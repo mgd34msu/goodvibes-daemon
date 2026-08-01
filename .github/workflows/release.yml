@@ -222,14 +222,14 @@ jobs:
           npm init -y
           GOODVIBES_ASSET_SOURCE_DIR="${GITHUB_WORKSPACE}/dist" HOME="$HOME" npm install "${GITHUB_WORKSPACE}/pellux-goodvibes-daemon-${VERSION}.tgz"
           test -x node_modules/.bin/goodvibes-daemon
-          test -x node_modules/goodvibes-daemon/vendor/goodvibes-daemon-linux-x64
+          test -x node_modules/@pellux/goodvibes-daemon/vendor/goodvibes-daemon-linux-x64
           test "$(node_modules/.bin/goodvibes-daemon --version)" = "goodvibes-daemon ${VERSION}"
-          # D6: an npm install must receive the sqlite-vec addon too, or vector
+          # An npm install must receive the sqlite-vec addon too, or vector
           # search silently degrades to lexical-only for every npm-installed
           # daemon. Assert it landed at the exact path resolveSqliteVecPath()
           # (platform/state/sqlite-vec-loader.ts) looks for relative to the
           # vendored binary above.
-          test -f node_modules/goodvibes-daemon/vendor/lib/sqlite-vec-linux-x64/vec0.so
+          test -f node_modules/@pellux/goodvibes-daemon/vendor/lib/sqlite-vec-linux-x64/vec0.so
 
   # ── Stage flat release assets (push/tag only): merge all target artifacts,
   #    flatten each platform's sqlite-vec addon to an installer-parseable name,
