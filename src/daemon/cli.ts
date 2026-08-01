@@ -461,12 +461,12 @@ async function main(): Promise<void> {
     }));
   }
   if (cli.command === 'pair') {
-    exitWith(runPairCommand({
+    exitWith(await runPairCommand({
       configManager: config,
       daemonHomeDir: daemonHomeDirectory,
       version: VERSION,
       readToken: readOperatorTokenFile,
-      flags: remoteFlags,
+      flags: { ...remoteFlags, yes: cliFlags.yes },
     }));
   }
   if (cli.command === 'config') {
