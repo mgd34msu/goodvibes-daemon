@@ -1,5 +1,5 @@
 {
-  "//": "The daemon's ONLY compiled artifact is the daemon binary, so it is this repo's `appEntrypoint` rather than a second `daemonEntrypoint` leg. The artifact NAMES stay exactly what the TUI's daemon leg produced (goodvibes-daemon-<os>-<arch>) so the installer, the SDK's resolveArtifactNames, and the running daemon's own updater keep resolving assets by the names they already use.",
+  "//": "The daemon's ONLY compiled artifact is the daemon binary, so it is this repo's `appEntrypoint` rather than a second `daemonEntrypoint` leg. The artifact NAMES are load-bearing (goodvibes-daemon-<os>-<arch>): the installer, the SDK's resolveArtifactNames, and the running daemon's own updater all resolve assets by these exact names, so changing one without the others breaks installs and self-updates.",
   "packageName": "goodvibes-daemon",
   "sdkPin": {
     "sdkPackage": "@pellux/goodvibes-sdk",

@@ -16,10 +16,9 @@
  * THEMSELVES — one release note per line — never a path to a file containing
  * them. A path in that variable would be written into the CHANGELOG verbatim as
  * the release's only note, which is how a scratchpad path once reached a
- * shipped changelog in a sibling repo. Same shape as the TUI's
- * GOODVIBES_TUI_RELEASE_NOTES and the agent's GOODVIBES_AGENT_RELEASE_NOTES, and
- * the same rejection of raw commit-hash lines, so this repo cannot ship a
- * commit log in place of product notes either.
+ * shipped changelog in a sibling repo. Raw commit-hash lines are rejected the
+ * same way, so this repo cannot ship a commit log in place of product notes
+ * either.
  *
  * With the variable unset the body falls back to the git log since the last
  * tag. That fallback is for a local dry-run; a real release should set the

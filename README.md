@@ -34,20 +34,12 @@ schedulers — lives in the SDK and is consumed from the published package. Noth
 the SDK to build this repository, and nothing should be: a capability that both a client and the
 daemon need belongs in the SDK, not here.
 
-## Provenance
-
-The daemon's source was extracted from `goodvibes-tui` (which built and shipped the daemon binary
-from `src/daemon/**` plus the daemon half of `src/runtime/**`) and from `goodvibes-agent` (which
-carried daemon-grade capabilities the TUI's daemon lacked: the trigger family, registration-gated
-checkpoints, the launch-tolerant provider registry). Git history was not carried across; the files
-are clean copies, unified to one implementation per capability where the two forks had drifted.
-
 ## Version line
 
-The daemon continues the platform's version line at **1.28.0** rather than restarting at 1.0.0.
-Live installs already carry a settings reader-floor (`$goodvibes.minReaderVersion`), the update
-handover compares versions monotonically, and the rejected-version record is keyed by version — a
-restart would break all three on machines that are already running.
+The daemon's version is **1.28.0**. Live installs already carry a settings reader-floor
+(`$goodvibes.minReaderVersion`), the update handover compares versions monotonically, and the
+rejected-version record is keyed by version — those three mechanics all depend on the version
+line staying continuous and monotonically increasing.
 
 ## Install
 
@@ -103,8 +95,8 @@ bun run build:all        # every release target
 ```
 
 The compiled artifact names (`goodvibes-daemon-linux-x64`, `goodvibes-daemon-macos-arm64`, …) are
-unchanged from the TUI's daemon leg, so the installer and the running daemon's own updater resolve
-release assets by the names they already use.
+load-bearing: the installer and the running daemon's own updater both resolve release assets by
+these exact names, so changing one without the other breaks installs and self-updates.
 
 ## Running it
 

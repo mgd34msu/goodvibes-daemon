@@ -336,8 +336,8 @@ misparsed.
 
 ## Flags this binary refuses by name
 
-The daemon's parser was carried over from the terminal app's, and used to accept
-these silently. They are now refused, naming the surface that actually owns them:
+This binary's parser used to accept these silently. They are now refused,
+naming the surface that actually owns them:
 
 `--resume`, `-r`, `--continue`, `--fork`, `--print`, `--prompt`/`-p`,
 `--output`/`--output-format`/`-o`, `--open`, `--no-alt-screen`, `--session`/`-s`,
