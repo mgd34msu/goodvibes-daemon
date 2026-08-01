@@ -66,7 +66,21 @@ describe('the local-tools pin set', () => {
     ) as { optionalDependencies?: Record<string, string> };
     const disagreements = PINNED
       .filter((name) => platform.optionalDependencies?.[name] !== undefined)
-      .filter((name) => manifest.dependencies[name] !== platform.optionalDependencies![name])
+      .filter((name) => {
+        const declared = platform.optionalDependencies![name]!;
+        const pinned = manifest.dependencies[name];
+        if (!declared.startsWith('file:')) return pinned !== declared;
+        // A file: declaration means the platform VENDORS the tool inside its
+        // own package. The published range to agree with is the vendored
+        // copy's real version: this repo's caret pin must include it.
+        const vendored = JSON.parse(
+          readFileSync(
+            join(repoRoot, 'node_modules', '@pellux', 'goodvibes-sdk', declared.slice('file:'.length), 'package.json'),
+            'utf-8',
+          ),
+        ) as { version: string };
+        return pinned !== `^${vendored.version}`;
+      })
       .map((name) => `${name}: ${manifest.dependencies[name]} here, ${platform.optionalDependencies![name]} there`);
     expect(disagreements).toEqual([]);
   });

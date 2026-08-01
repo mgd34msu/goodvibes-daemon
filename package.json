@@ -64,8 +64,8 @@
     "@anthropic-ai/bedrock-sdk": "^0.28.1",
     "@anthropic-ai/sdk": "^0.82.0",
     "@ast-grep/napi": "^0.42.0",
-    "@pellux/goodvibes-sdk": "1.21.0",
-    "@pellux/goodvibes-terminal-shell": "1.21.0",
+    "@pellux/goodvibes-sdk": "2.0.0",
+    "@pellux/goodvibes-terminal-shell": "2.0.0",
     "bash-language-server": "^5.6.0",
     "fuse.js": "^7.1.0",
     "graphql": "^16.13.2",
@@ -86,7 +86,7 @@
     "web-tree-sitter": "^0.26.7"
   },
   "devDependencies": {
-    "@pellux/goodvibes-toolchain": "1.21.0",
+    "@pellux/goodvibes-toolchain": "2.0.0",
     "@types/bun": "^1.3.10",
     "typescript": "^5.9.3"
   },
