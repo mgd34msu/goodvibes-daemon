@@ -233,8 +233,10 @@ jobs:
 
   # ── Stage flat release assets (push/tag only): merge all target artifacts,
   #    flatten each platform's sqlite-vec addon to an installer-parseable name,
-  #    add the suite installer, and hand the 4 binaries + 4 addons + install.sh
-  #    to the reusable GH-release as one artifact. A missing addon is fatal. ──
+  #    and hand the 4 binaries + 4 addons to the reusable GH-release as one
+  #    artifact. A missing addon is fatal. The suite installer is NOT staged
+  #    here — it ships from the terminal app's repository (goodvibes-tui,
+  #    scripts/install.sh) now. ──────────────────────────────────────────────
   stage-release-assets:
     needs: [binaries, install-smoke, daemon-smoke, smoke-macos]
     if: >-
@@ -273,22 +275,6 @@ jobs:
           npm pack --pack-destination dist
           echo "packed tarball:"
           ls -la dist/pellux-goodvibes-daemon-*.tgz
-      # The suite installer ships as a release asset of THIS repository, which is
-      # what gives it a permanent public URL:
-      #   https://github.com/mgd34msu/goodvibes-daemon/releases/latest/download/install.sh
-      # goodvibes.sh serves /install.sh from that URL, so the site needs no
-      # per-release deployment at all — and because it rides the same
-      # SHA256SUMS.txt as the binaries, the installer people run is itself
-      # checksummed by the release that produced it.
-      - name: Stage the suite installer as a release asset
-        run: |
-          set -eu
-          if [ ! -f scripts/install.sh ]; then
-            echo "FATAL: scripts/install.sh is missing — the suite installer is a release asset of this repository" >&2
-            exit 1
-          fi
-          cp scripts/install.sh dist/install.sh
-          echo "staged install.sh"
       - name: Flatten sqlite-vec addons as flat release assets
         run: |
           set -eu
@@ -314,13 +300,12 @@ jobs:
           path: |
             dist/goodvibes-daemon-*
             dist/sqlite-vec-*
-            dist/install.sh
             dist/pellux-goodvibes-daemon-*.tgz
           if-no-files-found: error
           retention-days: 1
 
   # ── GitHub Release (push/tag only): reusable changelog excerpt + SHA256SUMS
-  #    over the 4 binaries + 4 addons + install.sh + pinned softprops upload. ─
+  #    over the 4 binaries + 4 addons + pinned softprops upload. ────────────
   gh-release:
     needs: [stage-release-assets]
     if: >-
@@ -336,89 +321,8 @@ jobs:
       assets-glob: |
         dist/goodvibes-daemon-*
         dist/sqlite-vec-*
-        dist/install.sh
         dist/pellux-goodvibes-daemon-*.tgz
       bun-version: "1.3.14"
-
-  # ── Publish the installer to goodvibes.sh (push/tag only). ────────────────
-  #
-  # The installer's canonical public copy is the release asset staged above, and
-  # goodvibes.sh serves /install.sh from `releases/latest/download/install.sh`,
-  # so that URL is current the moment the release exists. This job is the second
-  # half: it pushes the same file into the Cloudflare Pages site so the site
-  # serves the bytes itself rather than only redirecting to them.
-  #
-  # THE ONE THING A HUMAN HAS TO SET. This job stays off until the repository is
-  # given the settings below, because a Cloudflare Pages deployment replaces the
-  # WHOLE site with the directory it is handed — publishing a one-file directory
-  # would take goodvibes.sh down to a single shell script. So the job assembles
-  # the site from its own source repository and only then deploys, and it refuses
-  # to run at all unless every setting naming that repository is present:
-  #
-  #   vars.PUBLISH_INSTALLER_SITE   'true' to arm this job at all
-  #   vars.INSTALLER_SITE_REPO      owner/name of the goodvibes.sh site source
-  #   vars.INSTALLER_SITE_DIR       directory in that repo that Pages deploys
-  #                                 (defaults to the repository root)
-  #   vars.INSTALLER_SITE_PROJECT   Cloudflare Pages project (defaults: goodvibes)
-  #   secrets.CLOUDFLARE_API_TOKEN  a token with Cloudflare Pages: Edit
-  #   secrets.CLOUDFLARE_ACCOUNT_ID the account the Pages project lives in
-  #   secrets.INSTALLER_SITE_TOKEN  a token that can read the site repository
-  #                                 (omit when the site lives in this repository)
-  #
-  # Until they are set the release is complete and the installer is published as
-  # a release asset; this job reports itself skipped rather than pretending.
-  publish-installer-site:
-    name: Publish install.sh to goodvibes.sh
-    needs: [gh-release]
-    if: >-
-      (
-        github.event_name == 'push' ||
-        (github.event_name == 'workflow_dispatch' && github.event.inputs.mode == 'release')
-      ) && vars.PUBLISH_INSTALLER_SITE == 'true' && vars.INSTALLER_SITE_REPO != ''
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    permissions:
-      contents: read
-    steps:
-      - name: Checkout this repository (for scripts/install.sh)
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
-        with:
-          ref: ${{ github.ref }}
-          path: daemon
-      - name: Checkout the goodvibes.sh site source
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
-        with:
-          repository: ${{ vars.INSTALLER_SITE_REPO }}
-          token: ${{ secrets.INSTALLER_SITE_TOKEN || secrets.GITHUB_TOKEN }}
-          path: site
-      - name: Place the installer in the site tree
-        run: |
-          set -eu
-          SITE_DIR="site/${{ vars.INSTALLER_SITE_DIR }}"
-          SITE_DIR="${SITE_DIR%/}"
-          if [ ! -d "$SITE_DIR" ]; then
-            echo "FATAL: the site directory $SITE_DIR does not exist — refusing to deploy a partial site" >&2
-            exit 1
-          fi
-          cp daemon/scripts/install.sh "$SITE_DIR/install.sh"
-          echo "site tree to deploy:"
-          ls -la "$SITE_DIR"
-          echo "SITE_DIR=$SITE_DIR" >> "$GITHUB_ENV"
-      - name: Deploy to Cloudflare Pages
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          PAGES_PROJECT: ${{ vars.INSTALLER_SITE_PROJECT || 'goodvibes' }}
-        run: |
-          set -eu
-          if [ -z "${CLOUDFLARE_API_TOKEN:-}" ] || [ -z "${CLOUDFLARE_ACCOUNT_ID:-}" ]; then
-            echo "FATAL: CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID are not set on this repository" >&2
-            exit 1
-          fi
-          npx --yes wrangler@4 pages deploy "$SITE_DIR" \
-            --project-name "$PAGES_PROJECT" \
-            --branch main \
-            --commit-dirty=true
 
   # ── Publish to npmjs (AFTER the GH release — pinned publish topology). ─────
   publish-npm:

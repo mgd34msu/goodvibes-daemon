@@ -19,9 +19,9 @@ the work happens here.
 curl -fsSL https://goodvibes.sh/install.sh | sh
 ```
 
-This is `scripts/install.sh` in this repository, published as a release asset of it.
-It is pure-binary and checksum-verified — nothing is fetched through a package manager.
-By default it installs all four products from their own repositories' releases:
+It is pure-binary and checksum-verified — nothing is fetched through a package
+manager. By default it installs all four products from their own
+repositories' releases:
 
 | Product | Repository | What lands |
 | --- | --- | --- |

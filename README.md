@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/mgd34msu/goodvibes-daemon/actions/workflows/ci.yml/badge.svg)](https://github.com/mgd34msu/goodvibes-daemon/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/version-1.28.1-blue.svg)](https://github.com/mgd34msu/goodvibes-daemon)
+[![Version](https://img.shields.io/badge/version-1.28.2-blue.svg)](https://github.com/mgd34msu/goodvibes-daemon)
 
 The GoodVibes daemon: one long-running process per machine that holds the control plane every
 GoodVibes client talks to. It answers the operator verb families over HTTP, reads and replies on
@@ -23,11 +23,7 @@ A **product** over `@pellux/goodvibes-sdk`, exactly like the TUI and the agent a
 - the product handlers the SDK does not own (inbox, triage, drafts, routing, remote peers,
   credentials),
 - the CLI (`send`, `cluster`, `webui`, `provision-wake-model`, `install-service` and friends),
-- packaging: the compiled `goodvibes-daemon-<os>-<arch>` binaries,
-- `scripts/install.sh` — the suite installer behind `https://goodvibes.sh/install.sh`, which
-  installs all four products (this daemon, the terminal app, the agent, the browser operator
-  surface) from their own repositories' releases. It lives here because the daemon is the product
-  everything else is installed alongside, and because this repository's release lane publishes it.
+- packaging: the compiled `goodvibes-daemon-<os>-<arch>` binaries.
 
 Every engine — the facade, the routes, the brokers, the updater, the channel adapters, the
 schedulers — lives in the SDK and is consumed from the published package. Nothing was moved out of
@@ -43,20 +39,13 @@ line staying continuous and monotonically increasing.
 
 ## Install
 
-The one-line installer downloads checksum-verified binaries and needs no package
-manager. It installs the whole suite — this daemon and the sqlite-vec addon from
-this repository's release, the terminal app from `goodvibes-tui`, the agent and
-its browser driver from `goodvibes-agent`, and the browser operator surface's
-bundle from `goodvibes-webui` — resolving a tag per repository and verifying
-every file against that repository's own `SHA256SUMS.txt`:
-
 ```sh
 curl -fsSL https://goodvibes.sh/install.sh | sh
 ```
 
-The installer is `scripts/install.sh` in this repository and ships as a release
-asset of it, so the current published copy is always at
-`https://github.com/mgd34msu/goodvibes-daemon/releases/latest/download/install.sh`.
+This installs the whole GoodVibes suite — the daemon, the terminal app, the
+agent, and the browser operator surface — from checksum-verified binaries,
+with no package manager involved.
 
 The browser surface is not a fourth binary and not a fourth service: the bundle
 unpacks to `<install dir>/webui/<version>` and this daemon serves it on its own

@@ -6,6 +6,13 @@ All notable changes to the GoodVibes daemon.
 
 ## [Unreleased]
 
+## [1.28.2] - 2026-08-01
+
+### Changes
+
+- This repository's releases carry the daemon's own artifacts; the suite
+  installer at `https://goodvibes.sh/install.sh` is unchanged.
+
 ## [1.28.1] - 2026-08-01
 
 - Changed: the npm package is `@pellux/goodvibes-daemon`, scoped like every other
