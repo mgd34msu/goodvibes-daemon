@@ -1,13 +1,12 @@
 /**
  * device-posture-composition.ts — the paired-phone feature inside THIS daemon.
  *
- * A phone pairs with whichever daemon the person runs, and for this owner that
- * daemon is hosted by the terminal app. Until this module existed the app had no
- * device posture at all: `device.nodes.maxPaired` was enforced at the pairing
- * path (SDK-side) and `device.capabilities.mode` was an onboarding toggle, while
- * the other eleven `device.*` keys were recorded, read back, and governed
- * nothing — the capability service they describe was never built here, so there
- * was nothing for them to govern.
+ * A phone pairs with whichever daemon the person runs. Until this module
+ * existed this daemon had no device posture at all: `device.nodes.maxPaired`
+ * was enforced at the pairing path (SDK-side) and `device.capabilities.mode`
+ * was an onboarding toggle, while the other eleven `device.*` keys were
+ * recorded, read back, and governed nothing — the capability service they
+ * describe was never built here, so there was nothing for them to govern.
  *
  * The feature itself is platform-owned (`platform/devices`): the settings→policy
  * mapping, the grants ledger, the capture store, the housekeeping sweeps, the
@@ -41,7 +40,7 @@ import type { GatewayMethodCatalog } from '@pellux/goodvibes-sdk/platform/contro
 import type { ConfigManager } from '@pellux/goodvibes-sdk/platform/config';
 
 /** Who this surface records in the device audit trail. */
-export const TUI_DEVICE_ACTOR = 'tui:phone-tool';
+export const DAEMON_DEVICE_ACTOR = 'daemon:phone-tool';
 
 export interface DevicePostureCompositionOptions {
   readonly configManager: ConfigManager;
@@ -77,7 +76,7 @@ export function createDevicePostureServices(options: DevicePostureCompositionOpt
     approvals: options.approvals,
     config: options.configManager,
     stateDirectory: options.stateDirectory,
-    actor: TUI_DEVICE_ACTOR,
+    actor: DAEMON_DEVICE_ACTOR,
     ...(options.getSessionId ? { getSessionId: options.getSessionId } : {}),
   });
   if (options.gatewayMethods) registerDevicesGatewayMethods(options.gatewayMethods, devicePosture);
@@ -104,8 +103,8 @@ export function installDevicePosture(
 /**
  * The recovery sweep plus the periodic timer. Separate from construction so
  * composing a runtime in a test starts no timer and touches no disk, and
- * separate from the call above so the standalone daemon — which registers no
- * tools — still sweeps.
+ * separate from the call above so this daemon — which registers no tools —
+ * still sweeps.
  */
 export function startDeviceHousekeeping(devicePosture: DevicePostureRuntime): void {
   void devicePosture.startHousekeeping().catch((error: unknown) => {

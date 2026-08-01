@@ -35,7 +35,7 @@ import type {
   DevicePeerTransport,
   DevicePeerView,
 } from '@pellux/goodvibes-sdk/platform/devices';
-import { createDevicePostureServices, TUI_DEVICE_ACTOR } from '../../runtime/device-posture-composition.ts';
+import { createDevicePostureServices, DAEMON_DEVICE_ACTOR } from '../../runtime/device-posture-composition.ts';
 import { makeProjectTempDir } from '../helpers/project-temp.ts';
 
 const DEVICE_METHOD_IDS = [
@@ -286,7 +286,7 @@ describe('the composed daemon serves the whole devices.* family', () => {
     };
     expect(grants.grants[0]?.grantedBy).toBe('operator');
     expect(grants.audit.some((entry) => entry.action === 'granted')).toBe(true);
-    expect(TUI_DEVICE_ACTOR).toBe('tui:phone-tool');
+    expect(DAEMON_DEVICE_ACTOR).toBe('daemon:phone-tool');
   });
 
   test('a request the contract cannot satisfy is refused before anyone is asked', async () => {
