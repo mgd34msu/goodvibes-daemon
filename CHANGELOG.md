@@ -6,6 +6,16 @@ All notable changes to the GoodVibes daemon.
 
 ## [Unreleased]
 
+## [1.28.3] - 2026-08-01
+
+### Changes
+
+- Fixed: importing settings that include `display.themeMode` no longer prints
+  an "unknown key" warning. The SDK's configuration schema (2.0.1) now declares
+  the key — `auto` probes the terminal background once at startup, `dark` and
+  `light` force a fixed appearance — so every component ingests it as a real,
+  documented setting.
+
 ## [1.28.2] - 2026-08-01
 
 ### Changes
