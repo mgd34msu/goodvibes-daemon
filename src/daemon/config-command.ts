@@ -22,10 +22,14 @@
  * visible on purpose: it is a pointer, not a secret, and hiding it would make
  * the indirection impossible to verify.
  */
-import type { ConfigManager, ConfigKey, ConfigSetting } from '../config/index.ts';
-import { ConfigError } from '../config/index.ts';
-import { parseConfigValueText } from '../cli/config-value.ts';
-import { REDACTED_VALUE, isSensitiveConfigPath, redactConfig } from '@pellux/goodvibes-terminal-shell';
+import type { ConfigManager, ConfigKey, ConfigSetting } from '@pellux/goodvibes-sdk/platform/config';
+import { ConfigError } from '@pellux/goodvibes-sdk/platform/config';
+import {
+  REDACTED_VALUE,
+  isSensitiveConfigPath,
+  parseConfigValueText,
+  redactConfig,
+} from '@pellux/goodvibes-terminal-shell';
 
 export const CONFIG_SUBCOMMANDS = ['list', 'get', 'set', 'unset'] as const;
 export type ConfigSubcommand = (typeof CONFIG_SUBCOMMANDS)[number];
