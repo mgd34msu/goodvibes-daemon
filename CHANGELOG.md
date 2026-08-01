@@ -4,6 +4,35 @@ All notable changes to the GoodVibes daemon.
 
 ---
 
+## [Unreleased]
+
+### Changes
+
+- Three config modules the terminal app carried a byte-identical copy of are the
+  SDK's: `config/goodvibes-home.ts` (tree-root and daemon-home resolution),
+  `config/provider-model.ts` (`provider:model` parsing) and `config/index.ts`
+  (a barrel over the SDK plus derivation helpers, all of which moved). Every
+  importer here reads them from `@pellux/goodvibes-sdk/platform/config` and
+  `.../platform/providers`.
+
+- `config set <key> <value>` reads its value with the terminal shell's
+  `parseConfigValueText`. `src/cli/config-value.ts` held a byte-identical copy
+  of that function and its `cli/index.ts` re-export is gone with it. The copy
+  existed because the shared one was private; it is exported now, and one
+  implementation is the whole point — `--config x=false` and `config set x
+  false` must write the same thing.
+
+- The local `sql.js` ambient declaration is gone. The SDK ships the declaration
+  now, and `daemon/handlers/sqlite-store.ts` picks it up with
+  `/// <reference types="@pellux/goodvibes-sdk/sql-js" />`.
+
+- The test helpers this repo and the terminal app both carry now say so in a
+  header. They are byte-identical on purpose: each binds to its own repo's
+  working tree, source layout and Bun test lifecycle, so a shared home would
+  mean inventing a test-only published package rather than hoisting anything.
+
+---
+
 ## [1.28.0] - 2026-07-30
 
 ### Changes
