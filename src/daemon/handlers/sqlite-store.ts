@@ -1,3 +1,7 @@
+/// <reference types="@pellux/goodvibes-sdk/sql-js" />
+// `sql.js` ships no types. The declaration is SDK-owned and reaches here
+// through that reference — there is no local copy to keep in step.
+
 import { mkdir, rename, writeFile } from 'node:fs/promises';
 import { readFileSync, readdirSync, renameSync, rmSync, statSync } from 'node:fs';
 import { existsSync } from 'node:fs';
