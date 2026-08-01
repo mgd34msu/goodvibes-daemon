@@ -65,6 +65,16 @@ describe('the completion scripts are generated from the catalog', () => {
     expect(completionFlagsFor('status')).toContain('--daemon-home');
     expect(completionFlagsFor('serve')).not.toContain('--json');
   });
+
+  test('pair completes -y/--yes alongside its remote-target flags', () => {
+    const flags = completionFlagsFor('pair');
+    expect(flags).toContain('-y');
+    expect(flags).toContain('--yes');
+    expect(flags).toContain('--host');
+    expect(flags).toContain('--port');
+    expect(flags).toContain('--token');
+    expect(flags).toContain('--json');
+  });
 });
 
 describe('the completion command itself', () => {

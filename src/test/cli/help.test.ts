@@ -36,6 +36,19 @@ describe('the top-level help lists exactly what the binary does', () => {
     const migrate = renderDaemonCommandHelp('migrate-service', 'goodvibes-daemon', 'linux');
     expect(migrate).toContain('-y');
     expect(migrate).toContain('--yes');
+
+    const pair = renderDaemonCommandHelp('pair', 'goodvibes-daemon', 'linux') ?? '';
+    expect(pair).toContain('-y');
+    expect(pair).toContain('--yes');
+  });
+
+  test('pair documents both forms and the mint-vs-reprint distinction', () => {
+    const pair = renderDaemonCommandHelp('pair', 'goodvibes-daemon', 'linux') ?? '';
+    expect(pair).toContain('LOCAL FORM');
+    expect(pair).toContain('REMOTE FORM');
+    expect(pair).toContain('MINT A NEW');
+    expect(pair).toContain('reprinting');
+    expect(pair).toContain('--host');
   });
 
   test('documents --json on the commands that take it', () => {

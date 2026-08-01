@@ -209,6 +209,21 @@ describe('values', () => {
     expect(parse('migrate-service', '--yes').flags.yes).toBe(true);
     expect(parse('migrate-service', '--non-interactive').flags.yes).toBe(true);
   });
+
+  test('pair takes -y/--yes alongside the remote-target flags', () => {
+    const result = parse('pair', '--host', '10.0.0.7', '--port', '4100', '--token', 't', '-y');
+    expect(result.flags.host).toBe('10.0.0.7');
+    expect(result.flags.port).toBe(4100);
+    expect(result.flags.token).toBe('t');
+    expect(result.flags.yes).toBe(true);
+    expect(result.errors).toEqual([]);
+  });
+
+  test('pair with no -y still parses cleanly (yes defaults false)', () => {
+    const result = parse('pair', '--host', '10.0.0.7');
+    expect(result.flags.yes).toBe(false);
+    expect(result.errors).toEqual([]);
+  });
 });
 
 describe('positional arguments after a command', () => {
