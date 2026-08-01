@@ -340,7 +340,7 @@ const VERB_FAMILIES: readonly VerbFamily[] = [
   },
   {
     family: 'channels.inbox.list',
-    reason: "This repo's own inbox surface (daemon/handlers/inbox), wrapped by the triage pipeline (daemon/handlers/triage) so every returned item carries its score.",
+    reason: "This repo's own inbox surface (daemon/handlers/inbox), wrapped by the triage pipeline (daemon/handlers/triage) so every returned item carries its score. It answers for real now rather than only registering: the SDK descriptor carried `invokable: false` until this daemon's aggregator served it, so the handler counted here was one no client could reach. Behaviour lives in daemon/inbox/aggregator.test.ts, reachability over both transports in gateway-inbox-list-reachable.test.ts.",
     methodIds: ['channels.inbox.list'],
   },
   {

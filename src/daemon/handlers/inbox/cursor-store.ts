@@ -121,9 +121,23 @@ interface ItemRow {
   unread: number;
 }
 
+/**
+ * A position in the feed's total order (receivedAt DESC, id ASC). Paging is
+ * keyset rather than OFFSET because the feed is written to while it is being
+ * read: an OFFSET page re-anchors on every insert, so a caller walking pages
+ * while a poll lands would see items twice and skip others. A key resumes from
+ * a row, not from a count, so an insert above the cursor cannot shift it.
+ */
+export interface InboxPosition {
+  readonly receivedAt: number;
+  readonly id: string;
+}
+
 export interface InboxQuery {
   providers?: readonly string[];
   since?: number;
+  /** Resume strictly AFTER this position in the feed order. */
+  after?: InboxPosition;
   /** Max items returned across the whole query. */
   limit: number;
 }
@@ -347,6 +361,15 @@ export class InboxCursorStore {
       clauses.push('receivedAt > ?');
       params.push(Math.floor(query.since));
     }
+    if (query.after && Number.isFinite(query.after.receivedAt)) {
+      // Strictly after the cursor row in (receivedAt DESC, id ASC) order: an
+      // older timestamp, or the same timestamp with a higher id. Both halves
+      // are needed — several items can share a receivedAt, and comparing on
+      // the timestamp alone would drop every one of its ties.
+      clauses.push('(receivedAt < ? OR (receivedAt = ? AND id > ?))');
+      const at = Math.floor(query.after.receivedAt);
+      params.push(at, at, query.after.id);
+    }
     const where = clauses.length > 0 ? `WHERE ${clauses.join(' AND ')}` : '';
     const limit = Math.max(0, Math.floor(query.limit));
     params.push(limit);
@@ -363,13 +386,7 @@ export class InboxCursorStore {
 
   /** Highest receivedAt across the (optionally provider-filtered) feed, or 0. */
   maxReceivedAt(providers?: readonly string[]): number {
-    let where = '';
-    const params: (string | number)[] = [];
-    if (providers && providers.length > 0) {
-      const placeholders = providers.map(() => '?').join(', ');
-      where = `WHERE provider IN (${placeholders})`;
-      params.push(...providers);
-    }
+    const { where, params } = filterClause(providers);
     const row = this.store.get<{ maxReceived: number | null }>(
       `SELECT MAX(receivedAt) AS maxReceived FROM items ${where}`,
       params,
@@ -377,20 +394,40 @@ export class InboxCursorStore {
     return row && row.maxReceived != null ? Number(row.maxReceived) : 0;
   }
 
-  /** Total count of items across the (optional) provider set. */
-  countItems(providers?: readonly string[]): number {
-    let where = '';
-    const params: (string | number)[] = [];
-    if (providers && providers.length > 0) {
-      const placeholders = providers.map(() => '?').join(', ');
-      where = `WHERE provider IN (${placeholders})`;
-      params.push(...providers);
-    }
+  /**
+   * Total count of items matching the (optional) provider set and `since`
+   * watermark.
+   *
+   * `since` is part of the filter and not an afterthought: the total is what a
+   * caller compares its page against to know whether it has seen everything, so
+   * a total counting rows the same call's `since` excluded would tell it there
+   * is more when there is not.
+   */
+  countItems(providers?: readonly string[], since?: number): number {
+    const { where, params } = filterClause(providers, since);
     const row = this.store.get<{ n: number }>(
       `SELECT COUNT(*) AS n FROM items ${where}`,
       params,
     );
     return row ? Number(row.n) : 0;
+  }
+
+  /**
+   * Per-provider item counts over the same filter, in ONE query.
+   *
+   * The aggregator reports a stored count for every provider on every call, and
+   * doing that with one countItems() per provider would be a query per provider
+   * per request. Providers absent from the result simply have no rows.
+   */
+  countItemsByProvider(providers?: readonly string[], since?: number): Map<string, number> {
+    const { where, params } = filterClause(providers, since);
+    const rows = this.store.all<{ provider: string; n: number }>(
+      `SELECT provider, COUNT(*) AS n FROM items ${where} GROUP BY provider`,
+      params,
+    );
+    const out = new Map<string, number>();
+    for (const row of rows) out.set(row.provider, Number(row.n));
+    return out;
   }
 
   /**
@@ -433,6 +470,24 @@ export class InboxCursorStore {
       this.store.close();
     }
   }
+}
+
+/** Shared WHERE builder for the provider-set + since filter the reads share. */
+function filterClause(
+  providers?: readonly string[],
+  since?: number,
+): { where: string; params: (string | number)[] } {
+  const clauses: string[] = [];
+  const params: (string | number)[] = [];
+  if (providers && providers.length > 0) {
+    clauses.push(`provider IN (${providers.map(() => '?').join(', ')})`);
+    params.push(...providers);
+  }
+  if (typeof since === 'number' && Number.isFinite(since)) {
+    clauses.push('receivedAt > ?');
+    params.push(Math.floor(since));
+  }
+  return { where: clauses.length > 0 ? `WHERE ${clauses.join(' AND ')}` : '', params };
 }
 
 function rowToItem(row: ItemRow): InboundChannelItem {

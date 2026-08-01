@@ -57,15 +57,27 @@ function errorMessage(error: unknown): string {
 /**
  * Derive the host-facing context envelope from the raw SDK invocation context.
  * `explicitUserRequest` is carried in `context.metadata.explicitUserRequest`.
+ *
+ * An ABSENT context is accepted and read as the empty one: no principal, no
+ * scopes, not admin, nobody claiming a person asked. The type says a context is
+ * always there and at runtime it is not always — an in-process invoke that
+ * builds the invocation by hand can omit it — and reading `.metadata` off
+ * `undefined` turned that into a TypeError thrown out of the handler wrapper
+ * instead of the refusal every caller can act on. Defaulting to the least
+ * privilege is the only safe reading: it can cost a caller an authorization it
+ * never proved, never grant one.
  */
-export function normalizeContext(c: GatewayMethodInvocationContext): HandlerContextEnvelope {
-  const metadata = c.metadata ?? {};
+export function normalizeContext(
+  c: GatewayMethodInvocationContext | undefined,
+): HandlerContextEnvelope {
+  const context = c ?? ({} as GatewayMethodInvocationContext);
+  const metadata = context.metadata ?? {};
   return {
-    principalId: c.principalId ?? '',
-    admin: c.admin === true,
-    scopes: c.scopes ? [...c.scopes] : [],
+    principalId: context.principalId ?? '',
+    admin: context.admin === true,
+    scopes: context.scopes ? [...context.scopes] : [],
     explicitUserRequest: metadata.explicitUserRequest === true,
-    authToken: c.authToken ?? '',
+    authToken: context.authToken ?? '',
   };
 }
 

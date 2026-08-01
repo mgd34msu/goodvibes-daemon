@@ -130,7 +130,7 @@ export function createDiscordAdapter(ctx: AdapterContext): InboundProviderAdapte
         return unavailable(`credential lookup failed: ${errMsg(error)}`);
       }
       if (!token || token.trim().length === 0) {
-        return unavailable('missing surfaces.discord.botToken');
+        return notConfigured('missing surfaces.discord.botToken');
       }
 
       // Resolve our own user id so we can classify @-mentions of us. Best-effort:
@@ -229,9 +229,9 @@ export function createDiscordAdapter(ctx: AdapterContext): InboundProviderAdapte
             before = oldestId;
           }
         }
-        return { items, state: items.length > 0 ? 'ready' : 'empty' };
+        return { items, state: items.length > 0 ? 'ready' : 'empty', configured: true };
       } catch (error) {
-        return unavailable(errMsg(error));
+        return failed(errMsg(error));
       }
     },
   };
@@ -243,6 +243,30 @@ function msToSnowflake(ms: number): string {
   return (BigInt(delta) << 22n).toString();
 }
 
+/**
+ * The provider is wired up but this attempt failed — an outage, a refusal, a
+ * bad response. Items that exist are missing from the feed, which is what
+ * `configured: true` here tells the aggregator to report as a partial answer
+ * rather than as an empty one.
+ */
+function failed(error: string): ProviderPollResult {
+  return { items: [], state: 'unavailable', error, configured: true };
+}
+
+/**
+ * Nothing to poll with: no credential, or an unusable one. Normal on a fresh
+ * install, and deliberately NOT a partial answer — nothing is missing from a
+ * provider nobody asked us to read.
+ */
+function notConfigured(error: string): ProviderPollResult {
+  return { items: [], state: 'unavailable', error, configured: false };
+}
+
+/**
+ * The credential store itself failed, so we do not know whether this provider
+ * is configured. Neither claim is made — reporting a guess here is how a
+ * transient store fault would get read as "you never set this up".
+ */
 function unavailable(error: string): ProviderPollResult {
   return { items: [], state: 'unavailable', error };
 }

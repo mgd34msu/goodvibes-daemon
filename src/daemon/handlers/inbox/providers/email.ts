@@ -79,11 +79,11 @@ export function createEmailAdapter(
       if (!user) missing.push('imapUser');
       if (!password) missing.push('imapPassword');
       if (missing.length > 0) {
-        return unavailable(`missing email IMAP credentials: ${missing.join(', ')}`);
+        return notConfigured(`missing email IMAP credentials: ${missing.join(', ')}`);
       }
       const port = portRaw ? Number.parseInt(portRaw, 10) : 993;
       if (!Number.isFinite(port) || port <= 0) {
-        return unavailable(`invalid surfaces.email.imapPort: ${portRaw}`);
+        return notConfigured(`invalid surfaces.email.imapPort: ${portRaw}`);
       }
 
       const client = factory({
@@ -121,9 +121,9 @@ export function createEmailAdapter(
           if (routeId) item.routeId = routeId;
           items.push(item);
         }
-        return { items, state: items.length > 0 ? 'ready' : 'empty' };
+        return { items, state: items.length > 0 ? 'ready' : 'empty', configured: true };
       } catch (error) {
-        return unavailable(errMsg(error));
+        return failed(errMsg(error));
       } finally {
         try {
           await client.logout();
@@ -143,6 +143,30 @@ function normalizeAddress(from: string): string {
   return addr.length > 0 ? addr : from.trim().toLowerCase();
 }
 
+/**
+ * The provider is wired up but this attempt failed — an outage, a refusal, a
+ * bad response. Items that exist are missing from the feed, which is what
+ * `configured: true` here tells the aggregator to report as a partial answer
+ * rather than as an empty one.
+ */
+function failed(error: string): ProviderPollResult {
+  return { items: [], state: 'unavailable', error, configured: true };
+}
+
+/**
+ * Nothing to poll with: no credential, or an unusable one. Normal on a fresh
+ * install, and deliberately NOT a partial answer — nothing is missing from a
+ * provider nobody asked us to read.
+ */
+function notConfigured(error: string): ProviderPollResult {
+  return { items: [], state: 'unavailable', error, configured: false };
+}
+
+/**
+ * The credential store itself failed, so we do not know whether this provider
+ * is configured. Neither claim is made — reporting a guess here is how a
+ * transient store fault would get read as "you never set this up".
+ */
 function unavailable(error: string): ProviderPollResult {
   return { items: [], state: 'unavailable', error };
 }

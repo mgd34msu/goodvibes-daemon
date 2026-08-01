@@ -260,4 +260,32 @@ describe('saving is crash-safe', () => {
     reopened.close();
     expect(quarantineFiles()).toEqual([]);
   });
+
+  test('concurrent saves of one store all succeed — the temp path is not shared', async () => {
+    // The defect: the temp filename was `<path>.<pid>.<Date.now()>.tmp`, so two
+    // saves in the same millisecond in the same process picked the SAME path.
+    // Both wrote it, the first rename moved it away, and the second failed with
+    // ENOENT on a file it had just written itself. The inbox poller flushes once
+    // per provider and polls every provider concurrently, so an ordinary
+    // two-provider startup hit it, and the read verb reported a filesystem error
+    // as that provider's feed status.
+    const store = makeStore();
+    await store.init();
+    store.run('INSERT INTO probe (id, value) VALUES (?, ?)', ['concurrent', 'yes']);
+
+    const results = await Promise.allSettled(
+      Array.from({ length: 8 }, () => store.save()),
+    );
+    const rejected = results.filter((result) => result.status === 'rejected');
+    expect(
+      rejected.map((result) => String((result as PromiseRejectedResult).reason)),
+    ).toEqual([]);
+    store.close();
+
+    expect(readdirSync(storeDir()).filter((name) => name.endsWith('.tmp'))).toEqual([]);
+    const reopened = makeStore();
+    await reopened.init();
+    expect(reopened.get<{ value: string }>('SELECT value FROM probe WHERE id = ?', ['concurrent'])?.value).toBe('yes');
+    reopened.close();
+  });
 });

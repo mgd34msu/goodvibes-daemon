@@ -22,9 +22,25 @@ import { summarizeError } from '@pellux/goodvibes-sdk/platform/utils';
 export interface ProviderStatus {
   id: string;
   state: ProviderState;
+  /** NEW items the last poll persisted. Not the provider's stored total. */
   itemCount: number;
   error?: string;
   lastPolledAt?: number;
+  /**
+   * Whether the provider's credentials resolved on the last poll, as the
+   * adapter reported it. Absent until a poll has happened (or when the
+   * credential store itself failed and the adapter could not find out).
+   */
+  configured?: boolean;
+  /**
+   * True once this provider has completed at least one poll on this node.
+   *
+   * A never-polled provider and a polled-and-empty one both hold zero items,
+   * and `channels.inbox.list` must not present the first as the second: on a
+   * node that is not the elected fetcher for an account, "we have not looked"
+   * is the whole truth and "there is nothing" would be a fabrication.
+   */
+  polled: boolean;
 }
 
 export interface PollerOptions {
@@ -69,7 +85,8 @@ export class InboundPoller {
     this.setIntervalImpl = options.setIntervalImpl ?? setInterval;
     this.clearIntervalImpl = options.clearIntervalImpl ?? clearInterval;
     for (const id of this.adapters.keys()) {
-      this.statuses.set(id, { id, state: 'empty', itemCount: 0 });
+      // `polled: false` until a poll actually completes — see ProviderStatus.
+      this.statuses.set(id, { id, state: 'empty', itemCount: 0, polled: false });
     }
   }
 
@@ -154,6 +171,8 @@ export class InboundPoller {
           itemCount: 0,
           error: result.error ?? 'provider unavailable',
           lastPolledAt: Date.now(),
+          ...(result.configured === undefined ? {} : { configured: result.configured }),
+          polled: true,
         });
         return;
       }
@@ -169,16 +188,24 @@ export class InboundPoller {
         state: result.items.length > 0 ? 'ready' : 'empty',
         itemCount: newCount,
         lastPolledAt: Date.now(),
+        ...(result.configured === undefined ? {} : { configured: result.configured }),
+        polled: true,
       });
     } catch (error) {
       const message = summarizeError(error);
       this.logger.warn('inbound poll failed', { provider: id, error: message });
+      // A THROW rather than an honest 'unavailable' result. The adapter got far
+      // enough to run, so the credentials are not the thing that failed —
+      // reporting it as configured is what keeps this out of the
+      // "you never set this up" bucket.
       this.setStatus(id, {
         id,
         state: 'unavailable',
         itemCount: 0,
         error: message,
         lastPolledAt: Date.now(),
+        configured: true,
+        polled: true,
       });
     } finally {
       this.inFlight.delete(id);
