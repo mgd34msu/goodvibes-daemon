@@ -17,11 +17,11 @@
 //   6. returns an Unregister that detaches the handler, stops the poller, and
 //      closes the store.
 //
-// The handler reads the persisted feed (filtered by provider/limit/since) and
-// maps the daemon-internal item shape onto the SDK CHANNEL_INBOX_ITEM_SCHEMA
-// wire shape. The redacted `fromDigest` is the only sender value emitted (as
-// `from`); raw sender ids and unredacted bodies never leave the daemon. The
-// monotonic cursor advances to max(receivedAt) in the returned window.
+// The handler composes the answer in ./aggregator.ts — the merged, paginated
+// page plus every provider's standing. Read that file's header for WHY the
+// answer comes from the synced mirror rather than a fresh remote fetch. The
+// redacted `fromDigest` is the only sender value emitted (as `from`); raw
+// sender ids and unredacted bodies never leave the daemon.
 // ---------------------------------------------------------------------------
 
 import type { HandlerContext } from '../context.ts';
@@ -37,43 +37,21 @@ import {
 } from './provider-adapter.ts';
 import { InboxCursorStore } from './cursor-store.ts';
 import { InboundPoller } from './poller.ts';
+import { aggregateInbox, normalizeInboxQuery } from './aggregator.ts';
+import type { InboxListInput, InboxListOutput } from './aggregator.ts';
 import { createSlackAdapter, SLACK_PROVIDER_ID } from './providers/slack.ts';
 import { createDiscordAdapter, DISCORD_PROVIDER_ID } from './providers/discord.ts';
 import { createEmailAdapter, EMAIL_PROVIDER_ID } from './providers/email.ts';
 import { summarizeError } from '@pellux/goodvibes-sdk/platform/utils';
 
 export const INBOX_LIST_METHOD_ID = 'channels.inbox.list';
-const DEFAULT_LIMIT = 50;
-const MAX_LIMIT = 500;
 
-/** SDK `channels.inbox.list` input (single optional provider per the schema). */
-export interface InboxListInput {
-  provider?: string;
-  limit?: number;
-  since?: number;
-}
-
-/** One item in the SDK CHANNEL_INBOX_ITEM_SCHEMA wire shape. */
-export interface ChannelInboxItem {
-  id: string;
-  provider: string;
-  kind: string;
-  /** Redacted sender token (sha256First, 16 hex). Never the raw id. */
-  from: string;
-  subject?: string;
-  bodyPreview: string;
-  receivedAt: number;
-  unread: boolean;
-  routeId?: string;
-}
-
-/** SDK `channels.inbox.list` output (objectSchema: items/total/truncated/cursor?). */
-export interface InboxListOutput {
-  items: ChannelInboxItem[];
-  total: number;
-  truncated: boolean;
-  cursor?: string;
-}
+export type {
+  ChannelInboxItem,
+  ChannelInboxProviderStatus,
+  InboxListInput,
+  InboxListOutput,
+} from './aggregator.ts';
 
 /** Start/stop control over the poll loops, handed to a leadership gate. */
 export interface InboxPollingControl {
@@ -116,41 +94,6 @@ function registerBuiltinAdapters(): void {
   registerAdapterFactory(SLACK_PROVIDER_ID, (ctx) => createSlackAdapter(ctx));
   registerAdapterFactory(DISCORD_PROVIDER_ID, (ctx) => createDiscordAdapter(ctx));
   registerAdapterFactory(EMAIL_PROVIDER_ID, (ctx) => createEmailAdapter(ctx));
-}
-
-function normalizeInput(body: unknown): { providers?: string[]; limit: number; since?: number } {
-  const input = (body ?? {}) as InboxListInput;
-  const provider = typeof input.provider === 'string' && input.provider.length > 0
-    ? input.provider
-    : undefined;
-  let limit = typeof input.limit === 'number' && Number.isFinite(input.limit)
-    ? Math.floor(input.limit)
-    : DEFAULT_LIMIT;
-  limit = Math.min(Math.max(1, limit), MAX_LIMIT);
-  const since = typeof input.since === 'number' && Number.isFinite(input.since) && input.since >= 0
-    ? Math.floor(input.since)
-    : undefined;
-  return {
-    ...(provider ? { providers: [provider] } : {}),
-    limit,
-    ...(since !== undefined ? { since } : {}),
-  };
-}
-
-/** Map a daemon-internal item onto the SDK CHANNEL_INBOX_ITEM_SCHEMA wire shape. */
-function toWireItem(item: InboundChannelItem): ChannelInboxItem {
-  const wire: ChannelInboxItem = {
-    id: item.id,
-    provider: item.provider,
-    kind: item.kind,
-    from: item.fromDigest,
-    bodyPreview: item.bodyPreview,
-    receivedAt: item.receivedAt,
-    unread: item.unread,
-  };
-  if (item.subjectPreview.length > 0) wire.subject = item.subjectPreview;
-  if (item.routeId != null) wire.routeId = item.routeId;
-  return wire;
 }
 
 /**
@@ -255,21 +198,15 @@ export function registerInboxMethods(
     ctx.catalog,
     INBOX_LIST_METHOD_ID,
     async (invocation) => {
+      // The store bootstrap is kicked off without being awaited at register
+      // time, so the first call is where it gets waited on. Waiting here rather
+      // than answering early is what keeps a cold start from reporting an empty
+      // inbox that is only empty because the file is not open yet.
       await ready;
-      const { providers, limit, since } = normalizeInput(invocation.body);
-      const internalItems = store.listItems({
-        ...(providers ? { providers } : {}),
-        ...(since !== undefined ? { since } : {}),
-        limit,
-      });
-      const items = internalItems.map(toWireItem);
-      const total = store.countItems(providers);
-      const truncated = internalItems.length >= limit && total > internalItems.length;
-      const maxReceived = store.maxReceivedAt(providers);
-      const nextSince = Math.max(since ?? 0, maxReceived);
-      const output: InboxListOutput = { items, total, truncated };
-      if (nextSince > 0) output.cursor = String(nextSince);
-      return output;
+      return aggregateInbox(
+        { store, poller },
+        normalizeInboxQuery(invocation.body, invocation.query),
+      );
     },
   );
 
