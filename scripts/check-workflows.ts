@@ -10,8 +10,9 @@
  *   - every workflow declares `name`, `on`, and a non-empty `jobs` map;
  *   - every job declares `runs-on` and either `steps` or `uses` (reusable call);
  *   - the release workflow carries the publish job we expect (this repo ships a
- *     single npm package — no platform-specific sub-packages, no GitHub
- *     Packages mirror).
+ *     single npm package — no platform-specific sub-packages. It does carry a
+ *     secondary GitHub Packages mirror job, published under the repo-owner
+ *     scope; npmjs stays the one registry consumers pin).
  *
  * Exit code 0 = green (0 problems), non-zero = the check found problems.
  *

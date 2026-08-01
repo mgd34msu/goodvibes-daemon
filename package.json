@@ -40,6 +40,7 @@
     "changelog:check": "bun run scripts/check-changelog.ts",
     "verify:tag-version": "bun run scripts/verify-release-tag-version.ts",
     "publish:check": "bun run scripts/publish-check.ts",
+    "publish:github-mirror": "bun run scripts/publish-github-mirror.ts",
     "release": "bun run scripts/release.ts",
     "release:dry": "bun run scripts/release.ts --dry-run"
   },
