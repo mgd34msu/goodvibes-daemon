@@ -27,10 +27,10 @@ import { join } from 'node:path';
 const SUPPORTED_TARGETS = ['linux-x64', 'linux-arm64', 'darwin-x64', 'darwin-arm64'];
 
 /** Names the sqlite-vec addon for a platform/arch — mirrors resolveSqliteVecAsset
- * in src/runtime/release-artifacts.ts. Reimplemented (rather than imported) so
- * this launcher never depends on a TypeScript source file: it must keep
- * working from the packaged bin/ directory alone, with no bundler step and no
- * node_modules resolution of repo-relative .ts paths. */
+ * in the SDK's platform/runtime/self-update module. Reimplemented (rather than
+ * imported) so this launcher never depends on that package resolving: it must
+ * keep working from the packaged bin/ directory alone, with no bundler step
+ * and no node_modules resolution beyond what's already vendored. */
 export function resolveSqliteVecAddonName(platform, arch) {
   if ((platform !== 'linux' && platform !== 'darwin') || (arch !== 'x64' && arch !== 'arm64')) {
     return null;

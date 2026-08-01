@@ -21,10 +21,10 @@
  * miss — this download is what gives every npm install the same vector search
  * a curl/install.sh install gets.
  *
- * What it deliberately does NOT do, unlike the terminal app's postinstall it is
- * modelled on: deploy skills, deploy agents, or fetch the wake-word model. The
- * skills and agents are surface artifacts and stay with the terminal app's
- * package. The wake-word model is fetched by the daemon itself — the installer
+ * What it deliberately does NOT do: deploy skills, deploy agents, or fetch the
+ * wake-word model. Skills and agents are surface artifacts that ship with the
+ * terminal app's own package, not this one. The wake-word model is fetched by
+ * the daemon itself — the installer
  * runs `goodvibes-daemon provision-wake-model` on the placed binary, and every
  * daemon start retries whatever is still missing — so pulling it here as well
  * would be a second copy of a pin that already has one owner.
@@ -42,7 +42,7 @@ import {
   resolveSqliteVecAsset,
   sha256,
   verifyChecksum,
-} from '../src/runtime/release-artifacts.ts';
+} from '@pellux/goodvibes-sdk/platform/runtime/self-update';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const projectRoot = join(__dirname, '..');
