@@ -52,6 +52,21 @@ export interface ProviderPollResult {
   state: ProviderState;
   /** Present only when state === 'unavailable'. */
   error?: string;
+  /**
+   * Whether this provider's credentials resolved.
+   *
+   * 'unavailable' alone conflates two things a reader has to tell apart: a
+   * provider nobody has wired up yet, and a wired-up provider whose API just
+   * refused us. The first is a normal state of a fresh install and the second
+   * is an outage hiding items that exist, and `channels.inbox.list` reports
+   * them as different states because a caller acts on them differently.
+   *
+   * `false` — no credential (or an unusable one), so nothing was even asked.
+   * `true`  — credentials resolved; whatever happened next happened WITH them.
+   * absent  — the adapter could not find out (the credential store itself
+   *           failed), which is neither claim and is reported as neither.
+   */
+  configured?: boolean;
 }
 
 export interface ProviderPollOptions {
