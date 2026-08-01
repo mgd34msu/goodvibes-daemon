@@ -39,7 +39,7 @@
  *    live markup with a clickable link in it. See inert-text.ts.
  */
 
-import type { ConfigManager } from '../../config/index.ts';
+import type { ConfigManager } from '@pellux/goodvibes-sdk/platform/config';
 import type { ChannelDeliveryRequest } from '@pellux/goodvibes-sdk/platform/channels';
 import { operations } from '@pellux/goodvibes-sdk/platform/runtime';
 const { getMissingSurfaceFeatureFlags, surfaceFeatureGateSettingsKeys } = operations;

@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { CONFIG_SCHEMA, ConfigError } from '../../config/index.ts';
+import { CONFIG_SCHEMA, ConfigError } from '@pellux/goodvibes-sdk/platform/config';
 import { REDACTED_VALUE } from '@pellux/goodvibes-terminal-shell';
 import { renderConfigValue, runConfigCommand } from '../../daemon/config-command.ts';
 

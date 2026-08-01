@@ -1476,7 +1476,7 @@ describe('canonical unit content parity — installer and product agree, endpoin
       // endpoint VALUES.
       const productArgs = productExec.replace('ExecStart=', '').split(/\s+/).slice(1);
       // The flag's value is the daemon's STATE directory, not the home above
-      // it: that is what config/goodvibes-home.ts resolves it as, and what
+      // it: that is what the SDK's goodvibes-home resolves it as, and what
       // holds operator-tokens.json / auth-users.json / daemon-settings.json.
       expect(productArgs).toEqual(['--daemon-home', join(dir, '.goodvibes', 'daemon')]);
       expect(productUnit).not.toContain('--hostname');

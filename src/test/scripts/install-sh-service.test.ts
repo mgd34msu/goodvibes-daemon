@@ -463,7 +463,7 @@ describe('install.sh — systemd unit generation', () => {
     // The flag's value is the daemon's STATE directory under the home, not the
     // home itself — that is the directory holding operator-tokens.json,
     // auth-users.json and daemon-settings.json, and what
-    // config/goodvibes-home.ts resolves the flag as.
+    // the SDK's goodvibes-home resolves the flag as.
     expect(unit).toContain(`ExecStart="${installDir}/goodvibes-daemon" --daemon-home "${home}/.goodvibes/daemon"`);
     expect(unit).not.toContain('--hostname');
     expect(unit).not.toContain('--port');
@@ -2234,7 +2234,7 @@ describe('install.sh ↔ product — canonical unit content parity on a non-defa
     //
     // The state directory, not the home above it: the flag names the directory
     // holding operator-tokens.json, auth-users.json and daemon-settings.json,
-    // which is what config/goodvibes-home.ts resolves it as and what
+    // which is what the SDK's goodvibes-home resolves it as and what
     // cli/service-posture.ts already writes into GOODVIBES_DAEMON_HOME. Both
     // writers baked $HOME, so a serviced daemon filed its identity a level
     // above where every reader looks.

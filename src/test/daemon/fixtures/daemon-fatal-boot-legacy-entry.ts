@@ -19,7 +19,7 @@
 
 import { ConfigManager } from '@pellux/goodvibes-sdk/platform/config';
 import { flushActivityLogSync, logger, summarizeError } from '@pellux/goodvibes-sdk/platform/utils';
-import { resolveGoodVibesHomeOwnership } from '../../../config/goodvibes-home.ts';
+import { resolveGoodVibesHomeOwnership } from '@pellux/goodvibes-sdk/platform/config';
 
 async function main(): Promise<void> {
   const { homeDirectory } = resolveGoodVibesHomeOwnership();

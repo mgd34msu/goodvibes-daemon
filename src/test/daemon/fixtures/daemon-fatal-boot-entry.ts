@@ -25,7 +25,7 @@
 import { join } from 'node:path';
 import { ConfigManager } from '@pellux/goodvibes-sdk/platform/config';
 import { configureActivityLogger } from '@pellux/goodvibes-sdk/platform/utils';
-import { resolveGoodVibesHomeOwnership } from '../../../config/goodvibes-home.ts';
+import { resolveGoodVibesHomeOwnership } from '@pellux/goodvibes-sdk/platform/config';
 import { GOODVIBES_DAEMON_SURFACE_ROOT } from '../../../config/surface.ts';
 import { reportFatalBootFailure } from '@pellux/goodvibes-sdk/platform/daemon';
 

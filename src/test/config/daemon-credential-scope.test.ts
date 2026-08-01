@@ -32,7 +32,7 @@ import { existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { ConfigManager, daemonConfigPath } from '@pellux/goodvibes-sdk/platform/config';
 import { SecretsManager } from '../../config/secrets.ts';
-import type { ConfigKey } from '../../config/index.ts';
+import type { ConfigKey } from '@pellux/goodvibes-sdk/platform/config';
 import {
   SECRET_CONFIG_KEYS,
   buildGoodVibesSecretKey,

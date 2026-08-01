@@ -9,8 +9,8 @@ import {
 } from '@pellux/goodvibes-sdk/platform/config';
 import type { ConfigKey } from '@pellux/goodvibes-sdk/platform/config';
 import { GOODVIBES_DAEMON_SURFACE_ROOT } from '../config/surface.ts';
-import { formatProviderModel, getModelIdFromProviderModel, getProviderIdFromModel } from '../config/provider-model.ts';
-import { resolveGoodVibesHomeOwnership } from '../config/goodvibes-home.ts';
+import { formatProviderModel, getModelIdFromProviderModel, getProviderIdFromModel } from '@pellux/goodvibes-sdk/platform/providers';
+import { resolveGoodVibesHomeOwnership } from '@pellux/goodvibes-sdk/platform/config';
 import { RuntimeEventBus, GlobalNetworkTransportInstaller, configureRuntimeEventBusDefaults, runtimeEventBusOptionsFrom } from '@/runtime/index.ts';
 import { createHostedSessionOptions } from '@/runtime/hosted-session-composition.ts';
 import { bindFeatureSettingsBridge, createFeatureFlagManager, deriveFeatureStates } from '@/runtime/index.ts';
@@ -102,7 +102,7 @@ type DaemonCliTokens = {
  * daemon home then falls under it unless separately overridden.
  */
 function resolveDaemonCliOwnership(): DaemonCliOwnership {
-  // Both roots come from src/config/goodvibes-home.ts, which the CLIENT entry
+  // Both roots come from the SDK's platform/config goodvibes-home, which the CLIENT entry
   // point also uses. They were resolved independently, and the client's copy
   // simply did not read GOODVIBES_HOME — so a redirected client wrote into the
   // real tree while the daemon honoured the redirect.

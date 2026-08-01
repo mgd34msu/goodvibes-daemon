@@ -12,7 +12,7 @@
  * default destination.
  */
 
-import type { ConfigKey, ConfigManager } from '../../config/index.ts';
+import type { ConfigKey, ConfigManager } from '@pellux/goodvibes-sdk/platform/config';
 import type { ChannelDeliverySurfaceKind } from '@pellux/goodvibes-sdk/platform/channels';
 import { SURFACE_CONFIGS } from '../../cli/surface-catalog.ts';
 import { canRenderInert } from './inert-text.ts';

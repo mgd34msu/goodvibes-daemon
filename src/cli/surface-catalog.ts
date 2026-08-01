@@ -1,4 +1,4 @@
-import type { ConfigKey } from '../config/index.ts';
+import type { ConfigKey } from '@pellux/goodvibes-sdk/platform/config';
 
 /**
  * The channel surfaces the platform can speak on, with the settings keys each
