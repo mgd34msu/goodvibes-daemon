@@ -1,5 +1,5 @@
 /**
- * Workspace trust, on the side of the split that hosts the runs.
+ * Workspace trust, for the process that hosts the runs.
  *
  * The trust decision is written per-workspace by whoever asked the question,
  * and the daemon executes tool calls in that same workspace. Before this seam

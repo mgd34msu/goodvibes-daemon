@@ -11,14 +11,11 @@
 // serve — or a secret nobody intended to share is selected by a name the SDK
 // derived and this repository did not. This pins them together.
 //
-// ── Where this test came from ────────────────────────────────────────────
+// ── Why this test exists ──────────────────────────────────────────────────
 //
-// It was goodvibes-tui/src/test/cluster/replication-policy-drift.test.ts,
-// deleted in c33ead4b when the terminal app stopped hosting a daemon. The
-// derivation did not leave with it: this repository carries its own byte-for-
-// byte copy of secret-config.ts and had ZERO tests over it, so the pin covered
-// nothing on the side that now does the replicating. Recovered and pointed at
-// this repository's copy.
+// This repository carries its own byte-for-byte copy of secret-config.ts and
+// had ZERO tests over it, so nothing pinned it against the SDK's copy on the
+// side that actually does the replicating.
 // ---------------------------------------------------------------------------
 
 import { describe, expect, test } from 'bun:test';

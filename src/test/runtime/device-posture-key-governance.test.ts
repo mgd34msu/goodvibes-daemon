@@ -2,15 +2,13 @@
  * device-posture-key-governance.test.ts — the eleven `device.*` posture keys,
  * as behaviour, in THIS composition.
  *
- * ── What died, and why it had to come back here ──────────────────────────
+ * ── Why this test exists ──────────────────────────────────────────────────
  *
- * This was goodvibes-tui/src/test/verification/device-posture-behavior.test.ts
- * (798 lines), deleted in c33ead4b when the terminal app stopped hosting a
- * daemon. The device posture runtime did not leave with it — it is composed in
- * this repository (runtime/device-posture-composition.ts, wired at
- * runtime/services.ts) and served over this daemon's gateway.
+ * The device posture runtime is composed in this repository
+ * (runtime/device-posture-composition.ts, wired at runtime/services.ts) and
+ * served over this daemon's gateway.
  *
- * What was left behind covers two different things and neither is this one. The
+ * Two other suites cover related but different ground, and neither is this one. The
  * SDK's own device-capabilities suite covers the KEY SEMANTICS: given a policy,
  * what the capability service does. This repository's
  * daemon/gateway-device-capability-verbs.test.ts covers the VERBS, the transport,

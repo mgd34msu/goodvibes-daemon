@@ -116,9 +116,7 @@ describe('composition parity — memory governance is composed (governor default
   });
 
   test('createRuntimeServices constructs + starts the governor through the SDK path and late-binds the admission gate', () => {
-    // The SDK's wiring, called directly. The terminal app wrapped it in a local
-    // helper the agent did not have, so one process's footprint defence was a
-    // fork's copy of the other's.
+    // The SDK's wiring, called directly.
     expect(services).toContain('wireDaemonMemoryGovernance({');
     expect(services).toContain('admitExpensiveWorkRef.current = (label) => memoryGovernor.admitExpensiveWork(label)');
   });
@@ -175,9 +173,9 @@ describe('composition parity — host power seam is opt-in (non-spawning default
   // SDK 1.9.0's wireRuntimePower defaults an ABSENT seam to the real host seam
   // (createHostPowerSeam — spawns systemd-inhibit + a dbus-monitor sleep-edge
   // watcher). That host-level spawn must never fire on a test-constructed
-  // runtime, so the fork mirrors the SDK's own createRuntimeServices: default to
-  // the non-spawning unavailable seam, and only the real long-lived compositions
-  // opt in. These source pins catch a fork that regresses either half.
+  // runtime, so this composition mirrors the SDK's own createRuntimeServices:
+  // default to the non-spawning unavailable seam, and only the real long-lived
+  // compositions opt in. These source pins catch a regression in either half.
 
   test('the real host seam is constructed at the entrypoint and nowhere else in this repository', () => {
     // An absent seam falls back to the non-spawning unavailable one inside the

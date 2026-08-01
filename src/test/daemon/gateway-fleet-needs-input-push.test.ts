@@ -5,10 +5,10 @@
  * is already attached to that node's session (see the SDK's
  * push/service.ts's attachFleetNeedsInputSource).
  *
- * Fork-drift context: commit 0d327ef4 threaded channelDeliveryRouter /
- * providerRegistry / automationManager / sessionLister into the TUI's
+ * Regression context: a composition root can thread channelDeliveryRouter /
+ * providerRegistry / automationManager / sessionLister into its
  * attachWsOnlyGatewayVerbHandlers call site (services.ts) so the check-in
- * verb family would register live, but deliberately left `runtimeBus` and
+ * verb family registers live, while leaving `runtimeBus` and
  * `sessionPresence` unthreaded — the two deps registerGatewayVerbGroups gates
  * the needs-input push source on (see the SDK's
  * routes/register-gateway-verb-groups.js: "Second event source... Only when

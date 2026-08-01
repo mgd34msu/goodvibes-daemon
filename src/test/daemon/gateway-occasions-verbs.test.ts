@@ -2,14 +2,15 @@
  * Gate: all sixteen `occasions.*` gateway verbs must be present AND invokable
  * on the runtime this package vendors, not merely described.
  *
- * Fork-drift context (same class as gateway-ws-only-invokable.test.ts and
+ * Regression context (same class as gateway-ws-only-invokable.test.ts and
  * gateway-initiative-verbs.test.ts): the SDK installs occasions.* by calling
  * installOccasions from inside composeOwnerProfile
- * (routes/owner-profile-composition.ts), which the TUI reaches through
+ * (routes/owner-profile-composition.ts), reached through
  * registerGatewayVerbGroups via the terminal-shell's
- * attachWsOnlyGatewayVerbHandlers wrapper. A fork that never mirrors a new
- * wiring step added to the SDK's composition root ships descriptors with no
- * attached handler, and the ws-only conformance gate does not catch it: it
+ * attachWsOnlyGatewayVerbHandlers wrapper. A composition root that never
+ * mirrors a new wiring step added to the SDK's composition root ships
+ * descriptors with no attached handler, and the ws-only conformance gate does
+ * not catch it: it
  * scopes assertEveryDescriptorHasHandler to the ws-only ids, so an occasions
  * descriptor left handler-less would be silently skipped.
  *

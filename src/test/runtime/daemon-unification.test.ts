@@ -1,16 +1,12 @@
 /**
- * The capabilities the split unified, pinned on the one composition that now
- * holds them.
+ * Capability composition, pinned on the one implementation each capability
+ * has today: trigger family, checkpoint registration gate, launch-tolerant
+ * provider lookup, conversation gate on an inbound continuation, cluster,
+ * mail, crash-residue sweep, and the presence check before pushing "needs
+ * input". Every one of those is a real, observable behaviour, and every one
+ * of them has exactly one answer composed here.
  *
- * Two forks each ran a daemon-grade service graph and each had things the other
- * did not. The terminal app's daemon had no trigger family, no registration gate
- * on checkpoints, no launch tolerance for a missing provider key and no
- * conversation gate on an inbound continuation. The agent had no cluster, no
- * mail, no crash-residue sweep and no presence check before pushing "needs
- * input". Every one of those is a real behaviour difference somebody could
- * observe, and every one of them is resolved here to exactly one answer.
- *
- * These tests exist because the resolution is invisible in a diff: nothing
+ * These tests exist because a regression is invisible in a diff: nothing
  * fails if a capability quietly stops being composed, it just stops happening.
  */
 import { describe, expect, test } from 'bun:test';
@@ -25,8 +21,7 @@ const services = readFileSync(join(ROOT, 'src/runtime/services.ts'), 'utf8');
 
 describe('the trigger family is composed and supervised by the fleet', () => {
   test('a trigger manager is on the service surface', () => {
-    // The agent had this and the terminal app's daemon did not, so a trigger
-    // defined against the daemon simply never fired there.
+    // Without this, a trigger defined against the daemon would never fire.
     expect(getTestRuntimeServices().triggerManager).toBeDefined();
   });
 
@@ -145,9 +140,8 @@ describe('config changes are announced on the bus', () => {
 
 describe('needs-input push checks presence through the SDK helper', () => {
   test('the presence helper is imported, not reimplemented', () => {
-    // One verb, two behaviours was the state before: the terminal app mirrored a
-    // private SDK helper and the agent pushed on every block with no presence
-    // check at all.
+    // A local reimplementation could quietly drift from the SDK's own presence
+    // freshness window, so the push and the suppress-check must agree exactly.
     const push = readFileSync(join(ROOT, 'src/runtime/fleet-needs-input-push.ts'), 'utf8');
     expect(push).toContain("import { hasFreshSurfaceParticipant, SURFACE_ROUTE_FRESHNESS_MS");
     expect(push).not.toContain('const SURFACE_ATTACHED_FRESHNESS_MS');

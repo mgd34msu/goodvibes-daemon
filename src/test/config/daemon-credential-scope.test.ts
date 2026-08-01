@@ -11,16 +11,14 @@
  * usable by the daemon afterwards, including when the surface that configured it
  * is not running.
  *
- * ── Where this test came from ────────────────────────────────────────────
+ * ── Why this test exists ──────────────────────────────────────────────────
  *
- * It was goodvibes-tui/src/test/security/daemon-credential-scope.test.ts,
- * deleted in c33ead4b when the terminal app stopped hosting a daemon. Most of
- * that suite drove TUI write sites (the settings modal, the onboarding wizard,
- * `/config set`, provider key intake) which stayed with the terminal app. Its
- * DAEMON-side subjects moved here and arrived with no tests at all:
- * `createDaemonCredentialStore` had zero test importers in this repository, and
+ * This repository's daemon-side subjects had zero test coverage:
+ * `createDaemonCredentialStore` had no test importers here, and
  * `secret-config.ts` — the derivation the whole scheme rests on — had none
- * either. These are the assertions whose subjects live in this repository.
+ * either. These are the assertions whose subjects live in this repository;
+ * write-site behavior (the settings modal, the onboarding wizard, `/config
+ * set`, provider key intake) is tested where those surfaces live.
  *
  * Every assertion here runs against real temp directories and a real
  * SecretsManager / ConfigManager. Nothing stands in for the store itself; the

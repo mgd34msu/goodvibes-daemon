@@ -4,10 +4,11 @@
  *
  * The SDK's registerGatewayVerbGroups constructs the UnifiedRewindService with
  * `conversation: deps.conversationRewindPort ?? null`; absent that port,
- * conversation rewind is honestly reported unavailable on the wire. The TUI's
- * composition root (runtime/services.ts) now threads a conversationRewindPort
- * that resolves each anchor's live RewindableConversation from the per-session
- * registry the TUI populates at bootstrap (conversation-rewind-port.ts).
+ * conversation rewind is honestly reported unavailable on the wire. This
+ * daemon's composition root (runtime/services.ts) threads a
+ * conversationRewindPort that resolves each anchor's live
+ * RewindableConversation from the per-session registry this daemon populates
+ * at bootstrap (conversation-rewind-port.ts).
  *
  * This test pins that wiring the same way gateway-initiative-verbs.test.ts pins
  * the initiative families: compose the real vendored runtime, register a live

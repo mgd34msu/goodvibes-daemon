@@ -1,5 +1,5 @@
 /**
- * The daemon's half of the notification split.
+ * How this daemon dispatches notices without a screen.
  *
  * Panel-feed notices are the surface's — the router's three targets are all
  * screen targets and this product has no screen. Channel notices are the
@@ -8,9 +8,9 @@
  * daemon that ran out of memory is exactly the one that cannot tell you
  * afterwards.
  *
- * Before the split closed this seam that notice was routed into a bounded ring
- * with no reader anywhere in the repository. These tests pin the two outcomes
- * it can have now — sent, or written down — and that neither is silence.
+ * That notice used to be routed into a bounded ring with no reader anywhere
+ * in the repository. These tests pin the two outcomes it can have now —
+ * sent, or written down — and that neither is silence.
  */
 import { describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
@@ -124,8 +124,8 @@ describe('the panel notification producer is not composed here', () => {
   const services = readFileSync(join(import.meta.dir, '..', '..', 'runtime', 'services.ts'), 'utf8');
 
   test('the composition wires no panel notification router', () => {
-    // A registration into a feed with no panel is the silent-success failure
-    // the separation exists to remove; the absence is what has to fail.
+    // A registration into a feed with no panel is exactly the silent-success
+    // failure this module exists to prevent; the absence is what has to fail.
     expect(services).not.toContain('createNotificationDispatcher');
     expect(services).not.toContain('wireRuntimeNotificationBridge');
   });

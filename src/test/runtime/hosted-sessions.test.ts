@@ -1,5 +1,5 @@
 /**
- * Daemon-hosted sessions, on the side of the split that hosts them.
+ * Daemon-hosted sessions — this is the process that hosts them.
  *
  * The engine is the SDK's and has its own unit suites there. What this daemon
  * owns — and what these tests are the oracle for — is the composition: that the

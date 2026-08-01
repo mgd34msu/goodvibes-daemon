@@ -3,16 +3,16 @@
  * /principals, and /channel profiles commands drive must be present AND
  * invokable on the runtime this package vendors.
  *
- * Fork-drift context: the SDK's registerGatewayVerbGroups (reached through the
+ * Regression context: the SDK's registerGatewayVerbGroups (reached through the
  * terminal-shell's attachWsOnlyGatewayVerbHandlers wrapper) registers
  * principals.*, channels.profiles.*, and ci.* unconditionally, but the
  * check-in family (checkin.config.get/set, checkin.run, checkin.receipts.list)
  * ONLY when channelDeliveryRouter, providerRegistry, automationManager, and
  * sessionLister are ALL supplied — a graceful-degrade gate so the proactive
- * check-in loop is never a facade that pretends to deliver. The TUI's
- * composition root originally called the wrapper WITHOUT those four deps, so
- * checkin.* answered 501 "Gateway method is not invokable" on the TUI's own
- * daemon while the /checkin command shipped, i.e. dead commands.
+ * check-in loop is never a facade that pretends to deliver. A composition
+ * root that calls the wrapper WITHOUT those four deps ships checkin.*
+ * descriptors that answer 501 "Gateway method is not invokable" while the
+ * /checkin command still ships, i.e. dead commands.
  *
  * The ws-only conformance gate (gateway-ws-only-invokable.test.ts) could not
  * catch this: it scopes assertEveryDescriptorHasHandler to the ws-only ids, so

@@ -75,7 +75,7 @@ interface VerbFamily {
  * is still legible in the failure.
  */
 const VERB_FAMILIES: readonly VerbFamily[] = [
-  // ── The families the terminal fork used to serve for itself ──────────────
+  // ── Families this daemon serves for itself ────────────────────────────────
   {
     family: 'fleet.* (snapshot / list / archive lifecycle)',
     reason: 'Always registered by registerFleetCheckpointsSearchGatewayMethods over the process registry this composition builds.',

@@ -3,7 +3,7 @@
  * invokable on the runtime this package vendors.
  *
  * Regression context (found by the companion app against the 1.13.0 daemon):
- * the TUI's createRuntimeServices built a GatewayMethodCatalog whose builtin
+ * createRuntimeServices built a GatewayMethodCatalog whose builtin
  * DESCRIPTORS were present but never called registerGatewayVerbGroups, so
  * fleet.* (including plain fleet.snapshot), checkpoints.*, and
  * sessions.search all answered 501 "Gateway method is not invokable" over
