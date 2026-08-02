@@ -6,6 +6,18 @@ All notable changes to the GoodVibes daemon.
 
 ## [Unreleased]
 
+## [1.28.5] - 2026-08-01
+
+### Changes
+
+- Fixed: a client that inherited this daemon's bind host is no longer refused
+  as "insecure PUBLIC transport" when that host is a wildcard. The platform
+  runtime (2.0.3) classifies `0.0.0.0` and `::` with loopback and the other
+  private-network origins — a wildcard is a listen address, and dialing it
+  reaches the local machine. Until this fix, a daemon deliberately bound to
+  `0.0.0.0` for LAN access left local clients unable to call it over plain
+  http, profile reads included.
+
 ## [1.28.4] - 2026-08-01
 
 ### Changes
