@@ -77,6 +77,15 @@ function getTestRoots(): IntelligenceTestRoots {
   mkdirSync(workingDir, { recursive: true });
   mkdirSync(homeDir, { recursive: true });
 
+  // Pin the daemon-home resolution to this hermetic root. The owner-profile
+  // composition resolves its document via --daemon-home, then
+  // GOODVIBES_DAEMON_HOME, then the LOGIN home — it does not read the
+  // runtime's injected homeDirectory — so without this pin, a suite running
+  // on a machine whose real profile has content reads that content: the
+  // occasions verb tests found the owner's actual birthdays. A test suite
+  // must never see, let alone touch, the owner's live state.
+  process.env['GOODVIBES_DAEMON_HOME'] = join(homeDir, '.goodvibes', 'daemon');
+
   testRoots = {
     root,
     workingDir,

@@ -6,6 +6,20 @@ All notable changes to the GoodVibes daemon.
 
 ## [Unreleased]
 
+## [1.28.6] - 2026-08-02
+
+### Changes
+
+- **Fixed: a corrupt watcher snapshot no longer crash-loops this daemon.**
+  A host freeze left the snapshot file as valid JSON followed by NUL bytes,
+  and the daemon died parsing it — once at boot, and once on a periodic tick
+  47 seconds after every restart, so the service never stayed up. The
+  platform runtime (2.0.4) now writes that file atomically and quarantines a
+  corrupt one with a receipt beside it, rebuilding watcher state from live
+  registrations. A torn file costs a rebuilt cache instead of the daemon.
+- Fixed: refusing an unknown owner-profile field id now names the valid ids
+  instead of citing a documentation section.
+
 ## [1.28.5] - 2026-08-01
 
 ### Changes
