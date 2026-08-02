@@ -6,6 +6,25 @@ All notable changes to the GoodVibes daemon.
 
 ## [Unreleased]
 
+## [1.28.7] - 2026-08-02
+
+### Changes
+
+- **Changed: payment limits hold the amount you would say out loud.** The
+  budget settings drop their unit suffix — `payments.budget.perPurchaseCeiling`,
+  `dailyItem`, `dailyOverage`, `overageToleranceDailyAllowance` — and hold
+  plain amounts in the configured currency, written exactly as you give them:
+  `100` is a hundred dollars, `19.99` is nineteen ninety-nine, and `$100`,
+  `100.00` and `100` all mean the same hundred. This daemon migrates its
+  settings file on load with a receipt; your limits are unchanged, only how
+  they are written (platform runtime 2.0.5).
+- Fixed: every platform state store this daemon keeps writes atomically and
+  quarantines a corrupt file with a receipt instead of failing on it — the
+  watcher-snapshot fix from 1.28.6 is now the platform-wide rule. The daemon
+  settings file itself deliberately keeps its stricter contract: an
+  unparseable settings file still refuses the boot loudly, because defaults
+  may be more permissive than what the file held.
+
 ## [1.28.6] - 2026-08-02
 
 ### Changes
