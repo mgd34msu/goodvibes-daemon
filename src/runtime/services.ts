@@ -535,6 +535,9 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     // service, so the `profile` tool a conversational turn is given has
     // somewhere real to write.
     personalCapture,
+    // The session intake attributes a sender on this policy's owner allowlist
+    // to the owner principal instead of unknown.
+    channelPolicy,
     approvalBroker, requestApproval: (input) => approvalBroker.requestApproval(input),
     // approvals.raise — a surface CREATING an ask in this broker. Without it the
     // verb is cataloged and unhandled, and a client whose prompt runs outside

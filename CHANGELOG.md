@@ -6,6 +6,39 @@ All notable changes to the GoodVibes daemon.
 
 ## [Unreleased]
 
+## [1.28.8] - 2026-08-02
+
+### Changes
+
+- **Fixed: a chat message gets an answer, never workflow paperwork.** The
+  conversation gate's decision that a channel message is conversation is now
+  authoritative — the review-wording heuristic that turned "I'll review the
+  route" in a transcript into a full write-review-fix-confirm chain can no
+  longer override it. When a chain does legitimately run, the reply sent back
+  over the channel carries what the agent actually found or did; chain status
+  lines stay in the operator progress feed. Duplicate replies from the two
+  completion reporters are gone (platform runtime 2.0.6).
+- **Added: personal information shared in conversation gets captured.** A
+  conversational channel turn — which previously ran with no tools at all —
+  now carries the profile capture tool with per-run owner authority: a trip
+  itinerary pasted into Telegram lands in the owner profile's Plans section
+  with its dates, flights, travelers and confirmation number, and the reply
+  states concretely what was stored. Configurable via
+  `profile.conversationalCapture` (default on) and `profile.ownerChannels`
+  (defaults to the occasions nudge channel).
+- **Fixed: a chat session is filed as a chat.** Channel-originated sessions
+  are classified by their channel instead of as TUI project sessions rooted
+  in a filesystem path, rollover re-derives the classification, and a sender
+  on the channel's owner allowlist is attributed as the owner principal
+  instead of unknown. The daemon now hands its channel ingress policy to the
+  session intake so that attribution works end to end.
+- Fixed: this daemon's settings file is rewritten only by this daemon.
+  Clients reading the daemon settings tier migrate their in-memory view and
+  leave the file bytes untouched, so a newer client can no longer rewrite the
+  file out from under an older running daemon; the daemon's own migration
+  folds the rename, the receipt, and a reader floor into one atomic write
+  (platform runtime 2.0.6).
+
 ## [1.28.7] - 2026-08-02
 
 ### Changes
