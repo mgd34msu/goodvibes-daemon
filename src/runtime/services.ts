@@ -5,6 +5,7 @@ import { ChannelPolicyManager } from '@pellux/goodvibes-sdk/platform/channels';
 import { ApprovalBroker, GatewayMethodCatalog, SharedSessionBroker, buildSharedSessionAgentSpawnRoutingInput } from '@pellux/goodvibes-sdk/platform/control-plane';
 import { AcpHostService } from '@pellux/goodvibes-sdk/platform/acp';
 import { continuationChainOptions } from '@pellux/goodvibes-sdk/platform/agents';
+import { PersonalCaptureHolder, conversationalTurnSpawnOptions } from '@pellux/goodvibes-sdk/platform/personal-capture';
 import { resolvePairingWebOrigin } from '@pellux/goodvibes-sdk/platform/pairing';
 import { attachWsOnlyGatewayVerbHandlers } from '@pellux/goodvibes-terminal-shell';
 import { composeMailDeps } from './mail-composition.ts';
@@ -205,6 +206,13 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   } = createAgentGraph({
     runtimeBus: options.runtimeBus, workingDirectory, configManager, providerRegistry,
   });
+  // The one late-binding holder for the personal-capture port. The gateway verb
+  // groups fill it (they own the owner-profile store and the occasions service),
+  // and the agent orchestrator reads it when it builds a run's tool registry.
+  // Registration happens before setDependencies in this file, but the registry
+  // is built per run, so by the time a conversational turn asks for `profile`
+  // the port is already in place.
+  const personalCapture = new PersonalCaptureHolder();
   const hookDispatcher = new HookDispatcher({ agentManager, toolLLM, projectRoot: workingDirectory }, hookActivityTracker);
   configManager.attachHookDispatcher(hookDispatcher);
   const hookWorkbench = createHookWorkbench({
@@ -238,11 +246,23 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
           getCategory: (name: string) => configManager.getCategory(name as never),
         },
       }),
+      // What the answering agent is given and what it is told. `restrictTools:
+      // true` with no tool list used to mean an EMPTY registry: the agent could
+      // emit text and nothing else, which is why a trip pasted into a channel
+      // was answered and stored nowhere. This names the tools a conversational
+      // turn actually needs (read, find, fetch, and the `profile` capture tool),
+      // supplies the instruction that makes recording part of answering, and
+      // carries the write authority for the surface the message arrived on.
+      // It also supplies the run's context, which is why the bare
+      // `context: shared-session:<id>` line that used to sit below is gone.
+      // Spread BEFORE the routing builder so an explicit tool list coming from
+      // a routing intent still wins — that builder emits `tools` only when it
+      // actually has one.
+      ...conversationalTurnSpawnOptions(input, { configReader: configManager }),
       // Spawn routing through the SDK's shared model-reference resolver
       // (unique-across-registry auto-qualifies; ambiguous and unknown ids throw
       // errors naming real candidates), against the live registry's models.
       ...buildSharedSessionAgentSpawnRoutingInput(input.routing, { restrictTools: true, modelCandidates: providerRegistry.listModels() }),
-      context: `shared-session:${input.sessionId}`,
     });
     return { agentId: record.id };
   });
@@ -511,6 +531,10 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     // an unregistered workspace refuses with something actionable.
     workspaceCheckpointManager: checkpointing.gatewayManager,
     conversationRewindPort: createSessionConversationRewindPort(), sessionBroker, secretsManager, stepUpService,
+    // Fills the capture port with the owner-profile store and the occasions
+    // service, so the `profile` tool a conversational turn is given has
+    // somewhere real to write.
+    personalCapture,
     approvalBroker, requestApproval: (input) => approvalBroker.requestApproval(input),
     // approvals.raise — a surface CREATING an ask in this broker. Without it the
     // verb is cataloged and unhandled, and a client whose prompt runs outside
@@ -596,6 +620,9 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     sandboxSessionRegistry,
     workflowServices: workflow,
     contextAccountingHolder,
+    // Without this the `profile` tool is never registered, and a conversational
+    // turn that was told to record what the owner said has nothing to call.
+    personalCapture,
   });
 
   // Continuity reads (recovery-file presence, last-session pointer) scoped to
