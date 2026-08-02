@@ -6,6 +6,17 @@ All notable changes to the GoodVibes daemon.
 
 ## [Unreleased]
 
+## [1.28.4] - 2026-08-01
+
+### Changes
+
+- Fixed: the platform runtime is 2.0.2, which removes the last pre-split
+  remnants of in-process daemon composition from the shared bootstrap. In the
+  terminal products those remnants broke the packaged bundle's module
+  initialization and killed every conversation turn; this daemon consumes the
+  same runtime and picks up the cleaned composition path. A hosted-session
+  turn is exercised against the built binary as part of this release's gates.
+
 ## [1.28.3] - 2026-08-01
 
 ### Changes
