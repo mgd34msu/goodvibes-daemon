@@ -6,6 +6,19 @@ All notable changes to the GoodVibes daemon.
 
 ## [Unreleased]
 
+## [1.28.9] - 2026-08-02
+
+### Changes
+
+- Changed: a conversational turn is told to understand what it captures, not
+  just file it — an itinerary also means an away-span said back in plain
+  words, travelers who are people in the owner's life, and durable facts
+  about the destination, and the turn uses what it stored: it names
+  collisions with existing plans and offers the obviously useful next steps
+  once (a reminder before departure, weather at the destination). Anything
+  beyond the conversation is still proposed and waits for a yes (platform
+  runtime 2.0.7).
+
 ## [1.28.8] - 2026-08-02
 
 ### Changes
