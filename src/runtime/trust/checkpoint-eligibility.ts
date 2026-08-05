@@ -1,4 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs';
+import { resolveWorkspaceRegisterReadPath } from '@pellux/goodvibes-sdk/platform/workspace';
 import type { ShellPathService } from '@/runtime/index.ts';
 import {
   normalizeWorkspaceRoot,
@@ -30,9 +31,24 @@ import {
 
 export type StoreShellPaths = Pick<ShellPathService, 'resolveUserPath' | 'homeDirectory'>;
 
-/** Path of the shared store's JSON document — the same path the SDK's gateway verb group constructs its own store over. */
+/**
+ * Path of the shared store's JSON document — the same path the SDK's gateway
+ * verb group constructs its own store over.
+ *
+ * "The same path" is the whole contract, and it is why this goes through the
+ * SDK's resolver rather than spelling any location out. goodvibes-agent reads
+ * and writes this same file directly and the SDK's gateway writes it, so the
+ * register is cross-product state rather than the daemon's own — it lives in
+ * the shared tier (~/.goodvibes/shared/), which takes no surface root, so all
+ * three resolve one identical path. Until the boot fold has moved it, the
+ * resolver falls back to the pre-split location read-only, so this reader never
+ * reports an empty register and silently refuses every checkpoint.
+ */
 export function sharedWorkspaceRegistrationStorePath(shellPaths: StoreShellPaths): string {
-  return shellPaths.resolveUserPath('control-plane', 'workspace-registrations.json');
+  // READ path: the shared tier when it is there, the pre-split location until
+  // the daemon's boot fold has moved it. This is a reader, so the fallback is
+  // read-only and nothing here ever writes to the legacy address.
+  return resolveWorkspaceRegisterReadPath(shellPaths, existsSync);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

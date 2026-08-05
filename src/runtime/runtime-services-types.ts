@@ -102,6 +102,13 @@ export interface RuntimeServicesOptions {
 export interface RuntimeServices {
   readonly workingDirectory: string;
   readonly homeDirectory: string;
+  /**
+   * The `.goodvibes/<surface root>/` segment this daemon's own state lives
+   * under — always GOODVIBES_DAEMON_SURFACE_ROOT here (config/surface.ts).
+   * Declared so a consumer ASKS for it instead of deriving a second one; the
+   * unscoped pre-split control-plane store is what deriving it twice produced.
+   */
+  readonly surfaceRoot: string;
   /** The declare-once session-storage handle every session reader and writer threads through. */
   readonly surface: SessionSurface;
   readonly shellPaths: ShellPathService;

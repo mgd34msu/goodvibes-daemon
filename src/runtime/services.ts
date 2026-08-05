@@ -2,7 +2,7 @@ import { join } from 'node:path';
 import { ServiceRegistry, SubscriptionManager, ToolLLM } from '@pellux/goodvibes-sdk/platform/config';
 import { AutomationDeliveryManager, AutomationManager } from '@pellux/goodvibes-sdk/platform/automation';
 import { ChannelPolicyManager } from '@pellux/goodvibes-sdk/platform/channels';
-import { ApprovalBroker, GatewayMethodCatalog, SharedSessionBroker, buildSharedSessionAgentSpawnRoutingInput } from '@pellux/goodvibes-sdk/platform/control-plane';
+import { ApprovalBroker, GatewayMethodCatalog, SharedSessionBroker, buildSharedSessionAgentSpawnRoutingInput, controlPlaneStorePath } from '@pellux/goodvibes-sdk/platform/control-plane';
 import { AcpHostService } from '@pellux/goodvibes-sdk/platform/acp';
 import { continuationChainOptions } from '@pellux/goodvibes-sdk/platform/agents';
 import { PersonalCaptureHolder, conversationalTurnSpawnOptions } from '@pellux/goodvibes-sdk/platform/personal-capture';
@@ -132,7 +132,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   const { secretsManager, stepUpService, pairingTokens } = composeCredentialServices({
     workingDirectory, homeDirectory, configManager,
     daemonHomeDirectory: options.daemonHomeDirectory,
-    pairingTokenPath: shellPaths.resolveUserPath('control-plane', 'pairing-tokens.json'),
+    pairingTokenPath: controlPlaneStorePath(shellPaths, GOODVIBES_DAEMON_SURFACE_ROOT, 'pairing-tokens.json'),
   });
   const subscriptionManager = new SubscriptionManager(shellPaths.resolveUserPath(GOODVIBES_DAEMON_SURFACE_ROOT, 'subscriptions.json'));
   const serviceRegistry = new ServiceRegistry(shellPaths.resolveProjectPath(GOODVIBES_DAEMON_SURFACE_ROOT, 'services.json'), {
@@ -526,6 +526,10 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   // calendar.*/email.* are platform-served; these two let it register (mail-composition.ts).
   const { emailServiceDeps, describeEmailConfigProblem } = composeMailDeps({ configManager, secretsManager });
   attachWsOnlyGatewayVerbHandlers(gatewayMethods, {
+    // The surface segment every control-plane store path is built from
+    // (SDK control-plane-store-paths.ts). Required, not defaulted: a default
+    // is what let these stores write to the unscoped orphan directory.
+    surfaceRoot: GOODVIBES_DAEMON_SURFACE_ROOT,
     homeDirectory, emailServiceDeps, describeEmailConfigProblem, processRegistry,
     // The registration-gated surface, not the raw manager: an explicit create in
     // an unregistered workspace refuses with something actionable.
@@ -658,6 +662,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   const services: RuntimeServices = {
     workingDirectory,
     homeDirectory,
+    surfaceRoot: GOODVIBES_DAEMON_SURFACE_ROOT,
     surface,
     shellPaths,
     workspaceTrustManager,
