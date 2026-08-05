@@ -6,6 +6,30 @@ All notable changes to the GoodVibes daemon.
 
 ## [Unreleased]
 
+## [1.28.10] - 2026-08-05
+
+### Changes
+
+- **Fixed: this daemon's answers match its own contract.** Profile field
+  reads leaked internal properties past a strict schema, so up-to-date
+  clients refused every profile answer and the platform could not tell its
+  owner his own address. Responses are explicit wire projections now, and a
+  conformance test runs the real routes against the contract (platform
+  runtime 2.0.8).
+- **Fixed: one control-plane store.** A path defect made every boot rewrite
+  a legacy store nothing reads; state that still lived only at the legacy
+  location (occasions, workspace registrations) migrates to the daemon's
+  surface-scoped store on boot with a receipt, duplicates are quarantined
+  with receipts, and the legacy directory empties and is removed.
+- **Changed: the daemon hosts conversation turns for the agent.** Hosted
+  session event streams are render-grade and session-scoped, so a client
+  rendering from the stream sees what the model said and what it did — and
+  agent conversations become genuinely cross-visible with their messages.
+- Changed: connecting Google is one action, with every needed scope in a
+  single consent and a live mail-and-calendar proof at the end; the settings
+  catalog now carries the calendar/google/email keys this daemon really
+  reads (platform runtime 2.0.8).
+
 ## [1.28.9] - 2026-08-02
 
 ### Changes
