@@ -25,6 +25,8 @@ import { describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { createShellPathService } from '@/runtime/index.ts';
+import { controlPlaneStorePath } from '@pellux/goodvibes-sdk/platform/control-plane';
+import { sharedWorkspaceRegistrationStorePath } from '../../runtime/trust/checkpoint-eligibility.ts';
 import { GOODVIBES_DAEMON_SURFACE_ROOT } from '../../config/surface.ts';
 
 const ROOT = resolve(import.meta.dir, '../../..');
@@ -58,6 +60,36 @@ describe('the daemon serves exactly one, surface-scoped control-plane store', ()
     expect(live).not.toBe(preSplit);
     expect(live).toContain(`/${GOODVIBES_DAEMON_SURFACE_ROOT}/control-plane/`);
     expect(preSplit).not.toContain(`/${GOODVIBES_DAEMON_SURFACE_ROOT}/`);
+  });
+
+  test('the repointed control-plane stores resolve under the surface segment, not the pre-split orphan', () => {
+    const shellPaths = createShellPathService({
+      workingDirectory: '/nowhere/home',
+      homeDirectory: '/nowhere/home',
+    });
+    const scopedPrefix = `/${GOODVIBES_DAEMON_SURFACE_ROOT}/control-plane/`;
+
+    // The pairing-token store this daemon writes.
+    const pairingTokens = controlPlaneStorePath(shellPaths, GOODVIBES_DAEMON_SURFACE_ROOT, 'pairing-tokens.json');
+    expect(pairingTokens).toContain(scopedPrefix);
+
+    // The workspace register is the ONE deliberate exception: its reader lives
+    // in this repo while its writer lives in the SDK, and goodvibes-agent reads
+    // and writes the same file directly. It stays UNSCOPED so all three keep
+    // resolving one file; scoping it here would move it out from under the
+    // agent and leave checkpoint eligibility refusing workspaces the operator
+    // had registered.
+    const readerPath = sharedWorkspaceRegistrationStorePath(shellPaths);
+    expect(readerPath).toBe(shellPaths.resolveUserPath('control-plane', 'workspace-registrations.json'));
+    expect(readerPath).not.toContain(scopedPrefix);
+  });
+
+  test('a blank surface root is refused rather than silently resolving to the orphan directory', () => {
+    const shellPaths = createShellPathService({
+      workingDirectory: '/nowhere/home',
+      homeDirectory: '/nowhere/home',
+    });
+    expect(() => controlPlaneStorePath(shellPaths, '   ', 'pairing-tokens.json')).toThrow();
   });
 
   test('the surface root still carries the reason it is what it is', () => {

@@ -30,7 +30,21 @@ import {
 
 export type StoreShellPaths = Pick<ShellPathService, 'resolveUserPath' | 'homeDirectory'>;
 
-/** Path of the shared store's JSON document — the same path the SDK's gateway verb group constructs its own store over. */
+/**
+ * Path of the shared store's JSON document — the same path the SDK's gateway
+ * verb group constructs its own store over.
+ *
+ * "The same path" is the whole contract, and it is why this stays UNSCOPED
+ * while every other control-plane store in this repo moved under the surface
+ * root. goodvibes-agent reads and writes this same file directly, so the
+ * register is cross-product state rather than the daemon's own. Scoping it
+ * here would move it out from under the agent, and checkpoint eligibility
+ * would refuse workspaces the operator had registered from the agent while the
+ * agent stopped seeing everything registered from the daemon.
+ *
+ * Where cross-product state should live is a real decision and not this
+ * change's to make; see the note at the SDK writer.
+ */
 export function sharedWorkspaceRegistrationStorePath(shellPaths: StoreShellPaths): string {
   return shellPaths.resolveUserPath('control-plane', 'workspace-registrations.json');
 }
