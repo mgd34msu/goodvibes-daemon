@@ -26,6 +26,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { createShellPathService } from '@/runtime/index.ts';
 import { controlPlaneStorePath } from '@pellux/goodvibes-sdk/platform/control-plane';
+import { sharedWorkspaceRegisterPath } from '@pellux/goodvibes-sdk/platform/workspace';
 import { sharedWorkspaceRegistrationStorePath } from '../../runtime/trust/checkpoint-eligibility.ts';
 import { GOODVIBES_DAEMON_SURFACE_ROOT } from '../../config/surface.ts';
 
@@ -74,14 +75,19 @@ describe('the daemon serves exactly one, surface-scoped control-plane store', ()
     expect(pairingTokens).toContain(scopedPrefix);
 
     // The workspace register is the ONE deliberate exception: its reader lives
-    // in this repo while its writer lives in the SDK, and goodvibes-agent reads
-    // and writes the same file directly. It stays UNSCOPED so all three keep
-    // resolving one file; scoping it here would move it out from under the
-    // agent and leave checkpoint eligibility refusing workspaces the operator
-    // had registered.
+    // in this repo, its writer in the SDK, and goodvibes-agent reads and writes
+    // the same file. It lives in the shared tier so all three resolve one file;
+    // scoping it here would move it out from under the agent and leave
+    // checkpoint eligibility refusing workspaces the operator had registered.
+    //
+    // This reader FALLS BACK to the pre-split path while that is still the only
+    // copy, so on a machine the daemon has not yet folded it reports the
+    // operator's workspaces rather than none. With neither file present it
+    // names the shared path, which is where writes go.
     const readerPath = sharedWorkspaceRegistrationStorePath(shellPaths);
-    expect(readerPath).toBe(shellPaths.resolveUserPath('control-plane', 'workspace-registrations.json'));
+    expect(readerPath).toBe(sharedWorkspaceRegisterPath(shellPaths));
     expect(readerPath).not.toContain(scopedPrefix);
+    expect(readerPath).toContain('/shared/');
   });
 
   test('a blank surface root is refused rather than silently resolving to the orphan directory', () => {
