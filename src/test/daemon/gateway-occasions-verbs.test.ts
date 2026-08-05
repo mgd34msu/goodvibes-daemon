@@ -1,5 +1,5 @@
 /**
- * Gate: all sixteen `occasions.*` gateway verbs must be present AND invokable
+ * Gate: all seventeen `occasions.*` gateway verbs must be present AND invokable
  * on the runtime this package vendors, not merely described.
  *
  * Regression context (same class as gateway-ws-only-invokable.test.ts and
@@ -41,7 +41,7 @@ import { getTestRuntimeServices, disposeTestRuntimeServicesAfterAll } from '../h
 // registered inside the helper, for the reason its doc comment gives.
 disposeTestRuntimeServicesAfterAll();
 
-// All sixteen occasions.* verbs the control-plane surface documents
+// All seventeen occasions.* verbs the control-plane surface documents
 // (docs/occasions.md §7). Presence + handler attachment is asserted for all
 // of them; the read-only, no-required-param subset is also invoked
 // end-to-end.
@@ -51,6 +51,7 @@ const OCCASIONS_METHOD_IDS = [
   'occasions.confirm',
   'occasions.remove',
   'occasions.answer',
+  'occasions.acknowledge',
   'occasions.interview.get',
   'occasions.interview.answer',
   'occasions.interview.record',

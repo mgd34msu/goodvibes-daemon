@@ -219,7 +219,7 @@ const VERB_FAMILIES: readonly VerbFamily[] = [
     reason: "Always registered — installOccasions runs INSIDE composeOwnerProfile over the same store, with the machine-owned state file resolved from shellPaths. Deeper round-trip: gateway-occasions-verbs.test.ts.",
     methodIds: [
       'occasions.list', 'occasions.pending', 'occasions.state', 'occasions.sweep',
-      'occasions.propose', 'occasions.confirm', 'occasions.remove', 'occasions.answer',
+      'occasions.propose', 'occasions.confirm', 'occasions.remove', 'occasions.answer', 'occasions.acknowledge',
       'occasions.interview.get', 'occasions.interview.answer', 'occasions.interview.record',
       'occasions.gifts', 'occasions.conflict.resolve',
       'occasions.plans.list', 'occasions.plans.propose', 'occasions.plans.confirm',

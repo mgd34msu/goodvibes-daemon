@@ -6,6 +6,26 @@ All notable changes to the GoodVibes daemon.
 
 ## [Unreleased]
 
+## [1.28.11] - 2026-08-05
+
+### Changes
+
+- **Fixed: reminders respect being heard** (platform runtime 2.0.9). An
+  occasion nudge raises once at the lead boundary and at most once on the
+  day; a reply that engages the reminder records an acknowledgment in the
+  same turn and mutes that occurrence; the owner's own remember-only dates
+  never push at all. Over-nudged machines reconcile on first boot with a
+  receipt. The new `occasions.acknowledge` verb carries the acknowledgment;
+  `occasions.finalStretchDays` is retired with a receipted migration.
+- Fixed: a dead runtime record reaps itself instead of making daemon-owned
+  settings unreadable; wake transcription is daemon-first with failure
+  evidence in diagnostics; the managed voice installer supersedes stale
+  manual paths by name and proves itself with a spoken round trip.
+- Changed: setup flows complete the inferred intent — propose extensions,
+  ask at genuine forks, never hand the user a command; the Google
+  walkthrough accepts pasted values in-conversation and answers with the
+  consent link.
+
 ## [1.28.10] - 2026-08-05
 
 ### Changes
