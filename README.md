@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/mgd34msu/goodvibes-daemon/actions/workflows/ci.yml/badge.svg)](https://github.com/mgd34msu/goodvibes-daemon/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/version-1.28.11-blue.svg)](https://github.com/mgd34msu/goodvibes-daemon)
+[![Version](https://img.shields.io/badge/version-1.28.12-blue.svg)](https://github.com/mgd34msu/goodvibes-daemon)
 
 The GoodVibes daemon: one long-running process per machine that holds the control plane every
 GoodVibes client talks to. It answers the operator verb families over HTTP, reads and replies on
