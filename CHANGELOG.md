@@ -6,6 +6,34 @@ All notable changes to the GoodVibes daemon.
 
 ## [Unreleased]
 
+### Changes
+
+- **Fixed: a hosted conversational turn no longer gets the host.** The daemon
+  composes hosted sessions through the same `createClientRuntimeServices` a
+  terminal runs, so a hosted command already ran inside the same bubblewrap
+  boundary — network, PID, UTS and IPC namespaced, system read-only, /tmp and
+  $HOME masked, `sandbox.egressAllowlist` the one way network comes back. What
+  differed was the fallback: with no boundary available the command ran
+  directly on the host and only said so afterwards, and a conversational turn
+  used that to read the whole process table and drive the owner's terminal.
+  The daemon now STATES the posture. Every session it hosts is
+  `conversational`, which makes the boundary REQUIRED: a command that cannot be
+  contained is refused, naming why, and `background: true` is not a spelling
+  that gets around it. A hosted workstream that genuinely needs the machine is
+  a per-spawn grant written into this daemon's own composition — nothing on the
+  wire and nothing in a tool argument can reach it.
+- **Fixed: the owner's terminal is untouchable.** A command that drives an
+  existing tmux session, window or pane this platform did not create —
+  send-keys, kill, resize, attach, respawn, rename — is refused by the exec
+  guard for a hosted turn, with a refusal that names the rule. Creating and
+  driving the platform's own sessions is unchanged, and so is reading tmux
+  state (`list-sessions`, `list-panes`, `capture-pane`), which the fleet view
+  already does. The frozen catastrophic block is untouched.
+- Changed: this daemon's hosted operator prompt carries the platform's
+  conversational diagnosis contract — report the state and propose, never
+  restart the owner's applications or type into his terminal to "fix" things,
+  and a "fixed" claim needs the live evidence it rests on.
+
 ## [1.28.11] - 2026-08-05
 
 ### Changes
