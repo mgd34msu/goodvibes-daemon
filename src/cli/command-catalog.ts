@@ -820,7 +820,15 @@ export function isRawInterceptCommand(command: DaemonCommand): boolean {
  * than one command's flag list has the same kind in all of them — asserted by
  * a unit test rather than left as an assumption — so one table is honest.
  */
-export const ALL_FLAG_ARITY: ReadonlyMap<string, CliFlagKind> = catalogFlagArity(DAEMON_CLI_CATALOG);
+// Resolved on first use, not at module load: `catalogFlagArity` is an SDK
+// import, and the single-file compiler's nondeterministic module order could
+// run this line before the SDK module body exists — the binary then dies at
+// load (the build-order lottery class fixed at runtime 2.0.13).
+let allFlagArityCache: ReadonlyMap<string, CliFlagKind> | null = null;
+export function allFlagArity(): ReadonlyMap<string, CliFlagKind> {
+  allFlagArityCache ??= catalogFlagArity(DAEMON_CLI_CATALOG);
+  return allFlagArityCache;
+}
 
 /** Flag specs a given command accepts: the global ones plus its own. */
 export function flagsForCommand(command: DaemonCommand): readonly DaemonCommandFlagSpec[] {

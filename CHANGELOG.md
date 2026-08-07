@@ -4,6 +4,18 @@ All notable changes to the GoodVibes daemon.
 
 ---
 
+## [1.28.16] - 2026-08-07
+
+### Changes
+
+- **One more module-scope read is gone from the compiled daemon's load path.**
+  The command catalog built its flag-arity table by calling an SDK helper at
+  module scope; under the single-file compiler's nondeterministic module
+  order that call could run before the helper exists, killing the binary at
+  load. The table is now built on first use. Found by auditing for the same
+  build-order lottery class 1.28.15 fixed — this was the last direct
+  module-scope call into the platform runtime in this product.
+
 ## [1.28.15] - 2026-08-07
 
 ### Changes

@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import {
-  ALL_FLAG_ARITY,
+  allFlagArity,
   DAEMON_COMMANDS,
   DAEMON_COMMAND_ALIASES,
   GLOBAL_FLAGS,
@@ -104,7 +104,7 @@ describe('the catalog\'s flag table', () => {
     for (const spec of DAEMON_COMMANDS) {
       for (const flag of flagsForCommand(spec.name)) {
         for (const token of flag.tokens) {
-          expect(ALL_FLAG_ARITY.has(token)).toBe(true);
+          expect(allFlagArity().has(token)).toBe(true);
         }
       }
     }
@@ -131,7 +131,7 @@ describe('the catalog\'s flag table', () => {
   test('the terminal app\'s conversation flags are listed for refusal, not acceptance', () => {
     for (const token of Object.keys(REJECTED_TERMINAL_FLAGS)) {
       // A rejected flag must not also be an accepted one anywhere.
-      expect(ALL_FLAG_ARITY.has(token)).toBe(false);
+      expect(allFlagArity().has(token)).toBe(false);
     }
     for (const token of ['--resume', '--continue', '--fork', '--print', '--prompt',
       '-o', '--output', '--open', '--no-alt-screen', '--session', '--strict']) {
