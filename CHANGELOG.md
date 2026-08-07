@@ -4,6 +4,22 @@ All notable changes to the GoodVibes daemon.
 
 ---
 
+## [1.28.13] - 2026-08-06
+
+### Changes
+
+- **Fixed: an unnamed transcription or synthesis request goes to the voice
+  provider the user actually configured** (platform runtime 2.0.11). The
+  daemon's provider picker answered "use whatever this host has configured"
+  with the first name on its internal registration list — a cloud provider —
+  even when that provider had no key and the host carried fully provisioned
+  local engines. On a machine set up for local voice, every wake-word
+  transcription failed "OpenAI API key missing" while the user's working
+  whisper was never asked, and no settings key could override the pick.
+  Unnamed requests now prefer providers that report themselves configured,
+  with configured local engines first — free, offline, no key. A named
+  provider keeps exactly its previous behavior.
+
 ## [1.28.12] - 2026-08-05
 
 ### Changes
