@@ -4,6 +4,22 @@ All notable changes to the GoodVibes daemon.
 
 ---
 
+## [1.28.15] - 2026-08-07
+
+### Changes
+
+- **The compiled daemon no longer plays a build-order lottery at load**
+  (platform runtime 2.0.13): the daemon's runtime barrel read fifteen values
+  off the SDK's runtime namespace objects at module scope (`export const X =
+  ns.X`). Bun's single-file compiler emits module bodies in an order that
+  varies build-to-build, and such a read can land before the module that
+  defines the binding — the binary then dies at load with a ReferenceError on
+  some builds of identical source. Every one of those reads is now a grouped
+  live re-export from the SDK's registered runtime subpaths, resolved by the
+  module system instead of read at module scope. The shared post-build smoke
+  now also scans the compiled artifact for the eager pattern, so a
+  reintroduction fails the build even on a lucky ordering.
+
 ## [1.28.14] - 2026-08-06
 
 ### Changes

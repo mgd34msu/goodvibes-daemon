@@ -12,13 +12,17 @@
  * SDK.
  */
 
-import {
-  bootstrap,
-  observability,
+// Type-only: the runtime namespace objects must never be READ at module scope.
+// An eager `export const X = ns.X` compiles to a top-level property read off a
+// lazy namespace object, and Bun's single-file compiler orders module bodies
+// nondeterministically — on some builds the read lands before the defining
+// module and the binary dies at load. Values below are grouped live re-exports
+// from the SDK's registered subpaths instead; the toolchain post-build-smoke
+// scans compiled artifacts for the eager pattern and fails the build if one
+// returns.
+import type {
   operations,
-  security,
   shell,
-  transport,
   ui,
 } from '@pellux/goodvibes-sdk/platform/runtime';
 
@@ -29,46 +33,43 @@ export * from '@pellux/goodvibes-sdk/platform/runtime/feature-flags';
 export * from '@pellux/goodvibes-sdk/platform/runtime/settings';
 export * from '@pellux/goodvibes-sdk/platform/runtime/sandbox';
 
-// Shell paths + the surface-scoped storage handle.
-export const createShellPathService = shell.createShellPathService;
+// Shell paths + the surface-scoped storage handle. Grouped live re-exports:
+// class values (WorktreeRegistry etc.) carry their instance types with them.
+export { createShellPathService, WorktreeRegistry } from '@pellux/goodvibes-sdk/platform/runtime/shell';
 export type ShellPathService = shell.ShellPathService;
-export const createSessionSurface = operations.createSessionSurface;
+export { createSessionSurface } from '@pellux/goodvibes-sdk/platform/runtime/operations';
 export type SessionSurface = operations.SessionSurface;
-export const WorktreeRegistry = shell.WorktreeRegistry;
-export type WorktreeRegistry = shell.WorktreeRegistry;
 
 // Remote execution + the distributed runtime.
-export const DistributedRuntimeManager = operations.DistributedRuntimeManager;
-export type DistributedRuntimeManager = operations.DistributedRuntimeManager;
-export const RemoteRunnerRegistry = operations.RemoteRunnerRegistry;
-export type RemoteRunnerRegistry = operations.RemoteRunnerRegistry;
-export const RemoteSupervisor = operations.RemoteSupervisor;
-export type RemoteSupervisor = operations.RemoteSupervisor;
+export {
+  DistributedRuntimeManager,
+  RemoteRunnerRegistry,
+  RemoteSupervisor,
+} from '@pellux/goodvibes-sdk/platform/runtime/operations';
 
 // Boot helpers the daemon runs itself (the facade does not know about them).
-export const syncConfiguredServices = bootstrap.synchronizeConfiguredServices;
+export { synchronizeConfiguredServices as syncConfiguredServices } from '@pellux/goodvibes-sdk/platform/runtime/bootstrap';
 
 // Observability.
-export const TelemetryApiService = observability.TelemetryApiService;
-export type TelemetryApiService = observability.TelemetryApiService;
-export const ComponentHealthMonitor = observability.ComponentHealthMonitor;
-export type ComponentHealthMonitor = observability.ComponentHealthMonitor;
-export const IdempotencyStore = observability.IdempotencyStore;
-export type IdempotencyStore = observability.IdempotencyStore;
+export {
+  TelemetryApiService,
+  ComponentHealthMonitor,
+  IdempotencyStore,
+} from '@pellux/goodvibes-sdk/platform/runtime/observability';
 
 // Security.
-export const PolicyRuntimeState = security.PolicyRuntimeState;
-export type PolicyRuntimeState = security.PolicyRuntimeState;
+export { PolicyRuntimeState } from '@pellux/goodvibes-sdk/platform/runtime/security';
 
 // Integration helpers (surface-scoped continuity reads) and the no-op screen
 // stand-ins. The daemon facade's service-graph contract names a panel manager
 // and a keybindings manager because a surface that has a screen supplies real
 // ones; the daemon has no screen, and the SDK ships the honest no-ops for
 // exactly this case rather than leaving a hole a fake would fill.
-export const IntegrationHelperService = ui.IntegrationHelperService;
-export type IntegrationHelperService = ui.IntegrationHelperService;
-export const createNoopPanelManager = ui.createNoopPanelManager;
-export const createNoopKeybindingsManager = ui.createNoopKeybindingsManager;
+export {
+  IntegrationHelperService,
+  createNoopPanelManager,
+  createNoopKeybindingsManager,
+} from '@pellux/goodvibes-sdk/platform/runtime/ui';
 export type PanelManagerLike = ui.PanelManagerLike;
 export type KeybindingsManagerLike = ui.KeybindingsManagerLike;
 
@@ -77,8 +78,7 @@ export type Notification = ui.Notification;
 export type RoutingDecision = ui.RoutingDecision;
 
 // Outbound network transport installation (proxy/TLS policy from settings).
-export const GlobalNetworkTransportInstaller = transport.GlobalNetworkTransportInstaller;
-export type GlobalNetworkTransportInstaller = transport.GlobalNetworkTransportInstaller;
+export { GlobalNetworkTransportInstaller } from '@pellux/goodvibes-sdk/platform/runtime/transport';
 
 
 // Runtime event payload unions, re-exported so a consumer names one import path
