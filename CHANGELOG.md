@@ -4,6 +4,23 @@ All notable changes to the GoodVibes daemon.
 
 ---
 
+## [1.28.14] - 2026-08-06
+
+### Changes
+
+- **Post-wake capture ends when the room goes quiet, not when a fixed
+  threshold says so** (platform runtime 2.0.12): the silence floor is now
+  measured from the room's own ambient level in the pre-wake window, so a
+  fan or steady background noise no longer holds the microphone open to the
+  ceiling on every capture. The floor is a real setting
+  (`voice.wake.silenceFloorRms`, 0 = adaptive), and
+  `voice.wake.captureMaxSeconds: 0` now genuinely means no hard maximum —
+  whisper has no input limit, and capture closes on silence.
+- The exec sandbox's self-description now names the built-in tools a turn
+  should use for daemon status and settings, so an assistant inside the
+  boundary is redirected instead of left probing a loopback that is not
+  the host's.
+
 ## [1.28.13] - 2026-08-06
 
 ### Changes
