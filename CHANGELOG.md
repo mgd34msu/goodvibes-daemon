@@ -4,6 +4,21 @@ All notable changes to the GoodVibes daemon.
 
 ---
 
+## [1.28.17] - 2026-08-08
+
+### Changes
+
+- **Post-wake capture ends when the speaker stops, on real microphones**
+  (platform runtime 2.0.14): the silence floor now follows the room during
+  capture — a headset's automatic gain control ramping up after speech no
+  longer holds the microphone open — and breath ticks shorter than
+  `voice.wake.speechRetriggerMs` (new setting, default 150 ms) no longer
+  reset the silence clock. A pinned `voice.wake.silenceFloorRms` still
+  freezes the floor completely.
+- **Spoken output reads prose, not markdown** (platform runtime 2.0.14):
+  formatting marks are stripped before synthesis and fenced code blocks are
+  announced ("Code block omitted.") rather than read character by character.
+
 ## [1.28.16] - 2026-08-07
 
 ### Changes
