@@ -4,6 +4,17 @@ All notable changes to the GoodVibes daemon.
 
 ---
 
+## [1.28.18] - 2026-08-08
+
+### Changes
+
+- **The keep-awake inhibitor can no longer paint an authentication prompt on
+  a terminal** (platform runtime 2.0.15): a polkit refusal of the sleep
+  inhibitor — typical for tmux/SSH sessions logind does not count as an
+  active seat — used to register systemd's interactive auth agent on the
+  controlling terminal. The inhibitor is now requested with
+  `--no-ask-password`; refusal is silent and the platform runs without it.
+
 ## [1.28.17] - 2026-08-08
 
 ### Changes
