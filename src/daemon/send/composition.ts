@@ -34,7 +34,7 @@
 
 import { ChannelDeliveryRouter } from '@pellux/goodvibes-sdk/platform/channels';
 import { ArtifactStore } from '@pellux/goodvibes-sdk/platform/artifacts';
-import { ConfigManager, ServiceRegistry, SubscriptionManager } from '@pellux/goodvibes-sdk/platform/config';
+import { ConfigManager, ServiceRegistry, SubscriptionManager, sharedSubscriptionsPath } from '@pellux/goodvibes-sdk/platform/config';
 import { createShellPathService } from '@/runtime/index.ts';
 import { SecretsManager } from '../../config/secrets.ts';
 import type { SendDeliver } from './command.ts';
@@ -85,7 +85,7 @@ export function createSendStack(roots: SendStackRoots): SendStack {
   });
   const serviceRegistry = new ServiceRegistry(shellPaths.resolveProjectPath(GOODVIBES_DAEMON_SURFACE_ROOT, 'services.json'), {
     secretsManager,
-    subscriptionManager: new SubscriptionManager(shellPaths.resolveUserPath(GOODVIBES_DAEMON_SURFACE_ROOT, 'subscriptions.json')),
+    subscriptionManager: new SubscriptionManager(sharedSubscriptionsPath(shellPaths), { legacyPath: shellPaths.resolveUserPath(GOODVIBES_DAEMON_SURFACE_ROOT, 'subscriptions.json') }),
   });
   const router = new ChannelDeliveryRouter({
     configManager,

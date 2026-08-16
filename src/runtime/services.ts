@@ -1,5 +1,5 @@
 import { join } from 'node:path';
-import { ServiceRegistry, SubscriptionManager, ToolLLM } from '@pellux/goodvibes-sdk/platform/config';
+import { ServiceRegistry, SubscriptionManager, ToolLLM, sharedSubscriptionsPath } from '@pellux/goodvibes-sdk/platform/config';
 import { AutomationDeliveryManager, AutomationManager } from '@pellux/goodvibes-sdk/platform/automation';
 import { ChannelPolicyManager } from '@pellux/goodvibes-sdk/platform/channels';
 import { ApprovalBroker, GatewayMethodCatalog, SharedSessionBroker, buildSharedSessionAgentSpawnRoutingInput, controlPlaneStorePath } from '@pellux/goodvibes-sdk/platform/control-plane';
@@ -134,7 +134,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     daemonHomeDirectory: options.daemonHomeDirectory,
     pairingTokenPath: controlPlaneStorePath(shellPaths, GOODVIBES_DAEMON_SURFACE_ROOT, 'pairing-tokens.json'),
   });
-  const subscriptionManager = new SubscriptionManager(shellPaths.resolveUserPath(GOODVIBES_DAEMON_SURFACE_ROOT, 'subscriptions.json'));
+  const subscriptionManager = new SubscriptionManager(sharedSubscriptionsPath(shellPaths), { legacyPath: shellPaths.resolveUserPath(GOODVIBES_DAEMON_SURFACE_ROOT, 'subscriptions.json') });
   const serviceRegistry = new ServiceRegistry(shellPaths.resolveProjectPath(GOODVIBES_DAEMON_SURFACE_ROOT, 'services.json'), {
     secretsManager,
     subscriptionManager,

@@ -4,7 +4,22 @@ All notable changes to the GoodVibes daemon.
 
 ---
 
-## [1.28.18] - 2026-08-08
+## [1.28.19] - 2026-08-15
+
+### Changes
+
+- **Signing in to a provider subscription anywhere on the platform now reaches
+  this daemon** (platform runtime 2.0.17): subscription sessions move to the
+  shared tier, so a ChatGPT/Codex login completed in a terminal surface is
+  immediately usable by the daemon that runs the turns; existing per-surface
+  records fold in automatically, newest first, legacy files untouched.
+- **A turn through a strict OpenAI-compatible gateway works again** (platform
+  runtime 2.0.17): the edit tool's schema declared a union with `oneOf`,
+  which validators like abacus RouteLLM now reject wholesale — every hosted
+  turn through such a provider failed with "Extra inputs are not permitted".
+  The union is `anyOf` now, pinned by a wire-compatibility test.
+
+## [1.28.18] - 2026-08-15
 
 ### Changes
 
