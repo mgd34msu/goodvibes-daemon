@@ -1,11 +1,15 @@
 # Getting started
 
 `goodvibes-daemon` is the one long-running process per machine that holds the control
-plane every GoodVibes client talks to. It answers the operator verb families over HTTP
-and WebSocket, reads and replies on your channels, elects a leader among machines you
-have grouped together, runs scheduled and triggered work, keeps the session, memory,
-knowledge and code-index stores, provisions the local voice and wake-word models, and
-updates itself at an idle moment with a rollback if the new binary will not start.
+plane every GoodVibes client talks to. It:
+
+- answers the operator verb families over HTTP and WebSocket
+- reads and replies on your channels
+- elects a leader among machines you have grouped together
+- runs scheduled and triggered work
+- keeps the session, memory, knowledge and code-index stores
+- provisions the local voice and wake-word models
+- updates itself at an idle moment, with a rollback if the new binary will not start
 
 The terminal app (`goodvibes`), the conversational agent (`goodvibes-agent`) and the
 browser operator surface are clients of this process. They render and capture input;
@@ -129,10 +133,18 @@ See [configuration.md](configuration.md) for the full settings reference and
 goodvibes-daemon status
 ```
 
-Reports the version, uptime, the address it actually bound, a health roll-up, its
-configured channels and whether each is healthy, its place in any cluster group, how
-many sessions it is hosting, and what its last update or automatic rollback did. Exit 0
-means the daemon answered; exit 1 means it could not be reached. Pass `--json` for a
+Reports:
+
+- the version
+- uptime
+- the address it actually bound
+- a health roll-up
+- its configured channels and whether each is healthy
+- its place in any cluster group
+- how many sessions it is hosting
+- what its last update or automatic rollback did
+
+Exit 0 means the daemon answered; exit 1 means it could not be reached. Pass `--json` for a
 scriptable version, or `--host`/`--port`/`--token` to ask a daemon on another machine.
 See [commands-reference.md](commands-reference.md) for the full remote-target
 convention.

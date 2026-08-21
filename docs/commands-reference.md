@@ -1,8 +1,8 @@
 # Command reference
 
-Every command `goodvibes-daemon` accepts, generated from the command catalog
-(`src/cli/command-catalog.ts`) as of daemon `1.28.0` and fleshed out with the exact
-help text and behavior. This vocabulary is the complete set. A word that matches
+Every command `goodvibes-daemon` accepts, hand-maintained against the command
+catalog (`src/cli/command-catalog.ts`, last reconciled at daemon `1.28.0`) with the
+exact help text and behavior. This vocabulary is the complete set. A word that matches
 none of it is refused with `Unknown command: <word>` and exit code 2; it does not
 fall through to starting a daemon. There is no `docs:*` script that regenerates this
 file automatically; when a command or flag changes in the catalog, update this page
@@ -233,9 +233,12 @@ the service (which checks on the way up). See
 goodvibes-daemon send [message] [--channel <id>] [--to <address>] [--title <text>] [--list]
 ```
 
-Send a message through Telegram, ntfy, Discord, Slack, Google Chat, Signal, WhatsApp,
-iMessage, Teams, BlueBubbles, Mattermost, Matrix, or a webhook. The message is an
-argument or stdin, so it composes with other tooling.
+Send a message through any configured channel. The message is an argument or
+stdin, so it composes with other tooling. Supported channels:
+
+- Telegram, ntfy, Discord, Slack, Google Chat
+- Signal, WhatsApp, iMessage, Teams, BlueBubbles
+- Mattermost, Matrix, or a webhook
 
 | Flag | Meaning |
 | --- | --- |

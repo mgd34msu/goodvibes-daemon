@@ -5,11 +5,16 @@
 [![Version](https://img.shields.io/badge/version-1.28.20-blue.svg)](https://github.com/mgd34msu/goodvibes-daemon)
 
 The GoodVibes daemon: one long-running process per machine that holds the control plane every
-GoodVibes client talks to. It answers the operator verb families over HTTP, reads and replies on
-your channels, elects a leader among the machines you have grouped together so only one of them
-answers a shared inbox, runs scheduled and triggered work, keeps the session, memory, knowledge
-and code-index stores, provisions the local voice and wake-word models, and updates itself at an
-idle moment with a rollback if the new binary will not start.
+GoodVibes client talks to. It:
+
+- answers the operator verb families over HTTP
+- reads and replies on your channels
+- elects a leader among the machines you have grouped together, so only one of them answers a
+  shared inbox
+- runs scheduled and triggered work
+- keeps the session, memory, knowledge and code-index stores
+- provisions the local voice and wake-word models
+- updates itself at an idle moment, with a rollback if the new binary will not start
 
 The terminal app (`goodvibes`), the conversational agent (`goodvibes-agent`) and the web app are
 clients of this process. They render, they capture input, and they call verbs; the work happens

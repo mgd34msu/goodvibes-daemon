@@ -71,9 +71,16 @@ goodvibes-daemon sessions list [--all] [--json] [--host <name>] [--port <n>] [--
 goodvibes-daemon sessions kill <id> [--json] [--host <name>] [--port <n>] [--token <t>]
 ```
 
-`sessions list` shows every hosted session with its status, workspace, turn count,
-attached-client count, its effective detach policy, and how long since it was last
-updated. `--all` includes already-terminated sessions, kept (with their termination
+`sessions list` shows every hosted session with:
+
+- its status
+- workspace
+- turn count
+- attached-client count
+- its effective detach policy
+- how long since it was last updated
+
+`--all` includes already-terminated sessions, kept (with their termination
 reason) until `hostedSessions.terminatedRetentionMs` retires them. `sessions kill <id>`
 calls `sessions.hosted.kill` with no id being a usage refusal (exit 2) rather than
 "kill everything". There is no shape of this command that ends more than the one
