@@ -31,8 +31,8 @@ three different directories can be asking three separate trust questions at once
 
 | Verb | What it does |
 | --- | --- |
-| `sessions.hosted.create` | Compose a new hosted loop for a workspace. Refused with the live count and `hostedSessions.maxSessions` named when the cap is already reached |
-| `sessions.hosted.attach` | Join a session and receive its transcript so far, what a client that was never connected, or one reconnecting after a restart, needs instead of an empty screen. A session restored from disk has its loop rebuilt on attach, with a system line noting its in-flight turn did not survive the restart |
+| `sessions.hosted.create` | Compose a new hosted loop for a workspace. `workspaceRoot` must be absolute. `modelId`, when given, is resolved against the daemon's live model registry so an unknown id is refused here rather than at the first turn; omitted, the session follows the daemon's current selection. `detachPolicy` overrides the setting for this session alone. `initialPrompt` is submitted as the first user message without the call waiting for the turn. Refused with the live count and `hostedSessions.maxSessions` named when the cap is already reached |
+| `sessions.hosted.attach` | Join a session and receive its transcript so far, what a client that was never connected, or one reconnecting after a restart, needs instead of an empty screen. A session restored from disk has its loop rebuilt on attach, with a system line noting its in-flight turn did not survive the restart. The attachment carries a lease (see below); attaching again with the same client id renews it |
 | `sessions.hosted.detach` | Leave a session. If other clients are still attached, nothing else happens. If this was the *last* client, the effective detach policy decides what happens next (see below) |
 | `sessions.hosted.kill` | End a session regardless of who is attached or what its detach policy says. Its in-flight turn is interrupted, its loop taken apart, and its workspace floor released if it was the last session using it. Killing an already-terminated session returns that record unchanged rather than erroring |
 | `sessions.hosted.list` | Every session this daemon hosts, most recently updated first. Terminated sessions are excluded unless `includeTerminated` is set |
@@ -63,6 +63,16 @@ leaves, rather than guessing.
 
 `kill` (the verb) is unconditional and never consults the detach policy at all. It
 always ends the session, whoever is attached.
+
+An attachment is a lease, not a permanent claim. A client that crashed or closed its
+tab never calls detach, and a claim nothing expires would hold a `kill`-policy session
+open forever. Each attachment therefore stands for `hostedSessions.attachmentTtlMs`
+(ten minutes by default, clamped to between 30 seconds and a day), or for the `leaseMs`
+the attach call names for that one attachment. Attaching again with the same client id
+renews it, and a client whose control-plane connection is still open renews
+automatically, so a client watching a long turn in silence is never reaped. When the
+last attachment lapses, the session is treated as detached and the policy above
+decides.
 
 ## From the CLI
 
@@ -96,6 +106,7 @@ REST call, but the target, the token, and the defaults are identical.
 | `hostedSessions.maxSessions` | `8` | Live sessions at once. A `create` past this is refused, naming the count and this setting. Terminated sessions do not count against it |
 | `hostedSessions.maxMessagesPerSession` | `500` | How many of a session's most recent messages are persisted to disk. Bounds what a restart can restore; the live in-memory transcript is unaffected |
 | `hostedSessions.terminatedRetentionMs` | `86400000` (24h) | How long a terminated session's record stays listable (with `--all`) before it is retired |
+| `hostedSessions.attachmentTtlMs` | `600000` (10 min) | How long an attachment stands without renewal before it lapses and counts as a detach. Clamped to between 30 seconds and a day |
 
 See [configuration.md](configuration.md#daemon-hosted-sessions-hostedsessions) for how
 to set these, and `hostedSessions.promoteInboundConversations` for handing inbound

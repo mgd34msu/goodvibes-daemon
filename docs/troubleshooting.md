@@ -11,7 +11,7 @@ Check the platform's own service log first:
 # systemd (Linux)
 journalctl --user -u goodvibes.service -n 100 --no-pager
 
-# launchd (macOS) — the unit's stdout/stderr redirection path, printed by:
+# launchd (macOS): the unit's stdout/stderr redirection path, printed by
 goodvibes-daemon service-status
 ```
 
@@ -75,9 +75,12 @@ goodvibes-daemon pair
 
 Reprints the exact block the daemon prints once at startup (the web origin, the QR
 code, and the deep link), reusing the same shared token rather than minting a new one,
-so nothing that has already paired is invalidated. It only works for **this** machine;
-`--host` naming another one is refused, because the link has to be built from that
-machine's own token store.
+so nothing that has already paired is invalidated. For a daemon on another machine,
+`pair --host <name>` asks that daemon to mint a brand-new per-device pairing token
+over `pairing.handoff.create` and prints the pairing block for it; because that
+changes state on the remote daemon, it states the plan and asks for confirmation
+first (`-y` answers non-interactively). See
+[commands-reference.md](commands-reference.md) for both forms.
 
 ## Port conflicts
 

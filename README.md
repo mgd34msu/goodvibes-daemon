@@ -2,10 +2,10 @@
 
 [![CI](https://github.com/mgd34msu/goodvibes-daemon/actions/workflows/ci.yml/badge.svg)](https://github.com/mgd34msu/goodvibes-daemon/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/version-1.28.20-blue.svg)](https://github.com/mgd34msu/goodvibes-daemon)
+[![Version](https://img.shields.io/badge/version-1.28.21-blue.svg)](https://github.com/mgd34msu/goodvibes-daemon)
 
-The GoodVibes daemon: one long-running process per machine that holds the control plane every
-GoodVibes client talks to. It:
+The GoodVibes daemon is the one long-running process per machine that holds the control plane
+every GoodVibes client talks to. It:
 
 - answers the operator verb families over HTTP
 - reads and replies on your channels
@@ -13,6 +13,8 @@ GoodVibes client talks to. It:
   shared inbox
 - runs scheduled and triggered work
 - keeps the session, memory, knowledge and code-index stores
+- serves the payment verbs, with stored cards, a daily budget that survives a restart,
+  and checkouts driven through the browser it operates
 - provisions the local voice and wake-word models
 - updates itself at an idle moment, with a rollback if the new binary will not start
 
@@ -26,7 +28,7 @@ A **product** over `@pellux/goodvibes-sdk`, exactly like the TUI and the agent a
 
 - the composition root that builds the daemon's service graph,
 - the product handlers the SDK does not own (inbox, triage, drafts, routing, remote peers,
-  credentials),
+  credentials, payments),
 - the CLI (`send`, `cluster`, `webui`, `provision-wake-model`, `install-service` and friends),
 - packaging: the compiled `goodvibes-daemon-<os>-<arch>` binaries.
 
@@ -37,7 +39,8 @@ daemon need belongs in the SDK, not here.
 
 ## Version line
 
-The daemon's version is **1.28.0**. Live installs already carry a settings reader-floor
+The daemon versions on the continuous **1.28** line; this release is **1.28.21**. Live
+installs already carry a settings reader-floor
 (`$goodvibes.minReaderVersion`), the update handover compares versions monotonically, and the
 rejected-version record is keyed by version. Those three mechanics all depend on the version
 line staying continuous and monotonically increasing.

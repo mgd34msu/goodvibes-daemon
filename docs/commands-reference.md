@@ -1,7 +1,7 @@
 # Command reference
 
 Every command `goodvibes-daemon` accepts, hand-maintained against the command
-catalog (`src/cli/command-catalog.ts`, last reconciled at daemon `1.28.0`) with the
+catalog (`src/cli/command-catalog.ts`, last reconciled at daemon `1.28.21`) with the
 exact help text and behavior. This vocabulary is the complete set. A word that matches
 none of it is refused with `Unknown command: <word>` and exit code 2; it does not
 fall through to starting a daemon. There is no `docs:*` script that regenerates this
@@ -42,7 +42,7 @@ Every command that talks to an already-running daemon (`status`, `update`, `pair
 
 Authentication is `Authorization: Bearer <operator token>` against the control plane,
 the same credential the terminal app and the web UI already use. The defaults are the
-point: a headless box the operator has SSHed into works with no flags at all; the flags
+point. A headless box the operator has SSHed into works with no flags at all; the flags
 exist for driving a machine in the next room, or for scripting. A missing token is a
 refusal rather than an anonymous attempt. The daemon on this machine has never started
 and so has never minted one, or the wrong directory was named.
@@ -116,8 +116,8 @@ goodvibes-daemon migrate-service [-y]
 ```
 
 Move from the older install script's `goodvibes-daemon.service` unit to the one this
-binary manages (`goodvibes.service`). Without `-y`/`--yes` it prints the exact plan
-and changes nothing. This command never auto-migrates. The new service is installed,
+binary manages (`goodvibes.service`). Without `-y`/`--yes` (or `--non-interactive`) it
+prints the exact plan and changes nothing. This command never auto-migrates. The new service is installed,
 started and verified healthy **before** the old one is stopped or removed; a new
 service that does not come up rolls itself back and leaves the working one alone. A
 process merely listening on the port with no unit behind it is reported, never killed.
@@ -155,7 +155,7 @@ could not be reached.
 goodvibes-daemon pair [--json] [--host <name>] [--port <n>] [--token <t>] [-y]
 ```
 
-Two forms.
+`qr` and `qrcode` are accepted spellings of the same command. Two forms.
 
 With no `--host`, or one naming this machine, `pair` runs locally: it prints the same
 pairing block a daemon prints once at startup, reusing the existing shared token (never
@@ -164,12 +164,12 @@ link is assembled from this machine's own token store.
 
 With `--host` naming a different machine, `pair` runs remotely: it asks that daemon to
 mint a brand-new per-device pairing token over `pairing.handoff.create` and prints the
-pairing block for it. Minting is a different act than reprinting: it is a fresh token,
+pairing block for it. Minting is a different act than reprinting. It is a fresh token,
 and every token that daemon already issued, its shared token included, is left
 untouched. Because it changes state on a daemon that may not be this process's own, it
-states the plan and asks for confirmation before acting; `-y`/`--yes` answers
-non-interactively, the same convention `migrate-service` uses. Without `-y` nothing is
-called and nothing changes.
+states the plan and asks for confirmation before acting; `-y`/`--yes`/`--non-interactive`
+answers non-interactively, the same convention `migrate-service` uses. Without `-y`
+nothing is called and nothing changes.
 
 An unreachable daemon, a rejected token, and a daemon too old to serve the mint verb are
 each refused by name, never a stack trace. A target daemon with no web origin
@@ -181,6 +181,8 @@ nothing to build a scannable link or QR from in that case, so none is fabricated
 ```
 goodvibes-daemon sessions list|kill <id> [--json] [--all] [--host <name>] [--port <n>] [--token <t>]
 ```
+
+`session` is an accepted spelling of the same command.
 
 | Subcommand | Effect |
 | --- | --- |
@@ -221,9 +223,9 @@ goodvibes-daemon update [--check] [--json] [--host <name>] [--port <n>] [--token
 
 Report the running version, the receipts the daemon has written about its own updates
 and restarts, the version an automatic rollback rejected (if any), and whether a
-rollback is currently in force. `--check` is honest about a gap: the control plane
+rollback is currently in force. `--check` is honest about a gap. The control plane
 publishes no verb to trigger an update check early, so `--check` states that plainly
-and names the two things that do work: waiting for the hourly check, or restarting
+and names the two things that do work, waiting for the hourly check or restarting
 the service (which checks on the way up). See
 [updates-and-rollback.md](updates-and-rollback.md).
 
@@ -313,7 +315,8 @@ daemon; pass `--strict` to have a degraded outcome exit 1 instead.
 goodvibes-daemon completion bash|zsh|fish
 ```
 
-Print a completion script for the named shell on stdout, generated from the same
+`completions` is an accepted spelling of the same command. Print a completion
+script for the named shell on stdout, generated from the same
 catalog the parser and the help text use, so it cannot drift from what the binary
 accepts. Install by writing it somewhere the shell reads, for example:
 

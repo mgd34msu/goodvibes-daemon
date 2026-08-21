@@ -8,6 +8,8 @@ plane every GoodVibes client talks to. It:
 - elects a leader among machines you have grouped together
 - runs scheduled and triggered work
 - keeps the session, memory, knowledge and code-index stores
+- serves the payment verbs, with stored cards, a daily budget that survives a restart,
+  and checkouts driven through the browser it operates
 - provisions the local voice and wake-word models
 - updates itself at an idle moment, with a rollback if the new binary will not start
 
@@ -44,6 +46,7 @@ form stays one command, so these are set before the pipe):
 | `GOODVIBES_AGENT` | `1` | set `0` to skip installing `goodvibes-agent` |
 | `GOODVIBES_WEBUI` | `1` | set `0` to skip installing the browser operator surface |
 | `GOODVIBES_VECTOR` | `1` | set `0` to skip the `sqlite-vec` native addon |
+| `GOODVIBES_WAKE_MODEL` | `1` | set `0` to skip the wake-word model download (an air-gapped host, or no wake word wanted) |
 | `GOODVIBES_DAEMON_SERVICE` | `1` | set `0` to skip first-run daemon service registration |
 | `GOODVIBES_RESTART_DAEMON` | `1` | set `0` to leave an already-running daemon/agent untouched on upgrade |
 | `GOODVIBES_UNINSTALL` | `0` | set `1` to remove installer-managed files and stop the daemon/agent, then exit (no downloads) |
@@ -108,7 +111,7 @@ each platform.
 Every entry point resolves the same two roots:
 
 - **`GOODVIBES_HOME`** (or nothing, which defaults to your login home). This is the tree
-  root: the directory `.goodvibes/` sits under. Setting it relocates settings, workspace
+  root, the directory `.goodvibes/` sits under. Setting it relocates settings, workspace
   state, discovery roots, and every tier of the secret store.
 - **`GOODVIBES_DAEMON_HOME`** (or `--daemon-home <dir>`). This is the daemon's own identity
   directory, holding `operator-tokens.json` (the shared bearer token every client

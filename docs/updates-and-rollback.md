@@ -47,7 +47,7 @@ that exact version again on its own. `goodvibes-daemon status` and
 `goodvibes-daemon update` both surface it:
 
 ```
-rejected: 1.29.0 crash looped and was rolled back — the update loop will not install that version again
+rejected: 1.29.0 crash looped and was rolled back; the update loop will not install that version again
 rollback: an automatic rollback is in force; no fully-started boot has cleared it yet
 ```
 
@@ -79,7 +79,7 @@ early**. `--check` states that plainly and names what actually works:
 ```
 update --check: this daemon publishes no verb to trigger an update check early.
   It checks once an hour on its own and swaps only at an idle moment.
-  To make it check now, restart it — it checks on the way up:
+  To make it check now, restart it; it checks on the way up:
     goodvibes-daemon restart-service
 ```
 
