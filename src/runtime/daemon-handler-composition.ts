@@ -20,6 +20,8 @@ import type { ConfigManager } from '@pellux/goodvibes-sdk/platform/config';
 import type { ClusterCoordinator } from '@pellux/goodvibes-sdk/platform/cluster';
 import type { GatewayMethodCatalog } from '@pellux/goodvibes-sdk/platform/control-plane';
 import type { SecretsManager } from '@pellux/goodvibes-sdk/platform/config';
+import type { ChannelDeliveryRouter } from '@pellux/goodvibes-sdk/platform/channels';
+import type { ProviderRegistry } from '@pellux/goodvibes-sdk/platform/providers';
 import { registerDaemonHandlers, type DaemonHandlerSurfaces } from '../daemon/handlers/index.ts';
 import type { HandlerContext, HandlerLogger } from '../daemon/handlers/context.ts';
 import { createDaemonCredentialStore } from '../daemon/handlers/credentials.ts';
@@ -31,6 +33,7 @@ import { registerRemoteSurface } from '../daemon/handlers/remote/index.ts';
 import { createPaymentsServices } from './payments-composition.ts';
 import { inboxPollerGate } from './cluster-composition.ts';
 import type { ShellPathService } from '@/runtime/index.ts';
+import type { BrowserCheckoutSeamHolder } from './browser-checkout-seam-holder.ts';
 
 export interface DaemonHandlerCompositionOptions {
   readonly gatewayMethods: GatewayMethodCatalog;
@@ -46,6 +49,15 @@ export interface DaemonHandlerCompositionOptions {
    * composition root; the poller is never started outside it.
    */
   readonly clusterCoordinator: ClusterCoordinator;
+  /**
+   * Where `payments.checkout.*` reads the browser-checkout seam, filled later
+   * by services.ts's own `onBrowserCheckout`. See
+   * runtime/browser-checkout-seam-holder.ts and payments-composition.ts's
+   * header for why this has to be a getter rather than the seam itself.
+   */
+  readonly checkoutSeam: BrowserCheckoutSeamHolder['get'];
+  readonly channelDeliveryRouter: Pick<ChannelDeliveryRouter, 'deliver'>;
+  readonly providerRegistry: Pick<ProviderRegistry, 'getCurrentModel' | 'getForModel'>;
 }
 
 export function createDaemonHandlerComposition(
@@ -77,8 +89,9 @@ export function createDaemonHandlerComposition(
     registerDrafts: (ctx) => registerDraftMethods(ctx),
     // The payment stores need a path resolver and a daemon-scoped secret writer,
     // neither of which is on HandlerContext, so they are built here and the
-    // provider only carries the teardown. See payments-composition.ts for which
-    // verbs this attaches and which two it deliberately leaves refusing.
+    // provider only carries the teardown. See payments-composition.ts for the
+    // full checkout composition (address store, notifier, merchant judge,
+    // browser-checkout seam).
     registerPayments: () => createPaymentsServices({
       gatewayMethods: options.gatewayMethods,
       configManager: options.configManager,
@@ -99,17 +112,21 @@ export function createDaemonHandlerComposition(
       // (inboxPollerGate). It is the right answer once there is something to
       // elect over, and today there is not: ClusterConsumerGate.start() is
       // specified to not resolve until consumption has actually begun, and this
-      // composition has no payments consumer to start, checkout is unattached.
-      // Registering a gate whose start() does nothing would put a fake consumer
-      // in the election and in `cluster status`.
+      // composition has no payments consumer to start it. Checkout is now
+      // wired (payments.checkout.begin/.fillCard), but registering a gate whose
+      // start() does nothing would STILL put a fake consumer in the election and
+      // in `cluster status`; a real election is a separate piece of work, left
+      // for a later pass, not something wiring the checkout pair itself needed.
       //
-      // So the honest reading of the topology: clustering off means this is the
-      // only node, and it is trivially the one that would spend; clustering on
-      // means no payments election has been held and this node cannot claim to
-      // have won it. False on every node is also the safe direction, checkPaymentGates
-      // refuses on false. Wiring payments.checkout.* is what should replace this
-      // with a real gate and holdsSurface().
+      // So the honest reading of the topology stays what it was: clustering off
+      // means this is the only node, and it is trivially the one that would
+      // spend; clustering on means no payments election has been held and this
+      // node cannot claim to have won it. False on every node is also the safe
+      // direction, checkPaymentGates refuses on false.
       isPaymentsLeader: () => !options.clusterCoordinator.enabled,
+      checkoutSeam: options.checkoutSeam,
+      channelDeliveryRouter: options.channelDeliveryRouter,
+      providerRegistry: options.providerRegistry,
     }).unregister,
     registerRemote: (ctx) => registerRemoteSurface(ctx, { manager: options.distributedRuntime }),
   });

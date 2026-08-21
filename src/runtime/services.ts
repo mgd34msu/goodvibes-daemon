@@ -56,6 +56,7 @@ import { createTriggerServices } from './trigger-services.ts';
 import { createWorkstreamServices } from '@pellux/goodvibes-sdk/platform/orchestration';
 import { wireFleetNeedsInputPush } from './fleet-needs-input-push.ts';
 import { createDaemonHandlerComposition } from './daemon-handler-composition.ts';
+import { createBrowserCheckoutSeamHolder } from './browser-checkout-seam-holder.ts';
 import { createDevicePostureServices } from './device-posture-composition.ts';
 // Re-exported so the daemon entrypoint reaches the housekeeping sweep through
 // the same module it already imports the runtime graph from. `installDevicePosture`
@@ -387,9 +388,17 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   const { clusterGroup, clusterCoordinator } = createClusterServices({
     configManager, shellPaths, secretsManager,
   });
+  // ONE router, not two (a second built from the same four arguments would
+  // differ from the one replies leave through). Moved up from its original
+  // spot near the ws-only verb options (still consumed there): the payments
+  // composition below needs it too.
+  const channelDeliveryRouter = deliveryManager.getDeliveryRouter();
   // Daemon handler surfaces (see daemon-handler-composition.ts); the inbox
   // poller registers itself with the coordinator rather than starting eagerly,
   // and the payments family stops being a cataloged 501 facade there.
+  // browserCheckoutSeam fills once `onBrowserCheckout` fires below, after this
+  // composition; read lazily, per call. See browser-checkout-seam-holder.ts.
+  const browserCheckoutSeam = createBrowserCheckoutSeamHolder();
   const daemonHandlers = createDaemonHandlerComposition({
     gatewayMethods,
     secretsManager,
@@ -399,6 +408,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     shellPaths,
     distributedRuntime,
     clusterCoordinator,
+    checkoutSeam: browserCheckoutSeam.get, channelDeliveryRouter, providerRegistry,
   });
 
   // Remote runners and the sandboxes tool calls are confined to; see
@@ -426,12 +436,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   const policyRuntimeState = new PolicyRuntimeState();
   const fileCache = new FileStateCache();
   const projectIndex = new ProjectIndex(workingDirectory);
-  // ONE router, not two. This was a second ChannelDeliveryRouter built from the
-  // same four arguments AutomationDeliveryManager builds its own from, so the
-  // router the gateway verbs held and the router replies actually leave through
-  // were different objects, and a delivery strategy registered on one was
-  // invisible to the other. The manager's is the one that replies; it is the one.
-  const channelDeliveryRouter = deliveryManager.getDeliveryRouter();
+  // channelDeliveryRouter now built earlier, near clusterCoordinator above.
   const processManager = new ProcessManager();
   // The phase/work-item orchestration engine, constructed before the process
   // registry so its fleet nodes (workstream/phase/work-item) can be folded in
@@ -533,6 +538,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     // is what let these stores write to the unscoped orphan directory.
     surfaceRoot: GOODVIBES_DAEMON_SURFACE_ROOT,
     homeDirectory, emailServiceDeps, describeEmailConfigProblem, processRegistry,
+    onBrowserCheckout: browserCheckoutSeam.set,
     // The registration-gated surface, not the raw manager: an explicit create in
     // an unregistered workspace refuses with something actionable.
     workspaceCheckpointManager: checkpointing.gatewayManager,
@@ -564,6 +570,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     disposal: disposalScope.registry,
     ...wireFleetNeedsInputPush({ registry: processRegistry, runtimeBus: options.runtimeBus, sessionBroker }),
   });
+  disposalScope.registry.add('browser checkout seam holder', () => browserCheckoutSeam.clear()); // newer than 'browser sessions' above, so runs first
   // A loopback fetch that isn't allow-listed asks once through the approval
   // broker; "allow for this project" persists and later fetches never ask. Built
   // once and shared with the tool registry so both ask alike.

@@ -17,14 +17,17 @@
  * assertion below is written against the live route rather than against the
  * catalog, because the catalog was never the thing that was wrong.
  *
- * ── The two verbs that still refuse ───────────────────────────────────────
+ * ── The checkout pair, now attached too ───────────────────────────────────
  *
- * `payments.checkout.begin` and `payments.checkout.fillCard` are asserted to be
- * UNATTACHED, deliberately. They need a `CheckoutPageDriver` over an open
- * browser page and this composition cannot obtain one (see
- * payments-composition.ts). Pinning the refusal is what stops it from quietly
- * becoming either an accidental attachment that fails inside, or a forgotten
- * gap nobody remembers is a gap.
+ * `payments.checkout.begin` and `payments.checkout.fillCard` are attached over
+ * the sdk 2.0.19 browser-checkout seam (see payments-composition.ts and
+ * daemon/handlers/payments/register.ts). This fixture's daemon has a real
+ * `homeDirectory`, so `composeDaemonBrowser` builds a real (if never-launched)
+ * engine and the seam is available; what the assertions below pin is that an
+ * invocation with no owner-direct authority is refused honestly rather than
+ * quietly attempted, not that a purchase can complete headlessly in a test run
+ * (that would need a real browser and a real merchant, neither of which
+ * belongs in this suite).
  *
  * ── What no assertion here does ───────────────────────────────────────────
  *
@@ -84,7 +87,7 @@ async function readJson(response: Response): Promise<{ status: number; text: str
 }
 
 describe('payments.* is attached to this daemon, not a cataloged 501 facade', () => {
-  test('the five answerable verbs carry a handler', () => {
+  test('all seven verbs carry a handler', () => {
     for (const id of ATTACHED_PAYMENTS_METHOD_IDS) {
       expect(fixture.services.gatewayMethods.get(id), `${id} is not cataloged`).toBeTruthy();
       expect(
@@ -92,60 +95,95 @@ describe('payments.* is attached to this daemon, not a cataloged 501 facade', ()
         `${id} is cataloged with no handler, so it answers 501 to every client`,
       ).toBe(true);
     }
+    // Nothing is unattached any more; kept iterable so a future addition here
+    // is still a real, checked claim rather than dead code.
+    expect(UNATTACHED_PAYMENTS_METHOD_IDS).toHaveLength(0);
   });
 
-  test('the checkout pair carries no handler', () => {
-    for (const { id, reason } of UNATTACHED_PAYMENTS_METHOD_IDS) {
-      expect(fixture.services.gatewayMethods.get(id), `${id} is not cataloged`).toBeTruthy();
-      expect(
-        fixture.services.gatewayMethods.hasHandler(id),
-        `${id} gained a handler. If a CheckoutPageDriver is now reachable, move it into `
-        + `ATTACHED_PAYMENTS_METHOD_IDS and delete this entry. Reason it was unattached: ${reason}`,
-      ).toBe(false);
-    }
+  test('checkout.begin refuses honestly, not with a schema 400, when the call is not owner-direct', async () => {
+    // Satisfies the published input schema in full, which is the point: the
+    // input-validation gate runs before this daemon's own owner-direct check,
+    // so a body that failed validation would prove nothing about the ruling
+    // being tested. No `x-goodvibes-explicit-user-request` header is sent, so
+    // this lands as an ordinary automated-looking call.
+    const response = await readJson(await fixture.fetch('/api/payments/checkout/begin', {
+      method: 'POST',
+      body: JSON.stringify({
+        sessionId: 'session-that-does-not-exist',
+        pageId: 'page-that-does-not-exist',
+        merchantDomain: 'example.invalid',
+        checkoutUrl: 'https://example.invalid/checkout',
+        item: 'nothing at all',
+        cardId: 'card-that-does-not-exist',
+        requestedLines: [{ label: 'nothing at all', quantity: 1 }],
+        lines: [{ label: 'nothing at all', quantity: '1', unitPrice: '1.00' }],
+        shippingOptions: [{ label: 'standard', cost: '0.00' }],
+        cardFields: [{ field: 'number', ref: 'e1' }],
+        placeOrderTarget: 'e9',
+      }),
+    }));
+    // The verb is invokable now (200, not 501): the refusal is the flow's own
+    // honest "not asked for by you directly", the same shape every other
+    // checkPaymentGates refusal takes, not a NOT_INVOKABLE facade.
+    expect(response.status, `answered ${String(response.status)}: ${response.text}`).toBe(200);
+    expect(response.body['outcome']).toBe('refused:not-owner-request');
+    expect(String(response.body['reason'])).toContain('not asked for by you directly');
   });
 
-  test('the checkout pair refuses with 501 NOT_INVOKABLE, not with a schema 400', async () => {
-    // Both bodies below satisfy their published input schemas in full, which is
-    // the point: the input-validation gate runs BEFORE the handler lookup, so a
-    // body that failed validation would prove nothing about whether the verb is
-    // wired. These get past it and land on the honest "not wired here" refusal.
-    const probes: readonly { readonly path: string; readonly body: Record<string, unknown> }[] = [
-      {
-        path: '/api/payments/checkout/fill-card',
-        body: {
-          sessionId: 'session-that-does-not-exist',
-          pageId: 'page-that-does-not-exist',
-          targets: [{ field: 'number', ref: 'e1' }],
-        },
-      },
-      {
-        path: '/api/payments/checkout/begin',
-        body: {
-          sessionId: 'session-that-does-not-exist',
-          pageId: 'page-that-does-not-exist',
-          merchantDomain: 'example.invalid',
-          checkoutUrl: 'https://example.invalid/checkout',
-          item: 'nothing at all',
-          cardId: 'card-that-does-not-exist',
-          requestedLines: [{ label: 'nothing at all', quantity: 1 }],
-          lines: [{ label: 'nothing at all', quantity: '1', unitPrice: '1.00' }],
-          shippingOptions: [{ label: 'standard', cost: '0.00' }],
-          cardFields: [{ field: 'number', ref: 'e1' }],
-          placeOrderTarget: 'e9',
-        },
-      },
-    ];
-    for (const probe of probes) {
-      const response = await readJson(await fixture.fetch(probe.path, {
-        method: 'POST',
-        body: JSON.stringify(probe.body),
-      }));
-      // Nothing was attempted: the refusal happens before any handler body, so
-      // the non-existent session and page above are never looked up.
-      expect(response.status, `${probe.path} answered ${String(response.status)}: ${response.text}`).toBe(501);
-      expect(response.body['code']).toBe('NOT_INVOKABLE');
-    }
+  test('checkout.begin still refuses (a different, honest reason) once explicit user authority is granted', async () => {
+    // Owner-direct now, and still refused: no card and no address are
+    // configured on this fixture, so `checkPaymentGates` refuses on
+    // `no-card` (or, if the fixture ever gains a default card first,
+    // `no-shipping-address`); either is the honest next gate, never a schema
+    // or transport error, and never a completed purchase against a session
+    // and page that were never real.
+    const response = await readJson(await fixture.fetch('/api/payments/checkout/begin', {
+      method: 'POST',
+      headers: { 'x-goodvibes-explicit-user-request': 'true' },
+      body: JSON.stringify({
+        sessionId: 'session-that-does-not-exist',
+        pageId: 'page-that-does-not-exist',
+        merchantDomain: 'example.invalid',
+        checkoutUrl: 'https://example.invalid/checkout',
+        item: 'nothing at all',
+        cardId: 'card-that-does-not-exist',
+        requestedLines: [{ label: 'nothing at all', quantity: 1 }],
+        lines: [{ label: 'nothing at all', quantity: '1', unitPrice: '1.00' }],
+        shippingOptions: [{ label: 'standard', cost: '0.00' }],
+        cardFields: [{ field: 'number', ref: 'e1' }],
+        placeOrderTarget: 'e9',
+      }),
+    }));
+    expect(response.status, `answered ${String(response.status)}: ${response.text}`).toBe(200);
+    expect(String(response.body['outcome'])).toStartWith('refused:');
+    expect(response.body['outcome']).not.toBe('refused:not-owner-request');
+  });
+
+  test('checkout.fillCard refuses honestly for a session and page that do not exist', async () => {
+    // This alone does not prove the checkout registry is shared across begin
+    // and fillCard calls: a session and page that were NEVER opened refuse
+    // here whether the registry is a fresh, empty one per call (the defect
+    // once here) or the ONE shared instance a registration now holds for its
+    // whole life, both answer "no purchase decision is in flight" for a page
+    // nothing ever began. The registry-SHARING behaviour itself needs a
+    // begin() call to have actually reached `CheckoutRegistry.open()`, which
+    // needs a real in-flight checkout, not a real browser, and is proven at
+    // the unit level instead, over a fake driver: see register.test.ts's "the
+    // checkout registry is shared across begin and fillCard, not rebuilt per
+    // call" tests.
+    const response = await readJson(await fixture.fetch('/api/payments/checkout/fill-card', {
+      method: 'POST',
+      body: JSON.stringify({
+        sessionId: 'session-that-does-not-exist',
+        pageId: 'page-that-does-not-exist',
+        targets: [{ field: 'number', ref: 'e1' }],
+      }),
+    }));
+    // Never a 501 (the verb is wired) and never a 500 (a missing session and
+    // page is an ordinary refusal, not an internal failure); the exact refusal
+    // text belongs to the browser-checkout driver, not to this test.
+    expect(response.status, `answered ${String(response.status)}: ${response.text}`).toBe(400);
+    expect(response.body['code']).toBe('INVALID_ARGUMENT');
   });
 });
 

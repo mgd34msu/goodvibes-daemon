@@ -13,17 +13,72 @@
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { beforeEach, describe, expect, test } from 'bun:test';
-import { GatewayMethodCatalog } from '@pellux/goodvibes-sdk/platform/control-plane';
-import { BudgetLedger } from '@pellux/goodvibes-sdk/platform/payments';
-import type { PaymentsConfigReader, PurchaseRecord } from '@pellux/goodvibes-sdk/platform/payments';
+import { GatewayMethodCatalog, type BrowserCheckoutSeam } from '@pellux/goodvibes-sdk/platform/control-plane';
+import { BudgetLedger, CardMaterialRedactor } from '@pellux/goodvibes-sdk/platform/payments';
+import type { AddressStore, CheckoutPageDriver, MerchantJudgePort, PaymentNotifier, PaymentsConfigReader, PurchaseRecord } from '@pellux/goodvibes-sdk/platform/payments';
+import { getProcessUntrustedContentLedger } from '@pellux/goodvibes-sdk/platform/security';
 import { DaemonCardStore, type PaymentsSecretStore } from '../../../daemon/handlers/payments/card-store.ts';
 import { DaemonPurchaseLedger } from '../../../daemon/handlers/payments/purchase-ledger.ts';
 import {
   ATTACHED_PAYMENTS_METHOD_IDS,
   UNATTACHED_PAYMENTS_METHOD_IDS,
   registerPaymentsMethods,
+  type CheckoutComposition,
 } from '../../../daemon/handlers/payments/register.ts';
 import { makeProjectTempDir } from '../../helpers/project-temp.ts';
+
+/**
+ * A `CheckoutPageDriver` that satisfies the shape and does nothing.
+ *
+ * Never actually exercised by the not-owner-direct/no-seam refusal tests
+ * below: `checkPaymentGates` refuses (missing card, missing address, or not
+ * owner-direct) before `runCheckout` calls any of these, and `driverFor`
+ * itself is invoked unconditionally near the top of `beginCheckout`, so it has
+ * to exist and not throw, nothing more.
+ */
+const stubDriver: CheckoutPageDriver = {
+  identity: () => ({ sessionId: 'stub-session', pageId: 'stub-page' }),
+  url: async () => 'https://example.invalid/checkout',
+  fill: async () => {},
+  fillSecrets: async () => ({ filledTargets: [], failedTarget: null }),
+  choose: async () => {},
+  submitOrder: async () => ({ url: 'https://example.invalid/checkout', orderId: null, challenge: null, verified: false }),
+};
+
+const noAddresses: AddressStore = { read: async () => null };
+const noopNotifier: PaymentNotifier = { deliver: async () => [], awaitAnswer: async () => null };
+const unqualifiedMerchantJudge: MerchantJudgePort = {
+  judge: async () => ({ qualifies: false, confident: false, recourse: 'test double' }),
+};
+
+/** A `CheckoutComposition` whose seam is absent by default; tests that need one call `withSeam`. */
+function fakeCheckout(overrides: Partial<CheckoutComposition> = {}): CheckoutComposition {
+  return {
+    seam: () => undefined,
+    addresses: noAddresses,
+    notifier: noopNotifier,
+    merchantJudge: unqualifiedMerchantJudge,
+    untrusted: getProcessUntrustedContentLedger(),
+    ...overrides,
+  };
+}
+
+/**
+ * A working seam.
+ *
+ * `armSubmitApproval` is part of the sdk's `BrowserCheckoutSeam` shape and has
+ * to exist to satisfy it, but nothing in this daemon calls it any more (see
+ * checkout-handlers.ts's header on `checkoutBeginHandler`: the mechanism it
+ * used to arm was deleted, it never actually cleared anything), so this is a
+ * plain no-op rather than something tests observe calls on.
+ */
+function fakeSeam(): BrowserCheckoutSeam {
+  return {
+    cardFieldGuard: new CardMaterialRedactor(),
+    driverFor: () => stubDriver,
+    armSubmitApproval: async () => {},
+  };
+}
 
 function memorySecrets(): PaymentsSecretStore {
   const values = new Map<string, string>();
@@ -126,11 +181,12 @@ beforeEach(() => {
     budget,
     config,
     isPaymentsLeader: () => leader,
+    checkout: fakeCheckout(),
   });
 });
 
 describe('registerPaymentsMethods: what it attaches', () => {
-  test('the five answerable verbs gain a handler and the checkout pair does not', () => {
+  test('all seven verbs gain a handler; UNATTACHED_PAYMENTS_METHOD_IDS is empty', () => {
     for (const id of ATTACHED_PAYMENTS_METHOD_IDS) {
       expect(catalog.hasHandler(id), `${id} was not attached`).toBe(true);
     }
@@ -152,6 +208,244 @@ describe('registerPaymentsMethods: what it attaches', () => {
     expect(descriptor!.access).toBe('admin');
     expect(descriptor!.scopes).toContain('write:payments');
     expect(descriptor!.http).toEqual({ method: 'POST', path: '/api/payments/cards' });
+  });
+
+  test('a second registration on the same catalog, after teardown, does not throw', () => {
+    // The defect this pins: `registerCatalogHandlers`' own teardown removes
+    // FOUR of the seven descriptors (`cards.create`, `purchases.list`,
+    // `checkout.begin`, `checkout.fillCard`) from the catalog entirely, not
+    // merely their handler. Without restoring all seven, handler-less, in
+    // `registerPaymentsMethods`' own teardown, a second registration on this
+    // SAME catalog (a recompose without a fresh catalog, the daemon's own
+    // restart-without-recreating-the-catalog shape) would find those four ids
+    // gone and throw `Unknown gateway method` trying to attach to them.
+    unregister();
+    expect(() => {
+      unregister = registerPaymentsMethods(catalog, {
+        cards, purchases, budget, config, isPaymentsLeader: () => leader,
+        checkout: fakeCheckout(),
+      });
+    }).not.toThrow();
+    for (const id of ATTACHED_PAYMENTS_METHOD_IDS) {
+      expect(catalog.hasHandler(id), `${id} was not attached the second time`).toBe(true);
+    }
+  });
+});
+
+describe('payments.checkout.begin: what actually gates entry', () => {
+  /** Fields `parseBeginCheckoutInput` requires; passes shape validation regardless of what happens after. */
+  function validBeginBody(): Record<string, unknown> {
+    return {
+      sessionId: 'session-1',
+      pageId: 'page-1',
+      merchantDomain: 'example.invalid',
+      checkoutUrl: 'https://example.invalid/checkout',
+      item: 'a test item',
+      cardId: 'card-that-does-not-exist',
+      requestedLines: [{ label: 'a test item', quantity: 1 }],
+      lines: [{ label: 'a test item', quantity: '1', unitPrice: '1.00' }],
+      shippingOptions: [{ label: 'standard', cost: '0.00' }],
+      cardFields: [{ field: 'number', ref: 'e1' }],
+      placeOrderTarget: 'e9',
+    };
+  }
+
+  /** Re-registers over a fresh catalog with a working (but otherwise inert) seam. */
+  function registerWithSeam(): void {
+    const seam = fakeSeam();
+    catalog = new GatewayMethodCatalog();
+    unregister = registerPaymentsMethods(catalog, {
+      cards, purchases, budget, config, isPaymentsLeader: () => leader,
+      checkout: fakeCheckout({ seam: () => seam }),
+    });
+  }
+
+  test('refuses when the call is not owner-direct', async () => {
+    settings.set('payments.enabled', true);
+    registerWithSeam();
+
+    const result = await invoke('payments.checkout.begin', {
+      context: { principalId: 'test-operator', metadata: { explicitUserRequest: false } },
+      body: validBeginBody(),
+    });
+
+    // checkPaymentGates' own honest refusal, not a distinct error this wrapper
+    // invents: the SAME outcome any other gate refusal produces. There is no
+    // separate approval mechanism here any more to assert did-not-fire on:
+    // `context.explicitUserRequest` reaching `isOwnerDirectRequest`, below, is
+    // the whole gate. See checkout-handlers.ts's header on
+    // `checkoutBeginHandler` for the ruling this pins.
+    expect(result['outcome']).toBe('refused:not-owner-request');
+    expect(String(result['reason'])).toContain('not asked for by you directly');
+  });
+
+  test('refuses on the NEXT gate, not this one, once explicit user authority is granted', async () => {
+    settings.set('payments.enabled', true);
+    registerWithSeam();
+
+    const result = await invoke('payments.checkout.begin', {
+      context: { principalId: 'test-operator', metadata: { explicitUserRequest: true } },
+      body: validBeginBody(),
+    });
+
+    // Owner-direct now, and still refused: no card and no address are
+    // configured on this fixture, so `checkPaymentGates` refuses on `no-card`
+    // (or, if the fixture ever gains a default card first,
+    // `no-shipping-address`), the honest next gate, never the owner-direct one.
+    expect(String(result['outcome'])).toStartWith('refused:');
+    expect(result['outcome']).not.toBe('refused:not-owner-request');
+  });
+
+  test('refuses honestly, before dispatching, when no browser seam is composed', async () => {
+    // The default beforeEach registration: fakeCheckout()'s seam getter
+    // returns undefined, the "no browser composed" case.
+    const refusal = await refusalOf('payments.checkout.begin', {
+      context: { principalId: 'test-operator', metadata: { explicitUserRequest: true } },
+      body: validBeginBody(),
+    });
+    expect(refusal.status).toBe(409);
+    expect(refusal.code).toBe('FAILED_PRECONDITION');
+    expect(refusal.message).toContain('not available');
+  });
+});
+
+describe('the checkout registry is shared across begin and fillCard, not rebuilt per call', () => {
+  /**
+   * The defect this pins: `checkoutBeginHandler`/`checkoutFillCardHandler`
+   * used to build a fresh `PaymentsGatewayServiceImpl`, and therefore a fresh,
+   * empty `CheckoutRegistry`, on EVERY call. A `fillCard` call could then never
+   * find a checkout a prior `begin` opened (always "no purchase decision is in
+   * flight", real or not), and two concurrent `begin` calls on the same page
+   * never collided (each got its own empty registry), silently bypassing the
+   * registry's one-checkout-per-page guarantee. Both tests below need a `begin`
+   * call to reach `CheckoutRegistry.open()` (checkout-flow.ts, after GATES,
+   * TAINT, LINK, RECOURSE, EXTRACT, CART, DECIDE, RESERVE) and STAY there,
+   * without racing a real clock or a real notification channel, so
+   * `hangingNotifier` below never answers: the flow parks at the
+   * 'awaiting-window' phase (registry.advance, right after `open`) for as long
+   * as either test needs it to, and neither test ever awaits the `begin`
+   * call's own promise to completion.
+   */
+  function stubDriverFor(sessionId: string, pageId: string): CheckoutPageDriver {
+    return {
+      identity: () => ({ sessionId, pageId }),
+      url: async () => 'https://example.invalid/checkout',
+      fill: async () => {},
+      fillSecrets: async () => ({ filledTargets: [], failedTarget: null }),
+      choose: async () => {},
+      submitOrder: async () => ({ url: 'https://example.invalid/checkout', orderId: null, challenge: null, verified: false }),
+    };
+  }
+
+  /**
+   * Never answers. Parks a `begin` call at 'awaiting-window' indefinitely, so
+   * the registry stays open for the test to inspect.
+   *
+   * `deliver` must report at least one delivered channel: `advanceApproval`/
+   * `advanceVeto` (windows.ts) read an all-undelivered dispatch as
+   * "undeliverable" and settle the window immediately, DENIED, without ever
+   * calling `awaitAnswer` at all, which would make the checkout refuse and
+   * close before either test below gets a chance to observe it in flight.
+   */
+  function hangingNotifier(): PaymentNotifier {
+    return {
+      deliver: async () => [{ channel: 'tui', delivered: true, backfillable: false }],
+      awaitAnswer: () => new Promise<null>(() => { /* never resolves */ }),
+    };
+  }
+
+  const SHIPPING_ADDRESS = {
+    name: 'Test Owner', line1: '1 Test Street', line2: '', city: 'Testville',
+    region: 'TS', postalCode: '00000', country: 'US',
+  };
+
+  function addressStoreWithShipping(): AddressStore {
+    return { read: async (kind) => (kind === 'shipping' ? SHIPPING_ADDRESS : null) };
+  }
+
+  function checkoutBeginBody(cardId: string): Record<string, unknown> {
+    return {
+      sessionId: 'session-shared',
+      pageId: 'page-shared',
+      merchantDomain: 'example.invalid',
+      checkoutUrl: 'https://example.invalid/checkout',
+      item: 'a test item',
+      cardId,
+      requestedLines: [{ label: 'a test item', quantity: 1 }],
+      lines: [{ label: 'a test item', quantity: '1', unitPrice: '1.00' }],
+      shippingOptions: [{ label: 'standard', cost: '0.00' }],
+      cardFields: [{ field: 'number', ref: 'e1' }],
+      placeOrderTarget: 'e9',
+    };
+  }
+
+  /** A macrotask tick: drains every pending microtask first, which is enough for a fired-but-unawaited begin() to reach and park at 'awaiting-window'. */
+  function nextTick(): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, 0));
+  }
+
+  let sharedCardId = '';
+
+  beforeEach(async () => {
+    settings.set('payments.enabled', true);
+    settings.set('payments.budget.dailyItem', 100);
+    settings.set('payments.budget.perPurchaseCeilingEnabled', false);
+    const card = await cards.create({
+      label: 'shared-registry test card', kind: 'virtual', number: '4111111111111111',
+      expiryMonth: 7, expiryYear: 2029, cvv: '907', cardholderName: 'A Person', issuerCapMinorUnits: null,
+    });
+    sharedCardId = card.id;
+
+    const seam: BrowserCheckoutSeam = { ...fakeSeam(), driverFor: () => stubDriverFor('session-shared', 'page-shared') };
+    catalog = new GatewayMethodCatalog();
+    unregister = registerPaymentsMethods(catalog, {
+      cards, purchases, budget, config, isPaymentsLeader: () => leader,
+      checkout: fakeCheckout({ seam: () => seam, addresses: addressStoreWithShipping(), notifier: hangingNotifier() }),
+    });
+  });
+
+  test('a fillCard for the SAME page a begin opened finds it, refusing on phase rather than "no purchase in flight"', async () => {
+    // Fired, not awaited: this call never settles (hangingNotifier), which is
+    // what lets the test observe the registry while a checkout is genuinely
+    // in flight rather than after it closed.
+    void invoke('payments.checkout.begin', {
+      context: { principalId: 'test-operator', metadata: { explicitUserRequest: true } },
+      body: checkoutBeginBody(sharedCardId),
+    });
+    await nextTick();
+
+    const refusal = await refusalOf('payments.checkout.fillCard', {
+      body: { sessionId: 'session-shared', pageId: 'page-shared', targets: [{ field: 'number', ref: 'e1' }] },
+    });
+    // THE FIX: the record was found (never the old blanket "no purchase
+    // decision is in flight", which every session and page got under a fresh
+    // registry per call, real or not) and refused on the next thing that is
+    // honestly true right now: the decision window has not settled, so the
+    // purchase has not reached the payment stage.
+    expect(refusal.status).toBe(400);
+    expect(refusal.code).toBe('INVALID_ARGUMENT');
+    expect(refusal.message).not.toContain('no purchase decision is in flight');
+    expect(refusal.message).toContain('stage');
+  });
+
+  test('a second begin for the same session and page while one is in flight refuses, rather than starting a second purchase', async () => {
+    void invoke('payments.checkout.begin', {
+      context: { principalId: 'test-operator', metadata: { explicitUserRequest: true } },
+      body: checkoutBeginBody(sharedCardId),
+    });
+    await nextTick();
+
+    const refusal = await refusalOf('payments.checkout.begin', {
+      context: { principalId: 'test-operator', metadata: { explicitUserRequest: true } },
+      body: checkoutBeginBody(sharedCardId),
+    });
+    // `CheckoutRegistry.open`'s own duplicate guard, forwarded by
+    // `checkoutBeginHandler`'s containment (see checkout-handlers.ts): never a
+    // silent second purchase on the same page, which is what a fresh registry
+    // per call let happen.
+    expect(refusal.status).toBe(409);
+    expect(refusal.code).toBe('FAILED_PRECONDITION');
+    expect(refusal.message).toContain('already in flight');
   });
 });
 
@@ -312,7 +606,7 @@ describe('a store failure never hands a caller the store internals', () => {
     };
     cards = new DaemonCardStore({ filePath: cardsPath, secrets: failing, cvvHandling: () => 'stored' });
     unregister = registerPaymentsMethods(catalog, {
-      cards, purchases, budget, config, isPaymentsLeader: () => leader,
+      cards, purchases, budget, config, isPaymentsLeader: () => leader, checkout: fakeCheckout(),
     });
   }
 

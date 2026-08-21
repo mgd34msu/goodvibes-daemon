@@ -349,20 +349,21 @@ const VERB_FAMILIES: readonly VerbFamily[] = [
     methodIds: ['channels.drafts.list', 'channels.drafts.get', 'channels.drafts.save', 'channels.drafts.delete'],
   },
   {
-    family: 'payments.* (budget / cards / purchases)',
+    family: 'payments.* (budget / cards / purchases / checkout)',
     reason:
       "This repo's own payments surface (daemon/handlers/payments), composed by runtime/payments-composition.ts. "
-      + 'The SDK has handlers for these ids in control-plane/routes/payments.ts and publishes no import path to them '
-      + "(the module is absent from control-plane/index.ts and the package's exports map stops at the barrel), and "
-      + 'registerGatewayVerbGroups takes no payments dependency, so there is nothing this composition could pass to '
-      + 'make the SDK attach them. All seven answered 501 NOT_INVOKABLE before this surface existed. '
-      + 'payments.checkout.begin and payments.checkout.fillCard are deliberately NOT here: they need a '
-      + 'CheckoutPageDriver over an open browser page, which this composition cannot obtain, see '
-      + 'gateway-payments-verbs.test.ts, which pins that refusal so it cannot rot into silence.',
+      + 'budget.status/cards.list/cards.delete attach through the SDK\'s own registerPaymentsGatewayMethods '
+      + '(published from control-plane/index.ts since sdk 2.0.18); cards.create/purchases.list keep local '
+      + 'wrappers for field-shape validation the SDK route does not do (see register.ts). checkout.begin/'
+      + 'checkout.fillCard attach through local wrappers too, over the sdk 2.0.19 browser-checkout seam '
+      + '(composeDaemonBrowser/onBrowserCheckout/BrowserCheckoutSeam), because context.explicitUserRequest, '
+      + "the signal this daemon's owner-approval ruling needs, only reaches a handler attached this way; see "
+      + 'register.ts\'s header and gateway-payments-verbs.test.ts, which exercises the ruling over real routes.',
     methodIds: [
       'payments.budget.status',
       'payments.cards.list', 'payments.cards.create', 'payments.cards.delete',
       'payments.purchases.list',
+      'payments.checkout.begin', 'payments.checkout.fillCard',
     ],
   },
 ];

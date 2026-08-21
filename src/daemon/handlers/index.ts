@@ -57,7 +57,7 @@ export interface DaemonHandlerSurfaceProviders {
   /** channels.drafts.* */
   readonly registerDrafts: SurfaceRegister;
   /**
-   * payments.budget.status / cards.* / purchases.list.
+   * payments.budget.status / cards.* / purchases.list / checkout.begin / checkout.fillCard.
    *
    * Its stores need a shell-path resolver and a scoped secret writer, neither of
    * which is on `HandlerContext`, so the composition root builds them and hands

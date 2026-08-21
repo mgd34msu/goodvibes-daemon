@@ -1,41 +1,71 @@
 /**
  * register.ts, the `payments.*` handlers this daemon attaches.
  *
- * ── Why the handlers are written here and not imported ────────────────────
+ * ── The SDK now owns most of these bodies ──────────────────────────────────
  *
- * The SDK has these handlers already: `registerPaymentsGatewayMethods` in
- * `platform/control-plane/routes/payments.ts`. It cannot be called from here.
- * That module is not re-exported by `platform/control-plane/index.ts`, and the
- * SDK package's `exports` map publishes only the barrel, so the symbol exists in
- * the installed `dist` and no import path reaches it. `registerGatewayVerbGroups`
- * (the SDK's own composition entry, which the terminal-shell wrapper calls from
- * runtime/services.ts) carries no payments dependency either, so there is no
- * argument this daemon can pass that would make the SDK attach them.
+ * `registerPaymentsGatewayMethods` (platform/control-plane, exported from the
+ * barrel as of sdk 2.0.18) ships real handler bodies for all seven `payments.*`
+ * verbs, built over a `PaymentsGatewayService` seam. `budgetStatus`, `listCards`
+ * and `deleteCard` are answered from that seam directly below and attached
+ * through the SDK's registrar; the local handler bodies that used to duplicate
+ * them are gone.
  *
- * So this follows the idiom this repository already uses for every other family
- * it serves, stated at the top of handlers/index.ts and implemented by
- * `registerCatalogHandler`: the SDK owns the id, the descriptor, the schemas,
- * the scopes and the access level, and only the BEHAVIOUR is ours. Nothing
- * below authors a descriptor.
+ * Two verbs stay LOCAL rather than going through the SDK's own route handlers
+ * for it, and both are deliberate, not oversights:
  *
- * The right long-term fix is one line in the SDK's control-plane barrel. Until
- * that lands, the choice is these handlers or a 501 on every payments verb, and
- * a 501 is what the webui and the desktop app have been getting.
+ *  - `payments.cards.create`: the SDK's `createPaymentsCardsCreateHandler`
+ *    wraps the whole call to `service.createCard(...)` in one try/catch that
+ *    replaces ANY thrown error, whatever its shape, with a fixed 500
+ *    "Storing the card failed. Nothing was saved." This daemon's contract is
+ *    narrower than the published input schema (a card number has to contain
+ *    enough digits to be one, a CVV has to be three or four digits, an expiry
+ *    month has to be 1-12, see the field readers below) and reports each of
+ *    those with an honest 400 naming the field. Delegating create to the SDK
+ *    handler would still validate the fields, but every refusal would answer
+ *    500 instead of 400, a real wire-behaviour regression, not merely an
+ *    implementation detail. So this verb keeps its own thin wrapper, which does
+ *    the narrowing and then calls the same `service.createCard` the SDK
+ *    handler would have, for the store write and the response shape.
+ *  - `payments.purchases.list`: the SDK's `createPaymentsPurchasesListHandler`
+ *    only accepts `limit` when it arrives already typed as a JS number. A GET
+ *    request's query string never is, `?limit=5` arrives as the string `"5"`,
+ *    so every caller of the real REST route would silently lose the ability to
+ *    bound the page size and always get the handler's own default. This
+ *    daemon's contract reads a numeric-looking string the same way it reads a
+ *    number (`optionalCount` below), so this verb also keeps its own thin
+ *    wrapper, which does that reading and then calls `service.listPurchases`.
  *
- * ── What is attached, and what deliberately is not ────────────────────────
+ * `payments.checkout.begin` and `payments.checkout.fillCard` are now attached
+ * too, over the sdk 2.0.19 browser-checkout seam
+ * (`platform/control-plane`'s `composeDaemonBrowser`/`onBrowserCheckout`/
+ * `BrowserCheckoutSeam`). They do NOT go through
+ * `registerPaymentsGatewayMethods`'s own route handlers, for the same reason
+ * `payments.cards.create`/`payments.purchases.list` do not: those handlers
+ * call `service.beginCheckout(input)`/`service.fillCardIntoCheckout(input)`
+ * with no invocation context at all, and this composition's whole
+ * "approving a purchase is a distinct act" ruling (see `registerPaymentsMethods`
+ * below) needs `context.explicitUserRequest`, which only reaches a handler
+ * attached through this daemon's own `registerCatalogHandlers`. So both verbs
+ * are attached locally, alongside `cardsCreate`/`purchasesList`, reading and
+ * shaping the SAME wire shapes `routes/payments.ts` does (ported here rather
+ * than imported, since the SDK does not publish those parsing functions on
+ * their own), and calling into the ONE `PaymentsGatewayServiceImpl` this
+ * registration's checkout pair shares for its whole life (see
+ * checkout-handlers.ts's `CheckoutServiceHolder` for why one, not one per
+ * call: its own `CheckoutRegistry` is in-memory, per-instance state, and
+ * `begin` and `fillCard` are separate control-plane calls that both need to
+ * see it).
  *
- * Attached: budget.status, cards.list, cards.create, cards.delete,
- * purchases.list. Every one of them is answerable from stores this daemon owns.
- *
- * NOT attached: checkout.begin and checkout.fillCard. Both need a
- * `CheckoutPageDriver` bound to an open browser page, and this composition
- * cannot produce one: `createDaemonBrowserGatewayService` builds the engine
- * inside `registerGatewayVerbGroups` and returns only the `BrowserGatewayService`
- * slice, which exposes no page handle and no `fillSecret`; and that engine is
- * constructed with no `cardFieldGuard`, so its secret-fill path refuses by
- * design. Both verbs therefore keep answering 501 NOT_INVOKABLE, which is the
- * honest answer for a capability nothing here can perform, and a better one than
- * a handler that accepts the call and fails inside.
+ * `deps.checkout` (a `CheckoutComposition`, see below) is REQUIRED, not
+ * optional: in the real daemon it is always supplied
+ * (runtime/payments-composition.ts), and its own `seam()` getter is what may
+ * legitimately be absent, either because this composition never builds a
+ * browser at all (no `homeDirectory`, a narrow embed) or because
+ * `onBrowserCheckout` has not fired yet (see
+ * runtime/browser-checkout-seam-holder.ts for why that race is benign). Either
+ * way `payments.checkout.begin`/`.fillCard` answer an honest refusal rather
+ * than 501 NOT_INVOKABLE or a crash; see `checkoutBegin`/`checkoutFillCard`
+ * below.
  *
  * ── Containment ───────────────────────────────────────────────────────────
  *
@@ -47,17 +77,22 @@
  * from a call that had material in its arguments.
  */
 import type { BudgetLedger, PaymentsConfigReader } from '@pellux/goodvibes-sdk/platform/payments';
+import { MemoryCheckoutJournal, readDefaultCardId, readPaymentsEnabled, readPaymentsServiceConfig } from '@pellux/goodvibes-sdk/platform/payments';
+import type { CardMetadata, CheckoutJournal } from '@pellux/goodvibes-sdk/platform/payments';
 import {
-  readDefaultCardId,
-  readPaymentsEnabled,
-  readPaymentsServiceConfig,
-} from '@pellux/goodvibes-sdk/platform/payments';
-import type { CardMetadata } from '@pellux/goodvibes-sdk/platform/payments';
-import type { GatewayMethodCatalog } from '../contracts.ts';
+  registerPaymentsGatewayMethods,
+  type GatewayMethodCatalog,
+  type GatewayMethodDescriptor,
+  type PaymentPurchaseView,
+  type PaymentsGatewayService,
+} from '../contracts.ts';
 import { HandlerError } from '../errors.ts';
 import { registerCatalogHandlers, type TypedHandler, type Unregister } from '../register.ts';
+import { CheckoutServiceHolder, checkoutBeginHandler, checkoutFillCardHandler, type CheckoutComposition } from './checkout-handlers.ts';
 import { CardStoreUnreadableError, type DaemonCardStore } from './card-store.ts';
 import { MAX_PURCHASE_LIST_LIMIT, type DaemonPurchaseLedger, type StoredPurchase } from './purchase-ledger.ts';
+
+export type { CheckoutComposition } from './checkout-handlers.ts';
 
 /** The verbs this module attaches. Named so a test can assert the exact set. */
 export const ATTACHED_PAYMENTS_METHOD_IDS: readonly string[] = [
@@ -66,41 +101,25 @@ export const ATTACHED_PAYMENTS_METHOD_IDS: readonly string[] = [
   'payments.cards.create',
   'payments.cards.delete',
   'payments.purchases.list',
+  'payments.checkout.begin',
+  'payments.checkout.fillCard',
 ];
 
 /**
- * The verbs this composition leaves unattached, and the reason each one is.
- *
- * Exported so the refusal is testable: a change that wires a page driver has to
- * delete the entry, and a change that attaches one of these without wiring a
- * driver fails the same assertion.
+ * Kept, empty, rather than deleted: `gateway-payments-verbs.test.ts` and
+ * `register.test.ts` iterate this to assert the unattached set, and an empty
+ * array keeps that assertion meaningful (a future verb added here without a
+ * handler still gets caught) instead of forcing every caller to delete the
+ * loop. Nothing in this module's registration reads it any more.
  */
-export const UNATTACHED_PAYMENTS_METHOD_IDS: readonly { readonly id: string; readonly reason: string }[] = [
-  {
-    id: 'payments.checkout.begin',
-    reason:
-      'Needs a CheckoutPageDriver for an open browser page. The SDK builds the browser engine inside '
-      + 'registerGatewayVerbGroups and hands back only BrowserGatewayService, which exposes no page handle, '
-      + 'and builds it with no cardFieldGuard, so its secret-fill path refuses by design.',
-  },
-  {
-    id: 'payments.checkout.fillCard',
-    reason: 'Same missing page driver; this is the verb that types the card into it.',
-  },
-];
+export const UNATTACHED_PAYMENTS_METHOD_IDS: readonly { readonly id: string; readonly reason: string }[] = [];
 
 const DEFAULT_PURCHASE_LIST_LIMIT = 100;
 
 export interface PaymentsHandlerDeps {
   readonly cards: DaemonCardStore;
   readonly purchases: DaemonPurchaseLedger;
-  /**
-   * Today's pools. Read-only in this composition: the only writer of a spend
-   * record is the checkout flow, which is not attached, so this ledger reports
-   * limits from live config against an empty spend history. Wiring checkout must
-   * also make this ledger DURABLE, a ledger rebuilt at every boot would hand
-   * back a daily budget that was already spent.
-   */
+  /** Today's pools. The checkout flow is the sole writer; the composition root is responsible for making this durable. */
   readonly budget: BudgetLedger;
   readonly config: PaymentsConfigReader;
   /**
@@ -112,6 +131,7 @@ export interface PaymentsHandlerDeps {
    */
   readonly isPaymentsLeader: () => boolean;
   readonly now?: (() => number) | undefined;
+  readonly checkout: CheckoutComposition;
 }
 
 // ---------------------------------------------------------------------------
@@ -217,7 +237,7 @@ function cardView(card: CardMetadata, materialComplete: boolean): CardView {
   };
 }
 
-function purchaseView(row: StoredPurchase): Record<string, unknown> {
+function purchaseView(row: StoredPurchase): PaymentPurchaseView {
   return {
     purchaseId: row.purchaseId,
     atUtc: row.atUtc,
@@ -251,14 +271,115 @@ function purchaseView(row: StoredPurchase): Record<string, unknown> {
   };
 }
 
+/**
+ * A checkout verb reached through the service seam despite neither local
+ * checkout handler below ever calling it: both call into the ONE
+ * `PaymentsGatewayServiceImpl` this registration's checkout pair shares for
+ * its whole life, held by `CheckoutServiceHolder` (checkout-handlers.ts), not
+ * a fresh instance built per call. Only `begin` needs anything per-invocation,
+ * the gate-input cell (`CheckoutGateInputsCell`) it writes just before each
+ * call, since the shared service's `gates()` closure has no other way to see a
+ * given call's `context.explicitUserRequest` or card/address facts; `fillCard`
+ * reads nothing per-invocation at all, it types into fields the prior `begin`
+ * already found. Either way, `PaymentsGatewayService`'s plain
+ * `beginCheckout(input)`/`fillCardIntoCheckout(input)` shape has no room for
+ * that context, which is the actual reason these two verbs are attached as
+ * local wrappers rather than through this service (see this file's header).
+ * The stub below exists only so `PaymentsGatewayService` stays fully
+ * implemented for `registerPaymentsGatewayMethods`'s throwaway first
+ * attachment, immediately replaced by `registerPaymentsMethods`.
+ */
+function checkoutNotWired(methodId: string): Error {
+  return new Error(
+    `${methodId} is served by this daemon's own local handler, never through this service. `
+    + 'See registerPaymentsMethods in register.ts.',
+  );
+}
+
+// ---------------------------------------------------------------------------
+
+/**
+ * The `PaymentsGatewayService` this daemon hands the SDK's registrar.
+ *
+ * `createCard` and `listPurchases` are real, not stubs: `payments.cards.create`
+ * and `payments.purchases.list` keep their own thin local wrappers (below) for
+ * the field-shape validation and the string-tolerant query reading the SDK's
+ * generic route handlers do not do, and both wrappers call straight into these
+ * same two methods for the store write and the response shape, so there is
+ * exactly one place that talks to `DaemonCardStore.create` and to
+ * `DaemonPurchaseLedger.list`.
+ */
+function buildPaymentsGatewayService(deps: PaymentsHandlerDeps): PaymentsGatewayService {
+  const now = deps.now ?? Date.now;
+
+  return {
+    async budgetStatus() {
+      const config = readPaymentsServiceConfig(deps.config);
+      const nowMs = now();
+      const pools = deps.budget.snapshot(config.limits, nowMs, config.timezone);
+      const live = deps.budget.state().reservations.filter((entry) => entry.expiresAtMs > nowMs);
+      return {
+        enabled: readPaymentsEnabled(deps.config),
+        currency: String(config.budgetCurrency),
+        pools,
+        reservationCount: live.length,
+        isPaymentsLeader: deps.isPaymentsLeader(),
+      };
+    },
+
+    async listCards() {
+      return overStore('Listing the stored cards', async () => {
+        const built: CardView[] = [];
+        for (const card of deps.cards.list()) {
+          built.push(cardView(card, await deps.cards.materialComplete(card.id)));
+        }
+        return { cards: built, defaultCardId: readDefaultCardId(deps.config) };
+      });
+    },
+
+    async createCard(input) {
+      let card: CardMetadata;
+      try {
+        card = await deps.cards.create(input);
+      } catch (error) {
+        // A damaged card file is the operator's to fix and its message says how,
+        // so it is forwarded; see overStore. Everything else is discarded, because
+        // the failing call had the card in its arguments.
+        if (error instanceof CardStoreUnreadableError) {
+          throw new HandlerError(error.message, 'FAILED_PRECONDITION', 409);
+        }
+        void error;
+        throw new HandlerError('Storing the card failed. Nothing was saved.', 'INTERNAL_ERROR', 500);
+      }
+      return cardView(card, await overStore('Reading the card back', () => deps.cards.materialComplete(card.id)));
+    },
+
+    async deleteCard(id) {
+      return overStore('Deleting the card', () => deps.cards.remove(id));
+    },
+
+    async beginCheckout() {
+      throw checkoutNotWired('payments.checkout.begin');
+    },
+
+    async fillCardIntoCheckout() {
+      throw checkoutNotWired('payments.checkout.fillCard');
+    },
+
+    async listPurchases(input) {
+      const result = deps.purchases.list(input);
+      return { purchases: result.purchases.map(purchaseView), total: result.total };
+    },
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Registration
 // ---------------------------------------------------------------------------
 
 /**
- * Attach the five answerable `payments.*` handlers to the descriptors the SDK
- * catalog already holds. Returns the teardown, reverse order, like every other
- * surface in this layer.
+ * Attach the seven `payments.*` handlers to the descriptors the SDK catalog
+ * already holds. Returns the teardown.
  *
  * NOT gated on `payments.enabled`. That key defaults to false, and
  * `payments.cards.*` is how a surface CONFIGURES the capability, so gating
@@ -272,36 +393,51 @@ export function registerPaymentsMethods(
   catalog: GatewayMethodCatalog,
   deps: PaymentsHandlerDeps,
 ): Unregister {
-  const now = deps.now ?? Date.now;
+  // Every descriptor this module attaches to, captured BEFORE any
+  // registration runs. `registerCatalogHandlers`' own teardown (used below for
+  // four of these) removes the DESCRIPTOR from the catalog entirely rather
+  // than merely clearing its handler slot (`GatewayMethodCatalog.register`'s
+  // returned teardown calls `unregister`, a `Map.delete`, not a handler
+  // reset), so restoring a handler-less descriptor after THIS module's own
+  // teardown, matching what the SDK's three descriptors are restored to below,
+  // needs the descriptor object captured here rather than re-fetched from the
+  // catalog afterward, when it may no longer be there to fetch.
+  const descriptors = new Map<string, GatewayMethodDescriptor>();
+  for (const id of ATTACHED_PAYMENTS_METHOD_IDS) {
+    const descriptor = catalog.get(id);
+    if (descriptor) descriptors.set(id, descriptor);
+  }
 
-  const budgetStatus: TypedHandler<unknown, Record<string, unknown>> = async () => {
-    const config = readPaymentsServiceConfig(deps.config);
-    const nowMs = now();
-    const pools = deps.budget.snapshot(config.limits, nowMs, config.timezone);
-    const live = deps.budget.state().reservations.filter((entry) => entry.expiresAtMs > nowMs);
-    return {
-      enabled: readPaymentsEnabled(deps.config),
-      dayKey: String(pools.dayKey),
-      timezone: pools.timezone,
-      currency: String(config.budgetCurrency),
-      item: { ...pools.item },
-      overage: { ...pools.overage },
-      tolerance: { ...pools.tolerance },
-      reservationCount: live.length,
-      isPaymentsLeader: deps.isPaymentsLeader(),
-    };
-  };
+  const service = buildPaymentsGatewayService(deps);
 
-  const cardsList: TypedHandler<unknown, Record<string, unknown>> = async () => {
-    const views = await overStore('Listing the stored cards', async () => {
-      const built: CardView[] = [];
-      for (const card of deps.cards.list()) {
-        built.push(cardView(card, await deps.cards.materialComplete(card.id)));
-      }
-      return built;
-    });
-    return { cards: views, defaultCardId: readDefaultCardId(deps.config) };
-  };
+  // Attaches all seven `payments.*` descriptors. budget/list/delete stay
+  // attached through this; create/purchases-list/checkout-begin/checkout-
+  // fillCard are all transiently attached here and immediately replaced below
+  // with this daemon's own local handlers. See the header comment for why
+  // each group needs its own wrapper.
+  registerPaymentsGatewayMethods(catalog, service);
+
+  // The journal backing this registration's checkout pair's in-flight
+  // registry (the SDK's own `CheckoutRegistry`, built inside
+  // `PaymentsGatewayServiceImpl`'s constructor from whatever `CheckoutJournal`
+  // it is handed, see checkout-handlers.ts's `buildCheckoutService`; this
+  // value here is the journal, not the registry itself). `MemoryCheckoutJournal`
+  // (the sdk's own, checkout-registry.ts, documented "durable across nothing")
+  // is a deliberate choice for THIS pass, not an oversight: a durable journal
+  // is real work (a file or store write on every `registry.advance`, including
+  // the `submit-pending` flush checkout-flow.ts's step 9 makes right before the
+  // merchant submit) that has not been done yet. The gap it leaves is exactly
+  // the one that flush exists to close: if this process crashes between that
+  // `submit-pending` write and seeing the merchant's response, a restart with a
+  // durable journal could tell the owner "this purchase may already have been
+  // submitted, do not resubmit it"; with this in-memory journal, that record is
+  // gone the moment the process is, and a restart has no way to know the
+  // purchase was ever in flight at all. Recorded as future work in
+  // `.goodvibes/memory/decisions.json`, not implied to be solved here.
+  const checkoutJournal: CheckoutJournal = new MemoryCheckoutJournal();
+  // The ONE checkout service instance this registration's begin/fillCard pair
+  // share for their whole life; see checkout-handlers.ts's own header.
+  const checkoutServiceHolder = new CheckoutServiceHolder(deps, checkoutJournal);
 
   const cardsCreate: TypedHandler<unknown, Record<string, unknown>> = async ({ body }) => {
     const params = asRecord(body);
@@ -332,41 +468,17 @@ export function registerPaymentsMethods(
     const cardholderName = readString(params, 'cardholderName');
     const rawCap = params['issuerCapMinorUnits'];
 
-    let card: CardMetadata;
-    try {
-      card = await deps.cards.create({
-        label,
-        kind,
-        number,
-        expiryMonth,
-        expiryYear,
-        cvv,
-        cardholderName,
-        issuerCapMinorUnits: typeof rawCap === 'number' && Number.isInteger(rawCap) ? rawCap : null,
-      });
-    } catch (error) {
-      // A damaged card file is the operator's to fix and its message says how,
-      // so it is forwarded; see overStore. Everything else is discarded, because
-      // the failing call had the card in its arguments.
-      if (error instanceof CardStoreUnreadableError) {
-        throw new HandlerError(error.message, 'FAILED_PRECONDITION', 409);
-      }
-      void error;
-      throw new HandlerError('Storing the card failed. Nothing was saved.', 'INTERNAL_ERROR', 500);
-    }
-    return {
-      card: cardView(card, await overStore('Reading the card back', () => deps.cards.materialComplete(card.id))),
-    };
-  };
-
-  const cardsDelete: TypedHandler<unknown, Record<string, unknown>> = async ({ body, query }) => {
-    // The REST path is `/api/payments/cards/{id}`, whose path parameter the
-    // dispatcher folds into BOTH query and body; the methodId-invoke endpoint
-    // carries it in the body only. Reading both is what makes the two paths the
-    // same verb rather than two.
-    const id = readString({ ...query, ...asRecord(body) }, 'id');
-    const result = await overStore('Deleting the card', () => deps.cards.remove(id));
-    return { id, deleted: result.deleted, secretsCleared: result.secretsCleared };
+    const card = await service.createCard({
+      label,
+      kind,
+      number,
+      expiryMonth,
+      expiryYear,
+      cvv,
+      cardholderName,
+      issuerCapMinorUnits: typeof rawCap === 'number' && Number.isInteger(rawCap) ? rawCap : null,
+    });
+    return { card };
   };
 
   const purchasesList: TypedHandler<unknown, Record<string, unknown>> = async ({ body, query }) => {
@@ -374,18 +486,33 @@ export function registerPaymentsMethods(
     const requested = optionalCount(params['limit']);
     const rawDay = params['dayKey'];
     const dayKey = typeof rawDay === 'string' && rawDay.trim().length > 0 ? rawDay.trim() : undefined;
-    const result = deps.purchases.list({
+    return service.listPurchases({
       limit: Math.min(requested ?? DEFAULT_PURCHASE_LIST_LIMIT, MAX_PURCHASE_LIST_LIMIT),
       dayKey,
     });
-    return { purchases: result.purchases.map(purchaseView), total: result.total };
   };
 
-  return registerCatalogHandlers(catalog, [
-    { id: 'payments.budget.status', handler: budgetStatus as TypedHandler<unknown, unknown> },
-    { id: 'payments.cards.list', handler: cardsList as TypedHandler<unknown, unknown> },
+  const localTeardown = registerCatalogHandlers(catalog, [
     { id: 'payments.cards.create', handler: cardsCreate as TypedHandler<unknown, unknown> },
-    { id: 'payments.cards.delete', handler: cardsDelete as TypedHandler<unknown, unknown> },
     { id: 'payments.purchases.list', handler: purchasesList as TypedHandler<unknown, unknown> },
+    { id: 'payments.checkout.begin', handler: checkoutBeginHandler(deps, checkoutServiceHolder) as TypedHandler<unknown, unknown> },
+    { id: 'payments.checkout.fillCard', handler: checkoutFillCardHandler(deps, checkoutServiceHolder) as TypedHandler<unknown, unknown> },
   ]);
+
+  return () => {
+    localTeardown();
+    // Restores EVERY descriptor this module attached to, handler-less, not
+    // only the three `registerPaymentsGatewayMethods` still holds a live
+    // handler on. The other four had their descriptor removed outright by
+    // `localTeardown()` above (see the `descriptors` capture at the top of
+    // this function for why), so without this a re-registration on the SAME
+    // catalog (a second `registerPaymentsMethods` call, as a restart-without-
+    // recompose test does) would find those four ids gone from the catalog
+    // and throw `METHOD_NOT_FOUND` trying to attach to them, rather than
+    // finding the SDK's own builtin descriptor there to replace, exactly as
+    // it would on a catalog this module had never touched.
+    for (const [, descriptor] of descriptors) {
+      catalog.register(descriptor, undefined, { replace: true });
+    }
+  };
 }

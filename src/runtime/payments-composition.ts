@@ -31,44 +31,67 @@
  *     time" for a card;
  *   - the purchase audit ledger beside the card file.
  *
- * ── The budget ledger is in-process, and that is a statement ──────────────
+ * ── The budget ledger is durable ──────────────────────────────────────────
  *
- * `BudgetLedger` is constructed empty here and never persisted. That is correct
- * ONLY while checkout is unattached: the sole writer of a spend record is the
- * checkout flow, so there is nothing to persist, and a state file nothing writes
- * would be decoration. It stops being correct the moment `payments.checkout.begin`
- * is wired, and the failure would be silent and expensive, a daemon restarted at
- * noon would hand back a daily budget it had already spent. Making this ledger
- * durable is part of wiring checkout.
+ * `BudgetLedger` used to be constructed empty here and never persisted, correct
+ * only while checkout stayed unattached (the sole writer of a spend record was
+ * the checkout flow, so there was nothing to persist). Now that checkout is
+ * wired below, `DurableBudgetLedger`
+ * (daemon/handlers/payments/budget-store.ts) is used instead: it loads its
+ * state from `payments-budget.json` beside the card and purchase files at
+ * construction and writes back after every reservation, commit and release, so
+ * a daemon restarted mid-day does not hand back a budget it already spent.
  *
- * ── What is NOT composed ──────────────────────────────────────────────────
+ * ── The checkout pair, over the sdk 2.0.19 browser-checkout seam ──────────
  *
- * `payments.checkout.begin` and `payments.checkout.fillCard` stay unattached and
- * keep answering 501. They need a `CheckoutPageDriver` over an open browser
- * page, and this composition has no way to obtain one: the SDK builds its
- * browser engine inside `registerGatewayVerbGroups`
- * (control-plane/routes/browser-composition.ts), hands back only the
- * `BrowserGatewayService` slice, which exposes no page handle and no
- * `fillSecret`, and constructs it with no `cardFieldGuard`, which its own
- * secret-fill path refuses without. There is also no adapter anywhere from a
- * browser session to a `CheckoutPageDriver`. Writing one here would put the
- * card-into-page seam in this repository, and card-material.ts is explicit that
- * exactly one module in the platform may produce card material. So the two verbs
- * refuse honestly instead.
+ * `payments.checkout.begin`/`.fillCard` need a `CardMaterialRedactor` bound to
+ * the SAME browser engine the `browser.*` verbs drive, and this daemon does not
+ * build that engine, `composeDaemonBrowser` does (control-plane/routes/
+ * browser-composition.ts), inside `registerGatewayVerbGroups`, which THIS
+ * composition runs before (see runtime/services.ts). `checkoutSeam` is
+ * therefore a GETTER, not a value: services.ts passes `onBrowserCheckout` to
+ * `attachWsOnlyGatewayVerbHandlers` wired to fill the SAME holder this getter
+ * reads (runtime/browser-checkout-seam-holder.ts), and `register.ts`'s checkout
+ * handlers read it fresh on every call rather than once at composition time.
+ *
+ * The rest of `PaymentsGatewayServiceImpl`'s dependencies this composition owns
+ * outright: `configBackedAddressStore` reads the shipping/billing addresses the
+ * owner profile already writes into `payments.*Address.*` config keys (see
+ * that module's header for the exact defect this closes), and
+ * `channelBackedPaymentNotifier`/`createProviderBackedMerchantJudgeModel` adapt
+ * this daemon's channel router and provider registry to the ports the SDK
+ * declares. The untrusted-content ledger is the SAME process-wide singleton the
+ * browser composition binds its engine to (`getProcessUntrustedContentLedger`),
+ * never a private one, for the reason browser-composition.ts's header gives:
+ * a private ledger would make cross-capability derivation invisible.
+ *
+ * `channelBackedPaymentNotifier`'s own header names the one piece deliberately
+ * left for a later pass: no live inbound-reply correlation, so every purchase
+ * settles on the windows' own silence rules rather than an early answer. That
+ * is a scoped, disclosed gap, not a silent one.
  */
 import { controlPlaneStorePath } from '@pellux/goodvibes-sdk/platform/control-plane';
 import type { GatewayMethodCatalog } from '@pellux/goodvibes-sdk/platform/control-plane';
-import { BudgetLedger, readCvvHandling } from '@pellux/goodvibes-sdk/platform/payments';
-import type { PaymentsConfigReader } from '@pellux/goodvibes-sdk/platform/payments';
+import { createModelMerchantJudge, readCvvHandling } from '@pellux/goodvibes-sdk/platform/payments';
+import type { BudgetLedger, PaymentsConfigReader } from '@pellux/goodvibes-sdk/platform/payments';
+import { getProcessUntrustedContentLedger } from '@pellux/goodvibes-sdk/platform/security';
 import type { ConfigManager, SecretsManager } from '@pellux/goodvibes-sdk/platform/config';
+import type { ChannelDeliveryRouter } from '@pellux/goodvibes-sdk/platform/channels';
+import type { ProviderRegistry } from '@pellux/goodvibes-sdk/platform/providers';
 import type { ShellPathService } from '@/runtime/index.ts';
 import {
   DaemonCardStore,
   DaemonPurchaseLedger,
+  DurableBudgetLedger,
+  channelBackedPaymentNotifier,
+  configBackedAddressStore,
+  createProviderBackedMerchantJudgeModel,
   registerPaymentsMethods,
+  type CheckoutComposition,
   type PaymentsSecretStore,
 } from '../daemon/handlers/payments/index.ts';
 import { GOODVIBES_DAEMON_SURFACE_ROOT } from '../config/surface.ts';
+import type { BrowserCheckoutSeamHolder } from './browser-checkout-seam-holder.ts';
 
 export interface PaymentsCompositionOptions {
   readonly configManager: ConfigManager;
@@ -83,6 +106,12 @@ export interface PaymentsCompositionOptions {
    * gates.ts: on a clustered install the wrong answer is a double-spend.
    */
   readonly isPaymentsLeader: () => boolean;
+  /** Where the checkout pair reads the browser-checkout seam; see this file's header. */
+  readonly checkoutSeam: BrowserCheckoutSeamHolder['get'];
+  /** Delivers a purchase notice; the SAME router every other channel send in this daemon uses. */
+  readonly channelDeliveryRouter: Pick<ChannelDeliveryRouter, 'deliver'>;
+  /** Judges an unfamiliar merchant's recourse through the currently configured model. */
+  readonly providerRegistry: Pick<ProviderRegistry, 'getCurrentModel' | 'getForModel'>;
 }
 
 export interface PaymentsServices {
@@ -118,8 +147,13 @@ function livePaymentsConfig(configManager: ConfigManager): PaymentsConfigReader 
 /**
  * Build the payment stores and bind the answerable verbs to them.
  *
- * Constructing this touches no disk: both stores read lazily and write only when
- * a verb asks them to, so composing a runtime in a test creates no files.
+ * The card and purchase stores read lazily and write only when a verb asks
+ * them to, so composing either by itself creates no file activity. The budget
+ * ledger is different: `DurableBudgetLedger`'s constructor reads
+ * `payments-budget.json` synchronously to load today's pools
+ * (daemon/handlers/payments/budget-store.ts), so constructing the result of
+ * THIS function does touch disk, once, for that one file, before any verb is
+ * ever called.
  */
 export function createPaymentsServices(options: PaymentsCompositionOptions): PaymentsServices {
   const config = livePaymentsConfig(options.configManager);
@@ -131,13 +165,23 @@ export function createPaymentsServices(options: PaymentsCompositionOptions): Pay
   const purchases = new DaemonPurchaseLedger({
     filePath: controlPlaneStorePath(options.shellPaths, GOODVIBES_DAEMON_SURFACE_ROOT, 'payments-purchases.json'),
   });
-  const budget = new BudgetLedger();
+  const budget = new DurableBudgetLedger(
+    controlPlaneStorePath(options.shellPaths, GOODVIBES_DAEMON_SURFACE_ROOT, 'payments-budget.json'),
+  );
+  const checkout: CheckoutComposition = {
+    seam: options.checkoutSeam,
+    addresses: configBackedAddressStore(config),
+    notifier: channelBackedPaymentNotifier(config, options.channelDeliveryRouter),
+    merchantJudge: createModelMerchantJudge(createProviderBackedMerchantJudgeModel(options.providerRegistry)),
+    untrusted: getProcessUntrustedContentLedger(),
+  };
   const unregister = registerPaymentsMethods(options.gatewayMethods, {
     cards,
     purchases,
     budget,
     config,
     isPaymentsLeader: options.isPaymentsLeader,
+    checkout,
   });
   return { cards, purchases, budget, unregister };
 }

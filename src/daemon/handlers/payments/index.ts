@@ -24,9 +24,15 @@ export type {
 export { DaemonPurchaseLedger, MAX_PURCHASE_LIST_LIMIT } from './purchase-ledger.ts';
 export type { DaemonPurchaseLedgerOptions, PurchaseListQuery, StoredPurchase } from './purchase-ledger.ts';
 
+export { DurableBudgetLedger } from './budget-store.ts';
+
+export { configBackedAddressStore } from './address-store.ts';
+export { channelBackedPaymentNotifier } from './notifier.ts';
+export { createProviderBackedMerchantJudgeModel } from './merchant-judge.ts';
+
 export {
   ATTACHED_PAYMENTS_METHOD_IDS,
   UNATTACHED_PAYMENTS_METHOD_IDS,
   registerPaymentsMethods,
 } from './register.ts';
-export type { PaymentsHandlerDeps } from './register.ts';
+export type { CheckoutComposition, PaymentsHandlerDeps } from './register.ts';
