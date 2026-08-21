@@ -25,8 +25,8 @@ A **product** over `@pellux/goodvibes-sdk`, exactly like the TUI and the agent a
 - the CLI (`send`, `cluster`, `webui`, `provision-wake-model`, `install-service` and friends),
 - packaging: the compiled `goodvibes-daemon-<os>-<arch>` binaries.
 
-Every engine — the facade, the routes, the brokers, the updater, the channel adapters, the
-schedulers — lives in the SDK and is consumed from the published package. Nothing was moved out of
+Every engine (the facade, the routes, the brokers, the updater, the channel adapters, the
+schedulers) lives in the SDK and is consumed from the published package. Nothing was moved out of
 the SDK to build this repository, and nothing should be: a capability that both a client and the
 daemon need belongs in the SDK, not here.
 
@@ -34,7 +34,7 @@ daemon need belongs in the SDK, not here.
 
 The daemon's version is **1.28.0**. Live installs already carry a settings reader-floor
 (`$goodvibes.minReaderVersion`), the update handover compares versions monotonically, and the
-rejected-version record is keyed by version — those three mechanics all depend on the version
+rejected-version record is keyed by version. Those three mechanics all depend on the version
 line staying continuous and monotonically increasing.
 
 ## Install
@@ -43,14 +43,14 @@ line staying continuous and monotonically increasing.
 curl -fsSL https://goodvibes.sh/install.sh | sh
 ```
 
-This installs the whole GoodVibes suite — the daemon, the terminal app, the
-agent, and the browser operator surface — from checksum-verified binaries,
+This installs the whole GoodVibes suite (the daemon, the terminal app, the
+agent, and the browser operator surface) from checksum-verified binaries,
 with no package manager involved.
 
 The browser surface is not a fourth binary and not a fourth service: the bundle
 unpacks to `<install dir>/webui/<version>` and this daemon serves it on its own
 listener, same origin as the API. Installing it exposes nothing new to your
-network — the shipped binding is loopback and the installer does not change it.
+network. The shipped binding is loopback and the installer does not change it.
 `goodvibes-daemon webui --lan` is the deliberate act that widens it, and
 `goodvibes-daemon webui status` says which posture is in force.
 
@@ -101,13 +101,13 @@ goodvibes-daemon provision-wake-model
 
 ## Documentation
 
-- [Getting Started](docs/getting-started.md) — install, first boot, pairing, where state lives, health checks
-- [Command Reference](docs/commands-reference.md) — every command, its flags, and its exit codes
-- [Configuration](docs/configuration.md) — the settings this daemon reads, by key
-- [Service and Deployment](docs/service-and-deployment.md) — the host service, migration from an older install, `--daemon-home` vs the data home
-- [Updates and Rollback](docs/updates-and-rollback.md) — the hourly self-update loop, automatic crash-loop rollback, `.previous`
-- [Daemon-Hosted Sessions](docs/hosted-sessions.md) — conversations that run inside the daemon and outlive any one client
-- [Troubleshooting](docs/troubleshooting.md) — startup failures, log locations, port conflicts, service-status oddities
+- [Getting started](docs/getting-started.md): install, first boot, pairing, where state lives, health checks
+- [Command reference](docs/commands-reference.md): every command, its flags, and its exit codes
+- [Configuration](docs/configuration.md): the settings this daemon reads, by key
+- [Service and deployment](docs/service-and-deployment.md): the host service, migration from an older install, `--daemon-home` vs the data home
+- [Updates and rollback](docs/updates-and-rollback.md): the hourly self-update loop, automatic crash-loop rollback, `.previous`
+- [Daemon-hosted sessions](docs/hosted-sessions.md): conversations that run inside the daemon and outlive any one client
+- [Troubleshooting](docs/troubleshooting.md): startup failures, log locations, port conflicts, service-status oddities
 
 ## License
 

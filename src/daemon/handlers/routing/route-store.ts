@@ -96,7 +96,7 @@ const SCHEMA: string[] = [
     updatedAt TEXT NOT NULL
   )`,
   `CREATE INDEX IF NOT EXISTS idx_routes_surface_route ON routes (surfaceKind, routeId)`,
-  // Enforce one assignment per channel — the upsert path relies on this.
+  // Enforce one assignment per channel, the upsert path relies on this.
   `CREATE UNIQUE INDEX IF NOT EXISTS idx_routes_channel ON routes (channelId)`,
 ];
 

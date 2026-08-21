@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * verify-release-tag-version.ts — the pushed/dispatched release tag must equal
+ * verify-release-tag-version.ts, the pushed/dispatched release tag must equal
  * `v${package.json version}`. Ported from the SDK's
  * scripts/verify-release-tag-version.ts, adapted to this repo's single
  * package.json (no workspace).

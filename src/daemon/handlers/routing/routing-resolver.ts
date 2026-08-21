@@ -9,9 +9,9 @@ export const WILDCARD_SURFACE = 'any';
  * order as the agent-side `getProfileForChannel()` so offline and online
  * routing produce identical results:
  *
- *   1. exact match    — surfaceKind AND routeId both match
- *   2. surface-only   — surfaceKind matches, route has no routeId
- *   3. wildcard       — a route with surfaceKind === 'any' (no routeId)
+ *   1. exact match   , surfaceKind AND routeId both match
+ *   2. surface-only  , surfaceKind matches, route has no routeId
+ *   3. wildcard      , a route with surfaceKind === 'any' (no routeId)
  *
  * Returns the matching profileId, or `null` when nothing matches.
  */

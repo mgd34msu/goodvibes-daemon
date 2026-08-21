@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Triage tagger — IMAP provider.
+// Triage tagger, IMAP provider.
 //
 // Applies a triage label as an IMAP keyword flag (STORE +FLAGS) over a minimal
 // IMAP4rev1-over-TLS client. Credentials are resolved per-apply from the daemon
@@ -63,7 +63,7 @@ export type ImapConnect = (opts: {
   servername: string;
 }) => ImapSocketLike;
 
-/** Production connector — a real IMAP4rev1-over-TLS socket via node:tls. */
+/** Production connector, a real IMAP4rev1-over-TLS socket via node:tls. */
 export const tlsImapConnect: ImapConnect = (opts) =>
   tlsConnect(opts, () => {
     /* greeting handled in the data pump */
@@ -128,7 +128,7 @@ export class ImapStoreError extends Error {
  * in a value destined for an IMAP command line. CR/LF are the dangerous ones:
  * an unescaped CRLF would terminate the current command and let an attacker
  * inject a second IMAP command (CRLF injection). IMAP's quoted-string syntax
- * has no escape for these control chars — backslash only escapes `\` and `"` —
+ * has no escape for these control chars, backslash only escapes `\` and `"`,
  * so the only safe handling is to refuse the value outright.
  */
 function assertImapSafe(value: string, field: string): void {
@@ -155,8 +155,8 @@ function quoteImap(value: string): string {
 // A concrete UID sequence-set: one or more comma-separated single UIDs or
 // numeric ranges (`12`, `3:9`, `1,4,7:9`). RFC 3501 also permits `*` (the
 // largest UID in the mailbox) and ranges to `*`, but a wildcard would let a
-// single value like `1:*` apply the flag to the ENTIRE mailbox — never the
-// intent when tagging one triaged item — so `*` is rejected outright.
+// single value like `1:*` apply the flag to the ENTIRE mailbox, never the
+// intent when tagging one triaged item, so `*` is rejected outright.
 const IMAP_UID_SET = /^[0-9]+(:[0-9]+)?(,[0-9]+(:[0-9]+)?)*$/;
 
 // An IMAP flag: an optional leading `\` (system flag, e.g. `\Seen`) followed by
@@ -187,7 +187,7 @@ function assertImapUid(value: string): void {
  * UNQUOTED into the `+FLAGS (...)` list. assertImapSafe only blocks control
  * chars; a flag containing a space (e.g. `\Seen Junk`) would still pass that
  * guard and inject a second flag atom. This is the boundary check that
- * prevents it — independent of any upstream normalizer.
+ * prevents it, independent of any upstream normalizer.
  */
 function assertImapFlag(value: string): void {
   if (!IMAP_FLAG.test(value)) {
@@ -313,7 +313,7 @@ export function imapStoreFlagOverTls(
           finish();
         }
       } else {
-        // NO/BAD: deterministic protocol rejection — do not retry.
+        // NO/BAD: deterministic protocol rejection, do not retry.
         current.reject(new ImapStoreError(`IMAP command failed: ${status}`, false));
       }
     };

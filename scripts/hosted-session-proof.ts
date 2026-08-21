@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * hosted-binary-proof.ts — the compiled daemon binary, hosting a real session.
+ * hosted-binary-proof.ts, the compiled daemon binary, hosting a real session.
  *
  * Boots dist/goodvibes-daemon-linux-x64 against an isolated home and a high
  * port (never the machine's daemon, never 3421, never systemd), points it at a
@@ -170,7 +170,7 @@ try {
     sessionId: created.session.id,
     body: 'say hello from a hosted session',
   }).then(() => 'steered').catch((error: unknown) => String(error));
-  check('sessions.steer accepts a hosted session id — no parallel verb family', steered === 'steered', steered.slice(0, 160));
+  check('sessions.steer accepts a hosted session id; no parallel verb family', steered === 'steered', steered.slice(0, 160));
   for (let attempt = 0; attempt < 40 && stubCalls === 0; attempt += 1) await Bun.sleep(500);
   check('the hosted session called a real model', stubCalls > 0, `${stubCalls} provider call(s)`);
 

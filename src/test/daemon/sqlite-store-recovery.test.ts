@@ -1,19 +1,19 @@
 /**
- * sqlite-store-recovery.test.ts — the daemon SQLite base opens a store by
+ * sqlite-store-recovery.test.ts, the daemon SQLite base opens a store by
  * validating its CONTENT, not by `existsSync`.
  *
  * The defect this covers: `init()` did
  * `const existing = existsSync(path) ? readFileSync(path) : undefined;
  *  this.db = existing ? new SQL.Database(existing) : new SQL.Database();`
- * so a file that exists but holds no usable database — zero bytes from an
+ * so a file that exists but holds no usable database, zero bytes from an
  * interrupted write, a truncated restore, a filesystem that recovered the inode
- * but not the data — was handed straight to sql.js, which threw out of `init()`
+ * but not the data, was handed straight to sql.js, which threw out of `init()`
  * and took every daemon store built on this class down with it (inbox,
  * channel routes, drafts, peer registry, triage, email drafts). There was no
  * way back short of a human deleting the file.
  *
  * The fix: check the SQLite file header, try the open, and on failure move the
- * unusable file aside (never delete it — an operator may be able to salvage it),
+ * unusable file aside (never delete it, an operator may be able to salvage it),
  * start a clean database, and SAY SO. The quarantine copies are themselves
  * bounded by an age TTL and a keep-newest count, reaped on the next init.
  */
@@ -94,7 +94,7 @@ describe('a healthy store round-trips', () => {
 });
 
 describe('a crash-damaged database is rejected rather than served', () => {
-  test('a ZERO-BYTE file does not throw out of init — it is set aside and a clean store starts', async () => {
+  test('a ZERO-BYTE file does not throw out of init; it is set aside and a clean store starts', async () => {
     seedRawStoreFile('');
     const store = makeStore();
     const { warns } = await withCapturedLogs(async () => { await store.init(); });
@@ -125,7 +125,7 @@ describe('a crash-damaged database is rejected rather than served', () => {
   });
 
   test('a TRUNCATED database (valid header, cut-off body) is set aside', async () => {
-    // Build a real database first, then cut it in half — exactly what a crash
+    // Build a real database first, then cut it in half, exactly what a crash
     // partway through a copy or a restore leaves.
     const seeded = makeStore();
     await seeded.init();
@@ -205,7 +205,7 @@ describe('the quarantine directory is bounded and the reap is disclosed', () => 
 
     const remaining = quarantineFiles();
     expect(remaining).toHaveLength(3);
-    // The newest survive — the seeds are numbered ascending and written in order.
+    // The newest survive, the seeds are numbered ascending and written in order.
     expect(remaining.some((name) => name.endsWith('1000005'))).toBe(true);
     expect(remaining.some((name) => name.endsWith('1000000'))).toBe(false);
   });
@@ -218,7 +218,7 @@ describe('the quarantine directory is bounded and the reap is disclosed', () => 
     expect(infos.some((entry) => entry.message.includes('reclaimed quarantined copies'))).toBe(false);
   });
 
-  test('the reap is idempotent — a second init reclaims nothing further', async () => {
+  test('the reap is idempotent; a second init reclaims nothing further', async () => {
     seedQuarantines(5, 30);
     const first = makeStore();
     await first.init();
@@ -261,7 +261,7 @@ describe('saving is crash-safe', () => {
     expect(quarantineFiles()).toEqual([]);
   });
 
-  test('concurrent saves of one store all succeed — the temp path is not shared', async () => {
+  test('concurrent saves of one store all succeed; the temp path is not shared', async () => {
     // The defect: the temp filename was `<path>.<pid>.<Date.now()>.tmp`, so two
     // saves in the same millisecond in the same process picked the SAME path.
     // Both wrote it, the first rename moved it away, and the second failed with

@@ -8,14 +8,14 @@ import { HandlerSqliteStore } from '../sqlite-store.ts';
 // Mirrors the agent's local draft store (channels/drafts.json) server-side so
 // drafts are visible across surfaces. The agent's local file remains the source
 // of truth; this store is a sync mirror. Conflict resolution (most-recent
-// updatedAt wins) is the integrator's concern — this store performs a plain
+// updatedAt wins) is the integrator's concern, this store performs a plain
 // upsert and records the supplied/derived updatedAt.
 //
 // SECURITY POSTURE:
 //   - The plaintext message body is NEVER persisted. It is encrypted at rest
 //     via the daemon at-rest cipher (AES-256-GCM) as `bodyEnc`.
 //   - The webhook URL is encrypted at rest (`webhookEnc`) and is ALWAYS
-//     redacted ('[redacted]') in every list/get response — the raw URL never
+//     redacted ('[redacted]') in every list/get response, the raw URL never
 //     leaves the store.
 //   - `messageDigest` (sha256First(body, 12)) is computed at save time and
 //     stored alongside, so reads never need to decrypt the body. The required
@@ -170,7 +170,7 @@ function parseTags(raw: string | null): string[] | undefined {
       return tags.length > 0 ? tags : undefined;
     }
   } catch {
-    // Corrupt tags column — treat as absent rather than throwing on read.
+    // Corrupt tags column, treat as absent rather than throwing on read.
   }
   return undefined;
 }

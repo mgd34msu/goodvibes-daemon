@@ -1,7 +1,7 @@
 /**
  * How this daemon dispatches notices without a screen.
  *
- * Panel-feed notices are the surface's — the router's three targets are all
+ * Panel-feed notices are the surface's, the router's three targets are all
  * screen targets and this product has no screen. Channel notices are the
  * daemon's, and the one notice only the daemon can produce about itself is
  * memory pressure: the governor measures the process it runs in, and the
@@ -9,8 +9,8 @@
  * afterwards.
  *
  * That notice used to be routed into a bounded ring with no reader anywhere
- * in the repository. These tests pin the two outcomes it can have now —
- * sent, or written down — and that neither is silence.
+ * in the repository. These tests pin the two outcomes it can have now,
+ * sent, or written down, and that neither is silence.
  */
 import { describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
@@ -78,7 +78,7 @@ describe('memory pressure leaves the daemon over the configured notice destinati
     emitOps({ type: 'OPS_MEMORY_PRESSURE', ts: 1, payload: pressurePayload('critical') });
     await Promise.resolve();
 
-    // Nothing sent, because nothing is configured — and nothing thrown either.
+    // Nothing sent, because nothing is configured, and nothing thrown either.
     expect(sent).toHaveLength(0);
   });
 

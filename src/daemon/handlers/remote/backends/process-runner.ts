@@ -1,6 +1,6 @@
 // Shared subprocess runner built on Bun.spawn. Captures stdout/stderr/exit code
 // with a hard timeout. Used by every backend that shells out (docker/ssh/cloud/
-// local-process). No credentials are ever passed as argv — callers pass key
+// local-process). No credentials are ever passed as argv, callers pass key
 // material via files or the `env` overlay.
 
 export interface RunOptions {

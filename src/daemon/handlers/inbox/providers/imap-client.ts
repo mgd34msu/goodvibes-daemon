@@ -3,7 +3,7 @@
 //
 // Implements exactly what the inbound poller needs:
 //   LOGIN, SELECT, UID SEARCH (SINCE / ALL), UID FETCH (ENVELOPE + body peek),
-//   LOGOUT. No external npm dependency — uses node:tls (Bun-compatible).
+//   LOGOUT. No external npm dependency, uses node:tls (Bun-compatible).
 //
 // This is intentionally conservative: line-buffered tagged-command protocol,
 // per-command timeout, and a hard cap on response size to avoid unbounded

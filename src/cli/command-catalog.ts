@@ -1,5 +1,5 @@
 /**
- * command-catalog.ts — WHAT the daemon binary understands.
+ * command-catalog.ts, WHAT the daemon binary understands.
  *
  * This file is data. It holds no parsing logic and reads no argv. The engine is
  * `parseWithCatalog` in @pellux/goodvibes-terminal-shell: it knows tokens,
@@ -90,8 +90,8 @@ export type DaemonCliFlagField =
  * How a flag consumes argv, and what shape its value has.
  *
  * Four of the engine's seven kinds. The other three (`string-optional`,
- * `const`, `enum`) exist for a conversation-shaped vocabulary — an optional
- * `--resume [id]`, two flags writing one field, a checked value set — and this
+ * `const`, `enum`) exist for a conversation-shaped vocabulary, an optional
+ * `--resume [id]`, two flags writing one field, a checked value set, and this
  * binary declares none of them.
  */
 export type DaemonCliFlagKind = Extract<CliFlagKind, 'boolean' | 'string' | 'port' | 'string-list'>;
@@ -112,8 +112,8 @@ export type DaemonCommandFlagSpec = CommandFlagSpec<DaemonCliFlagField> & {
 /**
  * A command entry, narrowed the same way.
  *
- * `summary`, `usage` and `detail` are optional to the engine — a catalog with
- * no help surface of its own may omit them — and required here, because this
+ * `summary`, `usage` and `detail` are optional to the engine, a catalog with
+ * no help surface of its own may omit them, and required here, because this
  * binary has a `help <command>` page for every command it answers to.
  */
 export type DaemonCommandSpec = CommandSpec<DaemonCommand, DaemonCliFlagField> & {
@@ -167,7 +167,7 @@ const YES_FLAG: DaemonCommandFlagSpec = {
  * This is the convention @pellux/goodvibes-terminal-shell's
  * cluster-remote-daemon-target established and asked later subcommands to
  * follow: `--host`/`--port`/`--token`, each
- * defaulting to this machine's own daemon — the configured control-plane
+ * defaulting to this machine's own daemon, the configured control-plane
  * binding and the operator token in `<daemon home>/operator-tokens.json`. A
  * headless box the operator has SSHed into must work with no flags at all.
  */
@@ -251,13 +251,13 @@ const SERVE_FLAGS: readonly DaemonCommandFlagSpec[] = [
  * Flags this binary once accepted in silence, without acting on them.
  *
  * Every one of them means "start or resume a conversation", which this binary
- * does not do — and each was accepted, stored in a flag record nothing read,
+ * does not do, and each was accepted, stored in a flag record nothing read,
  * and then ignored. `goodvibes-daemon --resume` started a fresh foreground
  * daemon and said nothing about the flag. They are refused by name so the
  * message names the surface that does own them.
  *
  * `reason` is a NOUN PHRASE the engine drops into
- * "<flag> is not a <binary> flag — <reason> belongs to another surface.", so
+ * "<flag> is not a <binary> flag, <reason> belongs to another surface.", so
  * each one names the terminal app as well as the job, and the finished sentence
  * points at where the flag actually works.
  *
@@ -265,7 +265,7 @@ const SERVE_FLAGS: readonly DaemonCommandFlagSpec[] = [
  * to skip a refused flag's VALUE while hunting for the command word, or
  * `--prompt hello` reports "Unknown command: hello" instead of naming the flag
  * that is actually wrong. `--resume` and `--fork` took an OPTIONAL value, so
- * they are listed as taking none — over-skipping would swallow a real command
+ * they are listed as taking none, over-skipping would swallow a real command
  * word.
  */
 export type { RejectedFlagSpec };
@@ -426,7 +426,7 @@ export const DAEMON_COMMANDS: readonly DaemonCommandSpec[] = [
     summary: 'Restart the daemon service.',
     usage: 'goodvibes-daemon restart-service',
     detail: [
-      'Restart the service this binary manages — the usual way to pick up a settings',
+      'Restart the service this binary manages: the usual way to pick up a settings',
       'change that only applies at boot.',
       ...SERVICE_DETAIL_TAIL,
     ],
@@ -465,7 +465,7 @@ export const DAEMON_COMMANDS: readonly DaemonCommandSpec[] = [
     summary: 'Print the pairing link and QR code again, or mint one on a remote daemon.',
     usage: 'goodvibes-daemon pair [--json] [--host <name>] [--port <n>] [--token <t>] [-y]',
     detail: [
-      'LOCAL FORM — no --host, or one naming this machine: print the same pairing',
+      'LOCAL FORM (no --host, or one naming this machine): print the same pairing',
       'block a daemon prints once at startup: the web origin, the offers a new',
       'device can accept, what it will be able to do, and a QR code encoding the',
       'deep link that opens the web app already signed in.',
@@ -474,10 +474,10 @@ export const DAEMON_COMMANDS: readonly DaemonCommandSpec[] = [
       'printed here and one printed at boot are the same link. Scrolling the startup',
       'banner off the screen therefore costs nothing.',
       '',
-      'REMOTE FORM — --host naming another machine: ask THAT daemon to MINT A NEW',
+      'REMOTE FORM (--host naming another machine): ask THAT daemon to MINT A NEW',
       'per-device pairing token and print the pairing block for it. Minting is a',
       'different act than reprinting: it is a fresh token, and every token that',
-      'daemon already issued — its shared token included — is left untouched.',
+      'daemon already issued, its shared token included, is left untouched.',
       '',
       'Because it changes state on a daemon that may not be this process\'s own, it',
       'states the plan and asks for confirmation before acting: -y (or --yes) is the',
@@ -507,7 +507,7 @@ export const DAEMON_COMMANDS: readonly DaemonCommandSpec[] = [
       '--all includes sessions that have already ended; they are kept, with the reason',
       'they ended, until the retention window retires them.',
       '',
-      'These are the daemon\'s own hosted sessions — conversations running INSIDE it,',
+      'These are the daemon\'s own hosted sessions: conversations running INSIDE it,',
       'which outlive the client that started them. Sessions a terminal runs on this',
       'machine are that terminal\'s, and are not listed here.',
     ],
@@ -536,7 +536,7 @@ export const DAEMON_COMMANDS: readonly DaemonCommandSpec[] = [
       'works whether or not a daemon is running. A running daemon picks up most',
       'changes live; the ones that only apply at bind time say so.',
       '',
-      'Anything that reads like a credential — a token, a password, an API key — is',
+      'Anything that reads like a credential (a token, a password, an API key) is',
       'printed as <redacted>. `config set` still writes the real value; it is the',
       'OUTPUT that is redacted, so a settings dump pasted into an issue carries none.',
     ],
@@ -627,7 +627,7 @@ export const DAEMON_COMMANDS: readonly DaemonCommandSpec[] = [
     usage: 'goodvibes-daemon webui enable|disable|status [--bundle-dir <dir>] [--lan|--loopback]',
     detail: [
       'The web UI is a built bundle of static files served by the daemon\'s own',
-      'control-plane listener, on the same origin as the API — so the URL to open is',
+      'control-plane listener, on the same origin as the API; so the URL to open is',
       'the control-plane one, not the declared web port.',
       '',
       '  enable [--bundle-dir <dir>]  serve the bundle at that directory',
@@ -652,7 +652,7 @@ export const DAEMON_COMMANDS: readonly DaemonCommandSpec[] = [
       '',
       'The installer runs this on a binary it has just placed, and a daemon start',
       'retries it, so an install that happened offline heals on its own. A download',
-      'that fails is reported and exits 0 — a machine with no wake word still has a',
+      'that fails is reported and exits 0; a machine with no wake word still has a',
       'perfectly good daemon.',
     ],
     flags: [],
@@ -667,7 +667,7 @@ export const DAEMON_COMMANDS: readonly DaemonCommandSpec[] = [
     detail: [
       'Print a completion script for the named shell on stdout. It completes this',
       'binary\'s commands, their sub-words and their flags, generated from the same',
-      'catalog the parser and the help text use — so it cannot drift from what the',
+      'catalog the parser and the help text use; so it cannot drift from what the',
       'binary accepts.',
       '',
       'Install it by writing it somewhere the shell reads, for example:',
@@ -715,7 +715,7 @@ export const RAW_INTERCEPT_COMMANDS: readonly DaemonCommand[] = DAEMON_COMMANDS
   .map((spec) => spec.name);
 
 /**
- * The flag record a parse starts from — every field at its empty value, so a
+ * The flag record a parse starts from, every field at its empty value, so a
  * command's dispatcher reads only what its own catalog entry declares.
  */
 function createDefaultFlags(): DaemonCliFlags {
@@ -817,12 +817,12 @@ export function isRawInterceptCommand(command: DaemonCommand): boolean {
  * The engine needs this BEFORE it knows which command it is parsing: to find
  * the command word it has to skip over option values, and whether a token
  * takes a value is a property of the token. Every token that appears in more
- * than one command's flag list has the same kind in all of them — asserted by
- * a unit test rather than left as an assumption — so one table is honest.
+ * than one command's flag list has the same kind in all of them, asserted by
+ * a unit test rather than left as an assumption, so one table is honest.
  */
 // Resolved on first use, not at module load: `catalogFlagArity` is an SDK
 // import, and the single-file compiler's nondeterministic module order could
-// run this line before the SDK module body exists — the binary then dies at
+// run this line before the SDK module body exists, the binary then dies at
 // load (the build-order lottery class fixed at runtime 2.0.13).
 let allFlagArityCache: ReadonlyMap<string, CliFlagKind> | null = null;
 export function allFlagArity(): ReadonlyMap<string, CliFlagKind> {

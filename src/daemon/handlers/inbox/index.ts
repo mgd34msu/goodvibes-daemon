@@ -4,7 +4,7 @@
 //
 // The SDK already declares the method id, input schema, output schema, scopes
 // (read:channels) and HTTP binding (GET /api/channels/inbox). This module does
-// NOT re-declare any of that — it looks the descriptor up via the catalog and
+// NOT re-declare any of that, it looks the descriptor up via the catalog and
 // attaches an implementation with `registerCatalogHandler` ({ replace: true }).
 //
 // register(ctx, routing) =>
@@ -17,7 +17,7 @@
 //   6. returns an Unregister that detaches the handler, stops the poller, and
 //      closes the store.
 //
-// The handler composes the answer in ./aggregator.ts — the merged, paginated
+// The handler composes the answer in ./aggregator.ts, the merged, paginated
 // page plus every provider's standing. Read that file's header for WHY the
 // answer comes from the synced mirror rather than a fresh remote fetch. The
 // redacted `fromDigest` is the only sender value emitted (as `from`); raw
@@ -78,13 +78,13 @@ export interface RegisterInboxOptions {
    * relies on.
    *
    * The READ path is never gated. `channels.inbox.list` serves the persisted
-   * feed on every node — a node that is not fetching still answers questions
+   * feed on every node, a node that is not fetching still answers questions
    * about what has already arrived.
    *
    * Called once PER PROVIDER, with that provider's id and a control that
    * starts and stops only its loop. Each inbox account is its own surface in
    * the LAN election, so the machine reading the work Slack account need not
-   * be the machine reading the mailbox — and handing one account over must not
+   * be the machine reading the mailbox, and handing one account over must not
    * take the others down with it.
    */
   gatePolling?: (providerId: string, control: InboxPollingControl) => void;
@@ -132,7 +132,7 @@ export function registerInboxMethods(
   };
   const adapters = buildAdapters(adapterContext);
   // Retention runs inside the store (age TTL + count cap, at init and then on a
-  // timer). Both hooks carry COUNTS ONLY — no sender ids, subjects or bodies.
+  // timer). Both hooks carry COUNTS ONLY, no sender ids, subjects or bodies.
   const store = new InboxCursorStore(ctx.workingDirectory, options.storeFileName, {
     onSweep: (summary) => {
       ctx.logger.info('inbox retention sweep reclaimed items', {
@@ -150,7 +150,7 @@ export function registerInboxMethods(
   const gated = options.gatePolling !== undefined;
 
   // Async bootstrap: init store, and (ungated) seed one poll and start loops.
-  // Failures are logged but never thrown out of register() — the handler still
+  // Failures are logged but never thrown out of register(), the handler still
   // serves the (possibly empty) persisted feed.
   const ready: Promise<void> = (async () => {
     await store.init();
@@ -169,7 +169,7 @@ export function registerInboxMethods(
   if (gate) {
     // One gate per provider, not one for the poller. Leadership is decided per
     // inbox account, so each account's loop has to be startable and stoppable
-    // on its own — otherwise handing one account to another machine would stop
+    // on its own, otherwise handing one account to another machine would stop
     // fetching for every account this node reads.
     for (const providerId of poller.providerIds()) {
       gate(providerId, {

@@ -9,22 +9,22 @@
 // `getProfileForChannel(surfaceKind, routeId?)` applies the canonical
 // resolution order:
 //
-//   1. exact     — surfaceKind AND routeId both match
-//   2. surface   — surfaceKind matches, route has no routeId
-//   3. wildcard  — a route with surfaceKind === 'any' (no routeId)
+//   1. exact    , surfaceKind AND routeId both match
+//   2. surface  , surfaceKind matches, route has no routeId
+//   3. wildcard , a route with surfaceKind === 'any' (no routeId)
 //
 // This module bridges the two shapes. The bridge maps an inbound item's
 // `provider` to the routing `surfaceKind` and forwards an optional `routeId`
 // refinement; `fromDigest`/`kind` are NOT used as routing keys (the routing
 // store is keyed by surfaceKind + optional routeId only, never by sender digest
-// or message kind — see RoutingChannelRoute). When no binding matches the
+// or message kind, see RoutingChannelRoute). When no binding matches the
 // resolver returns null and the bridge yields `undefined`, so the adapter falls
 // back to leaving the item unrouted (offline/default behaviour intact). The
 // bridge NEVER throws: the underlying resolver is a pure in-memory lookup.
 //
 // The inbox surface is a separate follow-up module, so this bridge declares the
 // minimal `RouteResolver` seam locally rather than importing a sibling that the
-// routing slice does not own — keeping the routing handler layer free of any
+// routing slice does not own, keeping the routing handler layer free of any
 // cross-surface import edge.
 // ---------------------------------------------------------------------------
 

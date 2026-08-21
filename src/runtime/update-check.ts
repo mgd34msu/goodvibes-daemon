@@ -4,7 +4,7 @@
  *
  * Version comparison and the release-tag lookup are re-exported from the
  * SDK's canonical update policy module (platform/runtime/self-update), which
- * was hoisted from this file's semantics — one mechanism everywhere.
+ * was hoisted from this file's semantics, one mechanism everywhere.
  * Install-kind detection stays local: it encodes how THIS package is
  * installed (compiled binary vs bun/npm package vs source run) and what
  * command replaces a swap for each kind.
@@ -27,14 +27,14 @@ export {
  * How this running process was installed, detected honestly from
  * process.execPath rather than assumed:
  *   - "binary": a standalone `bun build --compile` executable with no
- *     package-manager ancestry — the scripts/install.sh install path.
+ *     package-manager ancestry, the scripts/install.sh install path.
  *     Swappable in place.
  *   - "bun-global-package": running the vendored binary shipped inside an
  *     npm/bun-managed package install (execPath contains a "node_modules"
- *     path segment — true for both `bun add -g` and a local project
+ *     path segment, true for both `bun add -g` and a local project
  *     dependency). Managed by the package manager; swapping the vendored
  *     file in place would fight the next `bun add -g` upgrade, so this is
- *     never swapped — the user re-runs their package manager instead.
+ *     never swapped, the user re-runs their package manager instead.
  *   - "source": running directly via the `bun` interpreter (`bun run
  *     src/main.ts`), not a compiled binary at all.
  */

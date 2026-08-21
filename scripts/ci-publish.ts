@@ -3,7 +3,7 @@
  *
  * Order of operations:
  *   1. If the registry already serves exactly this name@version, succeed.
- *   2. Otherwise `npm publish` with output streamed straight through — no
+ *   2. Otherwise `npm publish` with output streamed straight through, no
  *      capture buffer, so a refusal arrives whole in the job log.
  *   3. If publish failed, ask the registry once more: a race with a publish
  *      that landed through another path (or read-path lag clearing mid-run)
@@ -25,7 +25,7 @@ function servedVersion(): string | null {
 }
 
 if (servedVersion() === pkg.version) {
-  console.log(`[ci-publish] ${spec} already on ${REGISTRY} — nothing to do`);
+  console.log(`[ci-publish] ${spec} already on ${REGISTRY}; nothing to do`);
   process.exit(0);
 }
 
@@ -39,7 +39,7 @@ if (pub.status === 0) {
 
 const after = servedVersion();
 if (after === pkg.version) {
-  console.log(`[ci-publish] publish exited ${pub.status} but ${spec} is served — treating as published`);
+  console.log(`[ci-publish] publish exited ${pub.status} but ${spec} is served; treating as published`);
   process.exit(0);
 }
 

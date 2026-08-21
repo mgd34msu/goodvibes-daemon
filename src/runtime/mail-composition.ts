@@ -4,7 +4,7 @@
  * The deps that let the platform register this daemon's `email.*` verbs.
  *
  * `calendar.*` and `email.*` are served by the platform now, not by handlers in
- * this repository — those were deleted when the platform gained an
+ * this repository, those were deleted when the platform gained an
  * implementation the daemon could call. What is left for a product to supply is
  * the wiring, and it is not optional: without `homeDirectory` the calendar
  * composition returns null, without these deps the mail one does, and either way
@@ -27,7 +27,7 @@ import { nodeEmailTransport } from '@pellux/goodvibes-sdk/platform/email/node';
 
 /** The narrow slices this composition needs; the real managers satisfy them. */
 interface MailCompositionInput {
-  readonly configManager: { get(key: never): unknown };
+  readonly configManager: { get(key: string): unknown };
   readonly secretsManager: { get(key: string): Promise<string | null> };
 }
 
@@ -36,8 +36,8 @@ interface MailCompositionInput {
  * `registerGatewayVerbGroups`.
  *
  * The settings come from the daemon's own `surfaces.email.*` keys through
- * `withSurfaceEmailConfig`, so the keys an operator has already set — and that
- * the settings modal now shows — keep working unchanged, and a not-configured
+ * `withSurfaceEmailConfig`, so the keys an operator has already set, and that
+ * the settings modal now shows, keep working unchanged, and a not-configured
  * answer names the keys THIS operator actually has rather than the ones the
  * service validates internally.
  */
@@ -45,7 +45,7 @@ export function composeMailDeps(input: MailCompositionInput): {
   readonly emailServiceDeps: EmailServiceDeps;
   readonly describeEmailConfigProblem: () => Promise<SurfaceEmailConfigProblem | null>;
 } {
-  const getConfig = (key: string): unknown => input.configManager.get(key as never);
+  const getConfig = (key: string): unknown => input.configManager.get(key);
   const emailServiceDeps = withSurfaceEmailConfig({
     getConfig,
     secretsManager: input.secretsManager,
@@ -56,7 +56,7 @@ export function composeMailDeps(input: MailCompositionInput): {
     // raises display confidence only, and commandAuthority is the literal
     // 'none'.
     describeSenderClaim: describeSenderClaimNeutrally,
-  } as never);
+  });
   return {
     emailServiceDeps,
     describeEmailConfigProblem: () =>

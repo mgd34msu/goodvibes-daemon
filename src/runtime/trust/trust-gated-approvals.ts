@@ -1,11 +1,11 @@
 /**
- * trust-gated-approvals.ts — how a headless daemon asks the workspace trust
+ * trust-gated-approvals.ts, how a headless daemon asks the workspace trust
  * question, and how the answer reaches the runs it hosts.
  *
  * The terminal app composes the trust gate at the permission machinery's final
  * ask layer and raises the question as a modal on its own screen. The daemon
- * has the same gate — `trustGatedAsk` next door, reading the same
- * `<cwd>/.goodvibes/<surface>/trust.json` the terminal app writes — and no
+ * has the same gate, `trustGatedAsk` next door, reading the same
+ * `<cwd>/.goodvibes/<surface>/trust.json` the terminal app writes, and no
  * screen to raise anything on. Before this module it therefore
  * did neither: the gate was constructed, never loaded, never consulted, and no
  * hosted run passed through it.
@@ -16,7 +16,7 @@
  *     ordinary approval record. That is the whole point of the approval-raise
  *     path: a process with no screen states the question, publishes it on
  *     `approval-update`, and whichever surface is attached answers it. Approved
- *     means "trusted", denied means "restricted" — a real decision either way,
+ *     means "trusted", denied means "restricted", a real decision either way,
  *     persisted by the gate, and never asked again for this workspace.
  *
  *  2. `trustGatedApprovalRaiser` puts the gate in front of the raiser the
@@ -30,8 +30,8 @@
  *
  * What the daemon does NOT do here is decide by default. An untrusted
  * workspace's hosted run neither runs as if trusted nor fails as if refused: it
- * asks. If the ask cannot be answered — nothing attached, or the broker itself
- * failed — the workspace stays undecided and this run is refused, with the
+ * asks. If the ask cannot be answered, nothing attached, or the broker itself
+ * failed, the workspace stays undecided and this run is refused, with the
  * reason in the log rather than in a silence. A refusal that records nothing is
  * the failure mode this whole seam exists to remove.
  */
@@ -44,7 +44,7 @@ type WorkspaceTrustLevel = operations.WorkspaceTrustLevel;
 type WorkspaceTrustManager = operations.WorkspaceTrustManager;
 
 /**
- * The extra fields a raise carries beside the request itself — the attribution
+ * The extra fields a raise carries beside the request itself, the attribution
  * routing/metadata a background-agent ask is stamped with before it reaches the
  * broker. The gate only reads `request.category`, so these ride around it.
  */
@@ -73,7 +73,7 @@ export const WORKSPACE_TRUST_ASK_TIMEOUT_MS = 10 * 60 * 1000;
 
 export interface WorkspaceTrustDecisionAskDeps {
   readonly requestApproval: ApprovalRaise;
-  /** The workspace the question is about — it names the directory being trusted. */
+  /** The workspace the question is about, it names the directory being trusted. */
   readonly workingDirectory: string;
   readonly timeoutMs?: number | undefined;
 }
@@ -118,7 +118,7 @@ export function createWorkspaceTrustDecisionAsk(
       return decision.approved ? 'trusted' : 'restricted';
     } catch (error) {
       // Nothing attached, or the broker failed. Say so and leave the workspace
-      // undecided — the next run asks again rather than inheriting a decision
+      // undecided, the next run asks again rather than inheriting a decision
       // nobody made.
       logger.warn('Workspace trust question could not be answered; this run is refused and the workspace stays undecided', {
         workspace: deps.workingDirectory,

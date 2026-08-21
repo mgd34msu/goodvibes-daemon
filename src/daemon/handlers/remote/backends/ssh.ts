@@ -20,7 +20,7 @@ import { GOODVIBES_DAEMON_SURFACE_ROOT } from '../../../../config/surface.ts';
  * Persistent-key material is written to {homeDirectory}/.goodvibes/tui/operator/
  * ssh-keys/{peerId}.key with 0600 permissions and reused across invocations
  * (connection pooling via the OpenSSH ControlMaster multiplexer). The key value
- * itself comes only from the daemon credential store — never argv, never logs.
+ * itself comes only from the daemon credential store, never argv, never logs.
  */
 interface PooledIdentity {
   keyPath: string;
@@ -31,6 +31,13 @@ interface PooledIdentity {
 export function createSshBackend(ctx: BackendContext): Backend {
   const pool = new Map<string, PooledIdentity>();
   const keyDir = join(ctx.homeDirectory, '.goodvibes', GOODVIBES_DAEMON_SURFACE_ROOT, 'operator', 'ssh-keys');
+  // Crash-window sweep: an abrupt daemon exit (SIGKILL, OOM-kill, power loss)
+  // skips teardown() and can leave a previous process's key files behind. The
+  // pool above starts empty regardless, so those leftovers are unreachable
+  // dead weight; clear them here so a crash converges to the same clean state
+  // a graceful shutdown already produces. Every write below waits on this
+  // first so the sweep can never race a key this instance just wrote.
+  const keyDirSwept = rm(keyDir, { recursive: true, force: true }).catch(() => {});
 
   async function ensureIdentity(
     peer: PeerRecord,
@@ -40,6 +47,7 @@ export function createSshBackend(ctx: BackendContext): Backend {
     if (existing && existing.identityRef === config.identityRef) {
       return existing;
     }
+    await keyDirSwept;
     const key = await ctx.credentials.resolveRef(config.identityRef);
     if (!key || key.length === 0) {
       throw new BackendDispatchError(

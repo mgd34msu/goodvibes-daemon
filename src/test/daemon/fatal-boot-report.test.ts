@@ -1,5 +1,5 @@
 /**
- * fatal-boot-report.test.ts — the daemon says why it will not start, proven in
+ * fatal-boot-report.test.ts, the daemon says why it will not start, proven in
  * a compiled binary.
  *
  * ── Why a compiled binary ─────────────────────────────────────────────────
@@ -21,7 +21,7 @@
  * ── What is compiled, and why it is not cli.ts itself ─────────────────────
  *
  * Two fixture entries under `fixtures/`, each importing the REAL modules the
- * daemon boots through — `resolveGoodVibesHomeOwnership`, the SDK's
+ * daemon boots through, `resolveGoodVibesHomeOwnership`, the SDK's
  * `ConfigManager` (whose daemon-tier read is what throws), and for the fixed
  * one the real `reportFatalBootFailure`. The fixed entry mirrors cli.ts's tail
  * exactly; the legacy entry pins the tail as it shipped.
@@ -30,8 +30,8 @@
  * both before and after this change (zero/zero bytes → 728 bytes on stderr).
  * It is not what this test compiles, because the resulting artifact only RUNS
  * after `scripts/prebuild.ts` has rewritten
- * `node_modules/css-tree/lib/data-patch.js` — a transitive dependency of jsdom
- * — into a form `bun build --compile` can bundle. On a fresh checkout, which is
+ * `node_modules/css-tree/lib/data-patch.js`, a transitive dependency of jsdom
+ *, into a form `bun build --compile` can bundle. On a fresh checkout, which is
  * exactly what the CI test job has, the compiled entrypoint dies at module init
  * with `Cannot find module '../data/patch.json'` before any daemon code runs.
  * Measured both ways. Making the test mutate node_modules to work around that
@@ -53,7 +53,7 @@ import {
 const REPO_ROOT = process.cwd();
 /** Generous: two `bun build --compile` runs on a loaded host. */
 const COMPILE_TIMEOUT_MS = 180_000;
-/** The runs themselves fail fast — anything near this is a hang, not a boot. */
+/** The runs themselves fail fast, anything near this is a hang, not a boot. */
 const RUN_TIMEOUT_MS = 30_000;
 
 // ---------------------------------------------------------------------------
@@ -144,7 +144,7 @@ interface InlineRun {
  */
 function runInlineWriter(body: string): InlineRun {
   const dir = makeProjectTempDir('gv-fatal-inline');
-  // The implementation is the SDK's — this repository imports it rather than
+  // The implementation is the SDK's, this repository imports it rather than
   // carrying a mirror of it, which is what the mirror cost: two copies of the
   // one thing that has to work when nothing else does.
   const modulePath = '@pellux/goodvibes-sdk/platform/daemon';
@@ -181,7 +181,7 @@ function hostBunTarget(): string {
 }
 
 /**
- * Compile one entry the way the release lane does — see
+ * Compile one entry the way the release lane does, see
  * `buildCompileArgs` in @pellux/goodvibes-toolchain's build-binaries, which the
  * `build:daemon:*` scripts drive: `bun build <entry> --compile --target=<t>
  * --outfile <o> --external <nativeAddonPackage>`.
@@ -218,7 +218,7 @@ interface DaemonRun {
 /**
  * Run a compiled entry against a throwaway home.
  *
- * The environment is built from nothing but what is passed — no ambient
+ * The environment is built from nothing but what is passed, no ambient
  * `GOODVIBES_*` from the developer's shell can decide the outcome, which
  * matters because `GOODVIBES_HOME` and `GOODVIBES_DAEMON_HOME` would each move
  * the tree this reads.
@@ -259,7 +259,7 @@ describe('the compiled daemon says why it will not start', () => {
     rmSync(legacy.dir, { recursive: true, force: true });
   });
 
-  test('the shape that shipped is no longer silent — the SDK now discloses ingestion failures on its own', () => {
+  test('the shape that shipped is no longer silent; the SDK now discloses ingestion failures on its own', () => {
     // This baseline held zero/zero through the 1.20.0 re-pin: a fatal handler
     // that only calls logger.error has no descriptor to flush, and the shipped
     // entrypoint never gave the logger a destination either, so nothing this
@@ -270,11 +270,11 @@ describe('the compiled daemon says why it will not start', () => {
     // reason rather than a drift in the test: `@pellux/goodvibes-sdk`'s own
     // `platform/config/settings-ingestion.js` now imports the SDK's internal
     // `writeFatalLine` and calls it from `announceIngestionNotice` at
-    // ingestion time — before `ConfigManager`'s constructor ever throws back
+    // ingestion time, before `ConfigManager`'s constructor ever throws back
     // to this entry's own catch block. So the unparseable-settings disclosure
     // now happens inside the SDK itself, unconditionally, regardless of
     // whether the caller wired up its own fatal-boot reporting. The legacy
-    // entry below never calls this repo's `reportFatalBootFailure` — this
+    // entry below never calls this repo's `reportFatalBootFailure`, this
     // assertion is proof the SDK's own layer closes the silence anyway.
     const home = homeWithDaemonSettings('{ "controlPlane": { "port": 39153 }', 'gv-legacy-home');
     const settingsPath = join(home, '.goodvibes', 'daemon', 'settings.json');
@@ -299,7 +299,7 @@ describe('the compiled daemon says why it will not start', () => {
     expect(run.stderr).toContain('at ');
   }, RUN_TIMEOUT_MS);
 
-  test('a settings file it CAN read still boots — the disclosure is not a new failure', () => {
+  test('a settings file it CAN read still boots; the disclosure is not a new failure', () => {
     const home = homeWithDaemonSettings(JSON.stringify({ controlPlane: { port: 31111 } }), 'gv-ok-home');
     const run = runEntry(fixed.binary, home);
     expect(run.status).toBe(0);

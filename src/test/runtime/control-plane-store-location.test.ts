@@ -6,7 +6,7 @@
  *
  * What was on an owner machine: a session store at
  * `~/.goodvibes/tui/control-plane/sessions.json` that the broker serves, and a
- * second at `~/.goodvibes/control-plane/sessions.json` — 274 KB against the
+ * second at `~/.goodvibes/control-plane/sessions.json`, 274 KB against the
  * live 55 KB, holding sessions the live one did not, last written the second
  * the current daemon started, and read by nothing. It looked alive because the
  * SDK's boot-time legacy fold targeted it unconditionally on every start.

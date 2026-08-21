@@ -19,7 +19,7 @@ describe('the top-level help lists exactly what the binary does', () => {
   test('names no command the binary does not have', () => {
     // The help this replaced described a `service <command>` verb the binary
     // never dispatched, and said nothing about status, pair, sessions, config
-    // or update — none of which existed.
+    // or update, none of which existed.
     for (const word of ['doctor', 'onboarding', 'models', 'providers', 'support-bundle']) {
       expect(help).not.toContain(`  ${word} `);
     }

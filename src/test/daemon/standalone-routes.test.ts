@@ -1,10 +1,10 @@
 /**
  * Integration tests covering UAT findings F1, F2, F4, F14.
  *
- * F1  — companion-chat, provider-current, session-SSE routes on standalone daemon
- * F2  — provider discovery: loadPersistedProviders + background scan registration
- * F4  — panel registry: TUI panels absent on standalone, daemon panels present
- * F14 — control-plane SSE DEFAULT_DOMAINS includes 'providers' and 'turn'
+ * F1 , companion-chat, provider-current, session-SSE routes on standalone daemon
+ * F2 , provider discovery: loadPersistedProviders + background scan registration
+ * F4 , panel registry: TUI panels absent on standalone, daemon panels present
+ * F14, control-plane SSE DEFAULT_DOMAINS includes 'providers' and 'turn'
  *
  * These tests start a real DaemonServer bound to a random high port and issue
  * real HTTP requests. No mocks of HTTP or SDK internals.
@@ -29,7 +29,7 @@ import { makeProjectTempDir } from '../helpers/project-temp.ts';
 disposeTestRuntimeServicesAfterAll();
 
 /**
- * A composed runtime graph starts a dozen pollers while it builds — the fleet
+ * A composed runtime graph starts a dozen pollers while it builds, the fleet
  * registry tick, the config-file watch, the memory governor, the knowledge
  * scheduler, the cross-session sweep, the orchestration snapshot writer, the
  * push-subscription sweep and the snapshot / retention / consolidation
@@ -166,10 +166,10 @@ async function readSseUntil(
 }
 
 // ---------------------------------------------------------------------------
-// F1 — Companion-chat routes on standalone daemon (port 3421 with bearer auth)
+// F1, Companion-chat routes on standalone daemon (port 3421 with bearer auth)
 // ---------------------------------------------------------------------------
 
-describe('F1 — companion-chat routes on standalone DaemonServer', () => {
+describe('F1: companion-chat routes on standalone DaemonServer', () => {
   let tempRoot: string;
   let daemon: DaemonServer;
   let port: number;
@@ -204,7 +204,6 @@ describe('F1 — companion-chat routes on standalone DaemonServer', () => {
   });
 
   test('GET /api/companion/chat/sessions/:id returns session (not 404)', async () => {
-    // First create a session, then retrieve it
     const createRes = await fetch(`http://127.0.0.1:${port}/api/companion/chat/sessions`, {
       method: 'POST',
       headers: bearerHeaders(),
@@ -376,7 +375,7 @@ describe('F1 — companion-chat routes on standalone DaemonServer', () => {
   });
 
   test('GET /api/sessions returns 200 with sessions array', async () => {
-    // GET /api/sessions — the standard shared-session listing endpoint.
+    // GET /api/sessions, the standard shared-session listing endpoint.
     // /api/sessions/:id/events SSE is not in the session route surface on DaemonServer.
     const res = await fetch(`http://127.0.0.1:${port}/api/sessions`, {
       headers: bearerHeaders(),
@@ -388,10 +387,10 @@ describe('F1 — companion-chat routes on standalone DaemonServer', () => {
 });
 
 // ---------------------------------------------------------------------------
-// F2 — Provider discovery on standalone daemon
+// F2, Provider discovery on standalone daemon
 // ---------------------------------------------------------------------------
 
-describe('F2 — provider state on standalone daemon', () => {
+describe('F2: provider state on standalone daemon', () => {
   let tempRoot: string;
   let daemon: DaemonServer;
   let runtimeServices: ReturnType<typeof createRuntimeServices>;
@@ -449,10 +448,10 @@ describe('F2 — provider state on standalone daemon', () => {
 });
 
 // ---------------------------------------------------------------------------
-// F4 — Panel registry on standalone daemon
+// F4, Panel registry on standalone daemon
 // ---------------------------------------------------------------------------
 
-describe('F4 — panel registry on standalone daemon', () => {
+describe('F4: panel registry on standalone daemon', () => {
   let tempRoot: string;
   let daemon: DaemonServer;
   let runtimeServices: ReturnType<typeof createRuntimeServices>;
@@ -471,7 +470,7 @@ describe('F4 — panel registry on standalone daemon', () => {
     rmSync(tempRoot, { recursive: true, force: true });
   });
 
-  // The daemon has no screen, so it has no panels — the route answers honestly
+  // The daemon has no screen, so it has no panels, the route answers honestly
   // rather than pretending. A panel is a thing a surface draws; the daemon's
   // panel manager is the SDK's no-op precisely so this cannot quietly become a
   // half-working feature that opens panels nobody can see.
@@ -497,10 +496,10 @@ describe('F4 — panel registry on standalone daemon', () => {
 });
 
 // ---------------------------------------------------------------------------
-// F14 — Control-plane SSE DEFAULT_DOMAINS
+// F14, Control-plane SSE DEFAULT_DOMAINS
 // ---------------------------------------------------------------------------
 
-describe('F14 — control-plane SSE default domains', () => {
+describe('F14: control-plane SSE default domains', () => {
   let tempRoot: string;
   let daemon: DaemonServer;
   let port: number;
@@ -519,7 +518,7 @@ describe('F14 — control-plane SSE default domains', () => {
   });
 
   test('GET /api/control-plane returns 200 snapshot', async () => {
-    // The control-plane uses HTTP (SSE) not WebSocket — GET /api/control-plane
+    // The control-plane uses HTTP (SSE) not WebSocket, GET /api/control-plane
     // returns a snapshot of the current operator state.
     const res = await fetch(`http://127.0.0.1:${port}/api/control-plane`, {
       headers: bearerHeaders(),

@@ -8,14 +8,14 @@ import { HandlerError } from '../../../daemon/handlers/errors.ts';
  * throw a locally-coined `'UNKNOWN_METHOD'` code. It now emits `'METHOD_NOT_FOUND'`
  * so it lines up byte-for-byte with the SDK's own SDKErrorCodes.METHOD_NOT_FOUND
  * (the code the SDK's uncataloged-method 404 carries, once the SDK pin catches up)
- * — no consumer of this daemon should ever have to distinguish two spellings of
+ *, no consumer of this daemon should ever have to distinguish two spellings of
  * the same "this method id isn't cataloged" condition.
  *
  * Deliberately a literal string comparison, not an import of SDKErrorCodes: the
  * pinned SDK (0.38.0) predates that constant, and the whole point of aligning by
  * value is that it needs no SDK version bump to stay true.
  */
-describe('registerCatalogHandler — uncataloged methodId', () => {
+describe('registerCatalogHandler: uncataloged methodId', () => {
   test('throws HandlerError with code METHOD_NOT_FOUND (not the old UNKNOWN_METHOD), status 404', () => {
     const catalog = new GatewayMethodCatalog({ includeBuiltins: false });
 

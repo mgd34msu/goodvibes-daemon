@@ -1,10 +1,10 @@
 /**
- * fleet-needs-input-push.ts — wires the fleet "needs-input" browser-push fan-out
+ * fleet-needs-input-push.ts, wires the fleet "needs-input" browser-push fan-out
  * that the SDK's registerGatewayVerbGroups (reached through the terminal-shell's
  * attachWsOnlyGatewayVerbHandlers wrapper) gates on two deps: `runtimeBus` and
  * `sessionPresence` (see push/service.ts's attachFleetNeedsInputSource). When a
  * fleet node blocks on the operator, it pushes an "Input needed" notification
- * carrying the session/node deep link to every registered device — suppressed
+ * carrying the session/node deep link to every registered device, suppressed
  * while an operator surface is already attached to that node's session.
  *
  * TWO seams have to be live for a real push, not just descriptor presence:
@@ -12,8 +12,8 @@
  *     runtime bus's 'fleet' domain in the first place. That is
  *     attachFleetEmitBridge, diffing the process registry's own coalesced
  *     snapshot tick into per-node lifecycle events. The terminal-shell package's
- *     createArchivableFleetRegistry only builds the registry — it does not
- *     attach the bridge — so the composition root that owns both the registry
+ *     createArchivableFleetRegistry only builds the registry, it does not
+ *     attach the bridge, so the composition root that owns both the registry
  *     and the bus (this file) is the one place responsible for it. The SDK's
  *     own daemon composition (platform/runtime/services.ts) attaches this same
  *     bridge right after building its process registry.

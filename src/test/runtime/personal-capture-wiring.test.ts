@@ -26,7 +26,7 @@ import { CONVERSATIONAL_TURN_TOOLS, conversationalTurnSpawnOptions } from '@pell
  *   3. The bare `context: shared-session:<id>` line is gone. Left in place
  *      after the spread it would overwrite the instruction with a bare label,
  *      and the agent would once again not know it is supposed to record
- *      anything — a silent regression with a passing tool list.
+ *      anything, a silent regression with a passing tool list.
  *
  * Plus the two ends of the capture port: the gateway verb groups fill it, and
  * the agent orchestrator reads it when it builds a run's tool registry. Miss

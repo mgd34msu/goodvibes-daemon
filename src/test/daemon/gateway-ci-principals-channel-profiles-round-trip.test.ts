@@ -9,8 +9,8 @@
  *
  * The SDK registers these three groups unconditionally (unlike checkin.*, which
  * needs four optional deps), so what is proved here is that the stores behind
- * them are real and round-trip — a write is visible to the next read, and a
- * delete removes it — rather than that a descriptor exists.
+ * them are real and round-trip, a write is visible to the next read, and a
+ * delete removes it, rather than that a descriptor exists.
  *
  * ci.status and ci.watches.run shell out to the `gh` CLI (createGhCliCiSource in
  * the SDK's ci-watch/gh-source.ts) to read real GitHub check-run data, which
@@ -156,7 +156,7 @@ describe('ci / principals / channels.profiles on the composed daemon (live, not 
     // This drives the real `gh` CLI against a repository that does not exist, so
     // it costs a subprocess spawn and a network round trip before it can fail.
     // Whether that fits the default per-test budget depends on the host and the
-    // network, not on the wiring this asserts — and a timeout here once reported
+    // network, not on the wiring this asserts, and a timeout here once reported
     // a 501 wiring gap that was not there. The budget is a hang detector; the
     // test returns as soon as gh answers.
   }, 60_000);

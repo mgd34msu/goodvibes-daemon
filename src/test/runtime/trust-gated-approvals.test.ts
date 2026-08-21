@@ -9,8 +9,8 @@
  * manager at all, which that gate reads as approved. An explicit decision of
  * "restricted" changed nothing about what a daemon-hosted run could do.
  *
- * These tests pin the three answers a hosted run can get — asked, honoured,
- * refused — and that the composition actually hands the manager to the
+ * These tests pin the three answers a hosted run can get, asked, honoured,
+ * refused, and that the composition actually hands the manager to the
  * orchestrator, because nothing fails if that one line goes missing again.
  */
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
@@ -108,7 +108,7 @@ describe('an undecided workspace asks rather than deciding for the user', () => 
 
     const decision = await raiser({ request: writeRequest() });
 
-    // Asked — not silently trusted, not silently refused.
+    // Asked, not silently trusted, not silently refused.
     expect(broker.trustAsks()).toHaveLength(1);
     const asked = broker.trustAsks()[0]!;
     expect(asked.request.args).toEqual({ workspace });
@@ -244,8 +244,8 @@ describe('the composition hands the manager to the runs it hosts', () => {
 
   it('gives the agent orchestrator that manager', () => {
     // Source-level, like the rest of the unification pins: a missing key here
-    // fails nothing at runtime — the background permission gate simply
-    // approves everything — so the absence has to be what fails.
+    // fails nothing at runtime, the background permission gate simply
+    // approves everything, so the absence has to be what fails.
     const source = readFileSync(join(import.meta.dir, '..', '..', 'runtime', 'services.ts'), 'utf8');
     const setDependencies = source.slice(source.indexOf('agentOrchestrator.setDependencies({'));
     expect(setDependencies.slice(0, setDependencies.indexOf('});'))).toContain('permissionManager,');

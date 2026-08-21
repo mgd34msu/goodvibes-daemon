@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Channel routing surface — HANDLERS for the SDK-defined methods
+// Channel routing surface, HANDLERS for the SDK-defined methods
 //   - channels.routing.list   (read-only)
 //   - channels.routing.assign (admin, confirmation-gated)
 //   - channels.routing.delete (admin, dangerous, confirmation-gated)

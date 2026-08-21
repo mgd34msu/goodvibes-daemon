@@ -1,15 +1,15 @@
 /**
- * Daemon-hosted sessions — this is the process that hosts them.
+ * Daemon-hosted sessions, this is the process that hosts them.
  *
  * The engine is the SDK's and has its own unit suites there. What this daemon
- * owns — and what these tests are the oracle for — is the composition: that the
+ * owns, and what these tests are the oracle for, is the composition: that the
  * verbs are actually invokable on this daemon's catalog, that a hosted session's
  * asks are gated by the trust decision of the SESSION's workspace rather than
  * the daemon's own directory, that the detach toggle reads this daemon's
  * setting, and that a restart reconciles from disk instead of losing sessions.
  *
  * Turn execution is not re-tested here; the SDK proves that against a stub
- * provider. What is proved here is that a turn CAN be driven — the live-turn
+ * provider. What is proved here is that a turn CAN be driven, the live-turn
  * controls for a hosted session are bound where `sessions.toolCalls.cancel`
  * looks for them, which is the wiring that goes missing silently.
  */
@@ -37,7 +37,7 @@ let published: { event: string; payload: unknown }[];
 let liveTurns: SessionLiveTurnControlsHolder;
 let managers: HostedSessionManager[];
 
-/** A write-category ask — the kind an undecided workspace gates. */
+/** A write-category ask, the kind an undecided workspace gates. */
 function writeRequest(callId = 'call-1'): PermissionPromptRequest {
   return {
     callId,

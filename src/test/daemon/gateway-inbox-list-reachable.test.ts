@@ -9,15 +9,15 @@
  * table. The agent's unified inbox asked for it on every refresh and recorded
  * `method_unavailable` every time.
  *
- * So the thing worth pinning is not the handler — the aggregator suite covers
- * what it answers — but that a real client can now GET one. Both transports are
+ * So the thing worth pinning is not the handler, the aggregator suite covers
+ * what it answers, but that a real client can now GET one. Both transports are
  * exercised against a genuinely composed, genuinely listening daemon:
  *
  *   1. the in-process gateway invoke (what a WebSocket `call` frame runs), and
  *   2. the advertised REST path over the socket, with a bearer token.
  *
  * A daemon with no provider credentials is the honest fixture here. Its answer
- * is an empty list with per-provider statuses, and that IS an answer — the verb
+ * is an empty list with per-provider statuses, and that IS an answer, the verb
  * is callable in every configuration, not only a provisioned one.
  */
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
@@ -110,7 +110,7 @@ describe('the advertised REST path, over the socket', () => {
   });
 
   test('the route is credentialed like every other one', async () => {
-    // 401, not 404 — the route exists and the auth gate answers first.
+    // 401, not 404, the route exists and the auth gate answers first.
     const anonymous = await fixture.fetchAnonymous(REST_PATH);
     expect(anonymous.status).toBe(401);
   });

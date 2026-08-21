@@ -15,7 +15,7 @@
  * ── What this file does NOT do ────────────────────────────────────────────
  *
  * It never spawns a real third-party agent binary. `acp.agents.list`'s
- * discovery is real (read-only PATH/known-install-dir checks — see
+ * discovery is real (read-only PATH/known-install-dir checks, see
  * discoverAcpAgents), so its result is asserted on SHAPE only: an empty list
  * is the honest, expected answer on a machine with no Claude Code / Codex /
  * opencode ACP adapter installed. `acp.sessions.create`'s refusal paths
@@ -63,13 +63,13 @@ describe('acp.agents.list / acp.sessions.create over the composed daemon', () =>
     }
   });
 
-  test('acp.agents.list answers a real discovery result over the composed graph — shape, not contents', async () => {
+  test('acp.agents.list answers a real discovery result over the composed graph; shape, not contents', async () => {
     const services = getTestRuntimeServices();
     const result = await services.gatewayMethods.invoke('acp.agents.list', AUTHENTICATED) as {
       agents: readonly { id: string; title: string; binaryPath: string }[];
     };
     // Real discoverAcpAgents() runs read-only PATH/known-install-dir checks.
-    // An empty list is the honest answer on a machine with nothing installed —
+    // An empty list is the honest answer on a machine with nothing installed,
     // asserting the shape (an array, present) is what this composition owes,
     // not any particular agent being present.
     expect(Array.isArray(result.agents)).toBe(true);

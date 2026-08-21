@@ -1,5 +1,5 @@
 /**
- * local-daemon-state.ts — the two files a daemon writes about ITSELF.
+ * local-daemon-state.ts, the two files a daemon writes about ITSELF.
  *
  * `status` and `update` want to report things no control-plane verb answers:
  * how long the daemon has been up, whether the last start followed a crash,
@@ -11,7 +11,7 @@
  *   <control-plane config dir>/control-plane/daemon-receipts.json
  *
  * They are READ here and never written, and the receipts are never marked
- * delivered — `/status?receipts=consume` hands each receipt to the first
+ * delivered, `/status?receipts=consume` hands each receipt to the first
  * consuming reader exactly once, and a status command that quietly consumed
  * them would take them away from the surface they were written for.
  *
@@ -22,7 +22,7 @@
  * The SDK owns the writers (`platform/daemon/lifecycle-marker.ts`,
  * `platform/daemon/receipts.ts`) and its readers are not exported from the
  * published package this repository pins, so the readers below are this
- * repository's own — bounded and content-validated the same way, and no more
+ * repository's own, bounded and content-validated the same way, and no more
  * trusting of the file than the SDK is. The shared-piece lane can re-point them
  * at the SDK's own readers once those are exported.
  */
@@ -42,7 +42,7 @@ export interface DaemonLifecycleMarker {
   readonly pid: number | undefined;
   readonly failedStarts: number;
   readonly version: string | undefined;
-  /** The version an automatic rollback moved AWAY from — the build that crash looped. */
+  /** The version an automatic rollback moved AWAY from, the build that crash looped. */
   readonly rejectedVersion: string | undefined;
   /** When an automatic rollback last restored the kept previous binary. */
   readonly autoRollbackAt: number | undefined;
@@ -164,7 +164,7 @@ export function readDaemonReceipts(
 }
 
 export interface LocalDaemonState {
-  /** False when the caller asked about another machine — nothing below was read. */
+  /** False when the caller asked about another machine, nothing below was read. */
   readonly available: boolean;
   /** Why it is unavailable, when it is. */
   readonly unavailableReason: string | undefined;
@@ -195,7 +195,7 @@ export function describeLocalDaemonState(input: DescribeLocalDaemonStateInput): 
     return {
       available: false,
       unavailableReason:
-        'the uptime, update receipts and rollback state are read from files on the daemon\'s own host — '
+        'the uptime, update receipts and rollback state are read from files on the daemon\'s own host; '
         + 'run this command on that machine to see them',
       marker: null,
       receipts: [],
@@ -219,7 +219,7 @@ export function describeLocalDaemonState(input: DescribeLocalDaemonStateInput): 
   };
 }
 
-/** `3d 4h`, `4h 12m`, `12m 3s`, `9s` — two units, never more. */
+/** `3d 4h`, `4h 12m`, `12m 3s`, `9s`, two units, never more. */
 export function formatDuration(milliseconds: number): string {
   const totalSeconds = Math.max(0, Math.floor(milliseconds / 1000));
   const days = Math.floor(totalSeconds / 86_400);

@@ -1,8 +1,8 @@
 /**
- * cluster-composition.ts — this daemon's seat in the LAN leader election.
+ * cluster-composition.ts, this daemon's seat in the LAN leader election.
  *
- * When the same goodvibes install runs more than once on one network — a
- * laptop and a desktop, or two processes on one machine — every copy
+ * When the same goodvibes install runs more than once on one network, a
+ * laptop and a desktop, or two processes on one machine, every copy
  * independently reads the shared inbox, so one message is picked up twice and
  * answered twice. The SDK's cluster coordinator elects exactly one node to be
  * responsible for inbound consumption; everything else stays warm and silent.
@@ -10,8 +10,8 @@
  * This file exists because this daemon does NOT get that for free from the
  * SDK facade. The facade gates the consumers IT owns (Telegram
  * ingress, the ntfy/Slack/Discord provider runtime), but this repository
- * composes an inbound consumer of its own — the Slack/Discord/email inbox
- * poller in daemon/handlers/inbox — and the facade knows nothing about it.
+ * composes an inbound consumer of its own, the Slack/Discord/email inbox
+ * poller in daemon/handlers/inbox, and the facade knows nothing about it.
  * A fix that only landed in the facade would leave the poller double-reading
  * on exactly the machine this product runs on.
  *
@@ -51,7 +51,7 @@ export interface GatedPollerControl {
  * Constructing it is inert: no socket is opened and no state is written until
  * `start()` runs, so composing a runtime in a test never joins a network.
  *
- * The version is THIS BINARY's version, not the SDK package's — the same
+ * The version is THIS BINARY's version, not the SDK package's, the same
  * distinction daemon/cli.ts already makes for the self-update artifact. It is
  * the first ranking tier, so getting it wrong would let a stale build hold the
  * role through an update.
@@ -62,7 +62,7 @@ export function createClusterComposition(options: {
    * `readClusterSettings` asks for. The daemon passes a whole ConfigManager;
    * the handler context carries only this slice, and a test standing in a
    * minimal config object should not have to fabricate the full fifty-odd
-   * members to compose a coordinator — a cast there would hide a real shape
+   * members to compose a coordinator, a cast there would hide a real shape
    * mismatch rather than document one.
    */
   readonly configManager: Pick<ConfigManager, 'getCategory'>;
@@ -75,7 +75,7 @@ export function createClusterComposition(options: {
    * the current group key. That is what stops a daemon belonging to somebody
    * else on the same network from taking part in this election at all.
    *
-   * Absent — the plain default — means the coordinator opens its own socket and
+   * Absent, the plain default, means the coordinator opens its own socket and
    * coordinates with anything that answers on the configured port.
    */
   readonly transport?: ClusterTransport | undefined;
@@ -96,7 +96,7 @@ export function createClusterComposition(options: {
  *
  * One gate per account, not one for the poller. Each inbox account is its own
  * surface in the election, so this laptop can hold the work Slack account
- * while the desktop holds the mailbox — and losing one machine moves only the
+ * while the desktop holds the mailbox, and losing one machine moves only the
  * accounts it was reading. A single gate covering the whole poller could not
  * express that: it would hand every account over together, and a node with a
  * credential for only one of them could never take part at all.

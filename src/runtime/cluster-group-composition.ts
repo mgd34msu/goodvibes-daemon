@@ -1,10 +1,10 @@
 /**
- * cluster-group-composition.ts — this machine's membership of a LAN group.
+ * cluster-group-composition.ts, this machine's membership of a LAN group.
  *
  * Leader election answers "which of us reads the inbox". This answers the
  * question underneath it: "which machines are US". Without a group, any daemon
- * that happened to be on the same network — a neighbour's, a colleague's, a
- * container someone left running — would join the same coordination and one of
+ * that happened to be on the same network, a neighbour's, a colleague's, a
+ * container someone left running, would join the same coordination and one of
  * you would silently stop receiving messages.
  *
  * The group layer owns the socket and the election rides on it: every
@@ -77,7 +77,7 @@ export function createClusterGroupComposition(options: {
    * The leader election's own answer to "am I the master".
    *
    * Config replication needs exactly one machine issuing revisions, and it must
-   * be the SAME machine leadership already picked — two notions of master in
+   * be the SAME machine leadership already picked, two notions of master in
    * one process would disagree the moment one of them changed.
    *
    * Late-bound because the coordinator is built from this composition's
@@ -91,7 +91,7 @@ export function createClusterGroupComposition(options: {
    * in `cluster status` and in /status. Late-bound for the same reason
    * `isMaster` is. Absent means the group layer reports that the information is
    * unavailable rather than reporting an empty list as though this machine held
-   * nothing — a distinction an operator diagnosing a silent inbox depends on.
+   * nothing, a distinction an operator diagnosing a silent inbox depends on.
    */
   readonly surfaceHoldings?: (() => readonly ClusterSurfaceHolding[]) | undefined;
 }): ClusterGroupComposition {
@@ -181,7 +181,7 @@ export function createClusterGroupComposition(options: {
  * through a closure because the coordinator does not exist yet when the group
  * layer is constructed.
  *
- * Constructing either is inert — no socket, no key material read — until
+ * Constructing either is inert, no socket, no key material read, until
  * `startCluster` runs.
  */
 export function createClusterServices(options: {
@@ -228,7 +228,7 @@ export async function startClusterServices(services: {
  * Ask the group to take this machine back, on start.
  *
  * This is the zero-touch return. A machine that has been switched off for
- * months — through many group-key rotations and possibly a join-key change —
+ * months, through many group-key rotations and possibly a join-key change,
  * comes up holding stale keys, says "it is still me" with a key that never
  * rotates, and is re-keyed to the current generation by whichever member
  * answers. The operator does nothing.

@@ -6,7 +6,7 @@
  *
  * A gateway method catalog registers DESCRIPTORS (the contract a client reads)
  * and, separately, HANDLERS (what answers an invoke). The two are independent,
- * so a verb can be fully described — schema, scopes, HTTP binding, the lot —
+ * so a verb can be fully described, schema, scopes, HTTP binding, the lot,
  * and answer 501 "Gateway method is not invokable" to everyone who calls it.
  * That shipped: fleet.*, checkpoints.* and sessions.search were cataloged and
  * handler-less on every daemon build for months, and the contract gates never
@@ -17,13 +17,13 @@
  * anything: it walks the ENTIRE composed catalog and requires each descriptor
  * to fall into exactly one honest bucket.
  *
- *   1. HANDLER-ATTACHED — answered in this process by catalog.invoke.
- *   2. ROUTE-SERVED — no in-process handler, but the descriptor advertises an
+ *   1. HANDLER-ATTACHED, answered in this process by catalog.invoke.
+ *   2. ROUTE-SERVED, no in-process handler, but the descriptor advertises an
  *      HTTP binding and this daemon's router really serves that path. The
  *      probe is an UNAUTHENTICATED request: a route that exists refuses with
  *      401, a path nothing serves answers 404. Nothing reaches a handler body,
  *      so probing a destructive verb costs nothing and changes nothing.
- *   3. DECLARED UNCALLABLE — `invokable: false`, the descriptor's own way of
+ *   3. DECLARED UNCALLABLE, `invokable: false`, the descriptor's own way of
  *      saying "cataloged so the contract is honest about the shape; this build
  *      does not serve it". An advertisement that already says don't call me
  *      cannot mislead anyone.
@@ -33,7 +33,7 @@
  *
  * ── Why an unauthenticated probe rather than a real call ──────────────────
  *
- * The alternative — invoke every verb — would run automation jobs, send email,
+ * The alternative, invoke every verb, would run automation jobs, send email,
  * revoke pairing tokens and delete watchers. The auth gate sits in front of
  * every route and answers before dispatch, so 401-vs-404 reads the routing
  * table without executing anything. `server.test.ts` pins both halves of that
@@ -48,7 +48,7 @@ import { makeProjectTempDir } from '../helpers/project-temp.ts';
  * ahead of the generic API dispatch, and which answer 404 to an anonymous
  * request for a path they do serve (they resolve the target before they
  * authenticate). Kept as an explicit, short allowlist so growth here is a
- * decision somebody made rather than scope creep — the same treatment the SDK's
+ * decision somebody made rather than scope creep, the same treatment the SDK's
  * own route reconcile gives its sub-router list.
  *
  * Empty until a probe result proves an entry is needed; each entry must carry
@@ -57,7 +57,7 @@ import { makeProjectTempDir } from '../helpers/project-temp.ts';
 const ANONYMOUS_PROBE_BLIND_PREFIXES: readonly { readonly prefix: string; readonly reason: string }[] = [];
 
 /**
- * Verbs this daemon catalogs, advertises as callable, and serves from nowhere —
+ * Verbs this daemon catalogs, advertises as callable, and serves from nowhere,
  * the exact defect this file exists to name. They are pinned rather than
  * tolerated: the assertion is that the stranded set EQUALS this list, so a new
  * one fails the sweep and a fixed one fails it too, forcing the entry out.
@@ -68,7 +68,7 @@ const ANONYMOUS_PROBE_BLIND_PREFIXES: readonly { readonly prefix: string; readon
  * (registerAcpGatewayMethods was gated on `deps.acpHost` and runtime/services.ts
  * threaded none). services.ts now constructs an AcpHostService and threads it
  * into both the fleet registry and the gateway verb group registration, so
- * both verbs are handler-attached — see gateway-verb-family-parity.test.ts's
+ * both verbs are handler-attached, see gateway-verb-family-parity.test.ts's
  * `acp` family and gateway-acp-verbs.test.ts for the behavior.
  */
 const KNOWN_STRANDED: readonly { readonly id: string; readonly finding: string }[] = [];
@@ -157,7 +157,7 @@ describe('every descriptor this daemon composes is handled, routed, or declared 
       const http = row.http!;
       const response = await fixture.fetchAnonymous(resolveTemplatePath(http.path), { method: http.method });
       // 404 is the router saying it has nothing for this path at all. Every
-      // other status — 401 refused, 200 public, 405 wrong verb, 400 bad body —
+      // other status, 401 refused, 200 public, 405 wrong verb, 400 bad body,
       // means a route matched and something answered.
       if (response.status === 404) unserved.push(`${row.id} (${http.method} ${http.path})`);
     }
@@ -203,7 +203,7 @@ describe('every descriptor this daemon composes is handled, routed, or declared 
       // Registered by composeHostedSessions, which runs only when the product
       // STATES hostedSessions (cli.ts does; createRuntimeServices does not). A
       // daemon that omits it catalogs five verbs and serves none of them, and
-      // nothing else in the tree noticed — which is why this is asserted here
+      // nothing else in the tree noticed, which is why this is asserted here
       // and not left to the family sweep over the runtime graph alone.
       expect(row!.handled, `${id} is cataloged with no handler; composeHostedSessions did not run`).toBe(true);
     }

@@ -1,5 +1,5 @@
 /**
- * hosted-session-failures.ts — what `sessions.hosted.*` answers when it refuses.
+ * hosted-session-failures.ts, what `sessions.hosted.*` answers when it refuses.
  *
  * ── Why this is a shipped module ─────────────────────────────────────────
  *
@@ -19,7 +19,7 @@
  * These are the three refusals a client has to handle and could not previously
  * mock. They are declared here rather than hand-written in each consumer, and
  * `src/test/daemon/gateway-hosted-session-failures.test.ts` drives the REAL
- * engine to produce each one and asserts it still matches — so a fixture that
+ * engine to produce each one and asserts it still matches, so a fixture that
  * drifts from the daemon fails in this repository, not in a consumer's CI six
  * weeks later.
  */
@@ -28,7 +28,7 @@
 export interface HostedSessionFailureFixture {
   /** The verb whose refusal this is. */
   readonly methodId: string;
-  /** Machine-readable code — the field a client branches on. */
+  /** Machine-readable code, the field a client branches on. */
   readonly code: string;
   /** HTTP status the control plane maps this refusal to. */
   readonly status: number;
@@ -65,7 +65,7 @@ export const HOSTED_SESSION_UNAVAILABLE: HostedSessionFailureFixture = {
 
 /**
  * At the configured cap. 429: the request is well-formed and the daemon is not
- * broken — there is no room. Retrying after a kill succeeds.
+ * broken, there is no room. Retrying after a kill succeeds.
  */
 export const HOSTED_SESSION_LIMIT_REACHED: HostedSessionFailureFixture = {
   methodId: 'sessions.hosted.create',

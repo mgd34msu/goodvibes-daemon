@@ -1,5 +1,5 @@
 /**
- * daemon-ws-call.ts — invoking a verb that has no REST binding.
+ * daemon-ws-call.ts, invoking a verb that has no REST binding.
  *
  * Most control-plane verbs answer on a plain HTTP path and `callDaemonVerb` in
  * @pellux/goodvibes-terminal-shell is all a subcommand needs. Some do not: the
@@ -171,7 +171,7 @@ export async function callDaemonWsVerb<T>(
           ok: false,
           error: `${where} refused the operator token`,
           fix: target.isLocal
-            ? 'the token may be stale — restart the daemon, or pass --token'
+            ? 'the token may be stale; restart the daemon, or pass --token'
             : 'pass --token with the operator token from that machine (its <daemon home>/operator-tokens.json)',
         });
         return;
@@ -197,7 +197,7 @@ export async function callDaemonWsVerb<T>(
         finish({
           ok: false,
           error: `${where} does not know the verb ${methodId}`,
-          fix: 'that daemon is running a build without this capability — update it, then try again',
+          fix: 'that daemon is running a build without this capability; update it, then try again',
         });
         return;
       }
@@ -221,14 +221,14 @@ export async function callDaemonWsVerb<T>(
     };
 
     socket.onclose = (): void => {
-      // A close before an answer is a refusal too — most often the upgrade
+      // A close before an answer is a refusal too, most often the upgrade
       // itself was rejected, which happens before any frame is sent.
       finish({
         ok: false,
         error: `${where} closed the connection before answering`,
         fix: target.isLocal
           ? 'check the daemon is running: goodvibes-daemon service-status'
-          : 'check the operator token for that machine — an upgrade with no valid token is closed immediately',
+          : 'check the operator token for that machine; an upgrade with no valid token is closed immediately',
       });
     };
   });

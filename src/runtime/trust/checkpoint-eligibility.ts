@@ -23,7 +23,7 @@ import {
  *
  * This read is synchronous by design. The decision is made per lifecycle event,
  * inside a subscription callback that cannot await, and it has to reflect the
- * store as it is on disk RIGHT NOW — registering a workspace while the daemon is
+ * store as it is on disk RIGHT NOW, registering a workspace while the daemon is
  * running has to take effect on the next eligible event, not on the next
  * restart. The SDK's resolver is pure, so the only I/O is one small JSON read
  * plus a single git worktree probe amortized at construction.
@@ -32,13 +32,13 @@ import {
 export type StoreShellPaths = Pick<ShellPathService, 'resolveUserPath' | 'homeDirectory'>;
 
 /**
- * Path of the shared store's JSON document — the same path the SDK's gateway
+ * Path of the shared store's JSON document, the same path the SDK's gateway
  * verb group constructs its own store over.
  *
  * "The same path" is the whole contract, and it is why this goes through the
  * SDK's resolver rather than spelling any location out. goodvibes-agent reads
  * and writes this same file directly and the SDK's gateway writes it, so the
- * register is cross-product state rather than the daemon's own — it lives in
+ * register is cross-product state rather than the daemon's own, it lives in
  * the shared tier (~/.goodvibes/shared/), which takes no surface root, so all
  * three resolve one identical path. Until the boot fold has moved it, the
  * resolver falls back to the pre-split location read-only, so this reader never
@@ -92,7 +92,7 @@ interface SharedRegistrationSnapshot {
 /**
  * Synchronous read of the shared store's on-disk JSON, mirroring the store's own
  * validation exactly (version 1, workspaces[], declines[]). A missing or
- * unparsable file reads as empty — never throws.
+ * unparsable file reads as empty, never throws.
  */
 export function readSharedWorkspaceRegistrationSnapshotSync(shellPaths: StoreShellPaths): SharedRegistrationSnapshot {
   const path = sharedWorkspaceRegistrationStorePath(shellPaths);
@@ -116,7 +116,7 @@ export function readSharedWorkspaceRegistrationSnapshotSync(shellPaths: StoreShe
 }
 
 /**
- * Resolve `path` against ONLY the checkpoint-eligible registrations — the
+ * Resolve `path` against ONLY the checkpoint-eligible registrations, the
  * boundary the automatic and explicit checkpoint gates consume. Worktree-link
  * inheritance still applies: a linked worktree of a checkpoint-eligible main
  * repository resolves as covered.

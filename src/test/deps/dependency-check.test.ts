@@ -1,12 +1,12 @@
 /**
- * dependency-check.test.ts — the local-tools and knowledge packages a hosted
+ * dependency-check.test.ts, the local-tools and knowledge packages a hosted
  * turn reaches for, verified resolvable and working.
  *
  * A session this daemon HOSTS runs the same loop with the same tools a terminal
  * front-end runs: code search parses with tree-sitter, symbol lookups spawn a
  * language server, the code index and the knowledge stores read sql.js, fuzzy
  * matching is fuse.js, an artifact bundle is jszip. The platform declares all of
- * them optional — a surface that never opens a file needs none of them — so
+ * them optional, a surface that never opens a file needs none of them, so
  * "installed" is not something this product can assume from someone else's
  * manifest. It pins them itself, and this file is what makes a pin that failed
  * to install fail loudly here instead of quietly at the first hosted turn.
@@ -56,7 +56,7 @@ describe('the local-tools pin set', () => {
 
   test('each pin says the same range the platform declares for it', () => {
     // The platform declares all of these optional, with a range of its own. A
-    // narrower range here does not "pin harder" — it makes an install resolve a
+    // narrower range here does not "pin harder", it makes an install resolve a
     // version the platform's own code was not built against, or fail outright.
     const manifest = JSON.parse(readFileSync(join(repoRoot, 'package.json'), 'utf-8')) as {
       dependencies: Record<string, string>;

@@ -1,12 +1,12 @@
 /**
- * send-wire.test.ts — `goodvibes-daemon send` driven through the REAL
+ * send-wire.test.ts, `goodvibes-daemon send` driven through the REAL
  * `ChannelDeliveryRouter` and the real per-surface strategies, with only the
  * network stubbed.
  *
  * The companion send-command.test.ts stubs the delivery call and asserts the
  * request the command builds. This file asserts one step further out: the bytes
  * the strategy would put on the wire. That is the only level at which two of
- * this command's claims are actually checkable —
+ * this command's claims are actually checkable,
  *
  *   1. that a Telegram message is sent in PLAIN-TEXT mode (no `parse_mode`),
  *      which is the entire reason inert-text.ts does not escape for Telegram;
@@ -77,12 +77,12 @@ function arrange(settings: Record<string, unknown>, respond?: () => Response): {
   };
 }
 
-describe('goodvibes-daemon send — the credential comes out of the daemon\'s own store', () => {
+describe('goodvibes-daemon send: the credential comes out of the daemon\'s own store', () => {
   /**
    * The case the whole command exists for, and the one a literal-token fixture
    * cannot exercise.
    *
-   * On a real machine `surfaces.telegram.botToken` does not hold the token — it
+   * On a real machine `surfaces.telegram.botToken` does not hold the token, it
    * holds `goodvibes://secrets/goodvibes/TELEGRAM_BOT_TOKEN`, a reference that
    * only resolves when the composition root supplies a SecretsManager pointed
    * at the DAEMON's store. Two shipped composition roots omitted exactly that
@@ -150,7 +150,7 @@ describe('goodvibes-daemon send — the credential comes out of the daemon\'s ow
    *
    * The test above cannot detect a composition root that forgets to thread
    * `daemonHome`, because `SecretsManager` defaults it to
-   * `<globalHome>/.goodvibes/daemon` — which is exactly where that fixture puts
+   * `<globalHome>/.goodvibes/daemon`, which is exactly where that fixture puts
    * it. The thread only changes an outcome when the daemon home is somewhere
    * else, which is the case `--daemon-home` / `GOODVIBES_DAEMON_HOME` exists
    * for and the case an isolated harness runs in. Without this test the
@@ -164,7 +164,7 @@ describe('goodvibes-daemon send — the credential comes out of the daemon\'s ow
     mkdirSync(join(root, '.goodvibes', 'daemon'), { recursive: true });
     mkdirSync(join(root, 'work'), { recursive: true });
 
-    // The config tier still lives at the default path — only the SECRET store
+    // The config tier still lives at the default path, only the SECRET store
     // moves, which is the split that makes this seam observable.
     writeFileSync(join(root, '.goodvibes', 'daemon', 'settings.json'), JSON.stringify({
       surfaces: {
@@ -213,7 +213,7 @@ describe('goodvibes-daemon send — the credential comes out of the daemon\'s ow
   });
 });
 
-describe('goodvibes-daemon send — what actually goes on the wire', () => {
+describe('goodvibes-daemon send: what actually goes on the wire', () => {
   test('a Telegram send reads the bot token from the daemon tier and calls sendMessage', async () => {
     const { stack, captured } = arrange({
       surfaces: { telegram: { enabled: true, botToken: 'daemon-tier-token', defaultChatId: '99001' } },
@@ -253,7 +253,7 @@ describe('goodvibes-daemon send — what actually goes on the wire', () => {
     const payload = JSON.parse(captured[0]!.body) as Record<string, unknown>;
     // THE assertion this file exists for. inert-text.ts deliberately does not
     // escape Telegram, and that is correct only while the strategy stays in
-    // plain-text mode. If a future change adds parse_mode here, this fails —
+    // plain-text mode. If a future change adds parse_mode here, this fails,
     // which is the signal to add the MarkdownV2 escaper at the same time,
     // rather than discovering it as a live link on the owner's phone.
     expect(payload).not.toHaveProperty('parse_mode');

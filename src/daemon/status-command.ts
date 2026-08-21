@@ -1,9 +1,9 @@
 /**
- * status-command.ts — `goodvibes-daemon status` and `goodvibes-daemon update`.
+ * status-command.ts, `goodvibes-daemon status` and `goodvibes-daemon update`.
  *
  * The question a headless box's operator asks first: is it up, what version, on
  * what address, is anything unhealthy, and what did it do to itself while I was
- * not looking. Before this, the binary answered none of that — `status` fell
+ * not looking. Before this, the binary answered none of that, `status` fell
  * through the parser and started a SECOND daemon in the foreground.
  *
  * WHERE EACH LINE COMES FROM
@@ -13,11 +13,11 @@
  * established: `/status` for identity, `/api/health` for the health roll-up and
  * the address it actually bound, `/api/channels/status` for the channels, and
  * `/api/cluster/status` for this machine's place in its group. Hosted sessions
- * are a ws-only verb family, so they go through `callDaemonWsVerb` — same
+ * are a ws-only verb family, so they go through `callDaemonWsVerb`, same
  * target, same token, different transport.
  *
- * Everything about the daemon's own HISTORY — uptime, the receipts it wrote,
- * the version an automatic rollback rejected — comes from files on the daemon's
+ * Everything about the daemon's own HISTORY, uptime, the receipts it wrote,
+ * the version an automatic rollback rejected, comes from files on the daemon's
  * host, because no verb reports them. That makes those lines local-only, and
  * they say so for a remote target instead of being guessed at.
  *
@@ -76,8 +76,8 @@ export interface RemoteCommandDeps {
  *
  * It carries a `cluster` block the operator contract does not list, and that
  * block is where this daemon's ROLE in its group comes from. `cluster.uptimeMs`
- * is the coordinator's, not the daemon's — it reads 0 on a daemon that has been
- * up for hours — so the uptime line comes from the lifecycle marker instead.
+ * is the coordinator's, not the daemon's, it reads 0 on a daemon that has been
+ * up for hours, so the uptime line comes from the lifecycle marker instead.
  */
 interface ControlStatusPayload {
   readonly status?: string;
@@ -179,7 +179,7 @@ function optionalLine(label: string, value: string | undefined): string[] {
  *
  * `/status` reports `version` from the platform package while the cluster block
  * it carries reports the DAEMON build's version, and against a live daemon
- * those disagreed — 1.21.0 against 1.28.0. Printing one of them silently would
+ * those disagreed, 1.21.0 against 1.28.0. Printing one of them silently would
  * put a number on this page that is wrong for whichever question the reader had
  * in mind, so both are printed and labelled until the daemon states one.
  */
@@ -210,7 +210,7 @@ function localStateLines(state: LocalDaemonState): string[] {
   }
   if (state.marker?.rejectedVersion !== undefined) {
     lines.push(
-      `  rejected: ${state.marker.rejectedVersion} crash looped and was rolled back — `
+      `  rejected: ${state.marker.rejectedVersion} crash looped and was rolled back; `
       + 'the update loop will not install that version again',
     );
   }
@@ -229,7 +229,7 @@ function localStateLines(state: LocalDaemonState): string[] {
 }
 
 function healthLines(outcome: DaemonVerbOutcome<HealthPayload>): string[] {
-  if (!outcome.ok) return [`  health:   could not read — ${outcome.error}`];
+  if (!outcome.ok) return [`  health:   could not read: ${outcome.error}`];
   const health = outcome.data;
   const lines = [`  health:   ${health.overall ?? 'unknown'}`];
   const binding = health.network?.controlPlane;
@@ -250,12 +250,12 @@ function healthLines(outcome: DaemonVerbOutcome<HealthPayload>): string[] {
  *
  * Only a channel that is switched ON and not healthy is named. Every channel
  * the daemon knows about appears in this payload, and a daemon with one
- * configured channel ships sixteen more in state `disabled` — listing those as
+ * configured channel ships sixteen more in state `disabled`, listing those as
  * problems produced a seventeen-line wall under a healthy daemon and buried the
  * one line that meant something.
  */
 function channelLines(outcome: DaemonVerbOutcome<ChannelsPayload>): string[] {
-  if (!outcome.ok) return [`  channels: could not read — ${outcome.error}`];
+  if (!outcome.ok) return [`  channels: could not read: ${outcome.error}`];
   const channels = outcome.data.channels ?? [];
   if (channels.length === 0) return ['  channels: none configured'];
   const on = channels.filter((channel) => channel.enabled !== false);
@@ -276,7 +276,7 @@ function channelLines(outcome: DaemonVerbOutcome<ChannelsPayload>): string[] {
  * Two sources, because neither answers the whole question: `/status` carries
  * the ROLE this node currently holds, and `/api/cluster/status` carries the
  * GROUP it holds that role in. A daemon with sharing switched off says so and
- * stops — a role inside no group is not information.
+ * stops, a role inside no group is not information.
  */
 function clusterLines(
   identity: ControlStatusPayload,
@@ -284,18 +284,18 @@ function clusterLines(
 ): string[] {
   const role = identity.cluster?.role;
   if (identity.cluster?.enabled === false) {
-    return ['  cluster:  off — this machine handles its own inbound work'];
+    return ['  cluster:  off, this machine handles its own inbound work'];
   }
   if (!outcome.ok) {
     return [
       role === undefined
-        ? `  cluster:  could not read — ${outcome.error}`
-        : `  cluster:  ${role} (the group view could not be read — ${outcome.error})`,
+        ? `  cluster:  could not read: ${outcome.error}`
+        : `  cluster:  ${role} (the group view could not be read: ${outcome.error})`,
     ];
   }
   const cluster = outcome.data;
   if (cluster.membership === 'no-group') {
-    return ['  cluster:  in no group yet — `goodvibes-daemon cluster create` starts one'];
+    return ['  cluster:  in no group yet, `goodvibes-daemon cluster create` starts one'];
   }
   const group = cluster.groupName ?? cluster.groupId ?? 'its group';
   const members = cluster.memberCount === undefined ? '' : ` of ${cluster.memberCount}`;
@@ -303,7 +303,7 @@ function clusterLines(
 }
 
 function hostedSessionLines(outcome: DaemonVerbOutcome<HostedSessionsPayload>): string[] {
-  if (!outcome.ok) return [`  sessions: could not read — ${outcome.error}`];
+  if (!outcome.ok) return [`  sessions: could not read: ${outcome.error}`];
   const sessions = outcome.data.sessions ?? [];
   return [`  sessions: ${sessions.length} hosted by this daemon`];
 }
@@ -317,7 +317,7 @@ export interface RunStatusCommandInput extends RemoteCommandDeps {
  *
  * Exit 0 when the daemon answered its identity call, 1 when it could not be
  * reached. Every other sub-question that fails is one line inside a successful
- * report — a daemon with a broken channel is up, and saying otherwise would be
+ * report, a daemon with a broken channel is up, and saying otherwise would be
  * the kind of wrong that makes an operator distrust the whole page.
  */
 export async function runStatusCommand(input: RunStatusCommandInput): Promise<DaemonCommandResult> {
@@ -407,8 +407,8 @@ export interface RunUpdateCommandInput extends RemoteCommandDeps {
  * rejected, and whether a rollback is in force.
  *
  * --check is honest about a gap. The daemon runs the whole self-update loop
- * itself — it checks hourly, swaps at an idle moment and keeps the outgoing
- * binary — but the control plane publishes NO verb to trigger that check early:
+ * itself, it checks hourly, swaps at an idle moment and keeps the outgoing
+ * binary, but the control plane publishes NO verb to trigger that check early:
  * the operator contract this build was written against has no update method of
  * any kind (no `update.*`, no `admin.update`, nothing under `control.` that
  * checks). Rather than invent a verb this daemon does not answer, --check says
@@ -439,7 +439,7 @@ export async function runUpdateCommand(input: RunUpdateCommandInput): Promise<Da
       '',
       'update --check: this daemon publishes no verb to trigger an update check early.',
       '  It checks once an hour on its own and swaps only at an idle moment.',
-      '  To make it check now, restart it — it checks on the way up:',
+      '  To make it check now, restart it; it checks on the way up:',
       '    goodvibes-daemon restart-service',
     ]
     : [];

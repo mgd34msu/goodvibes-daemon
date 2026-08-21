@@ -1,5 +1,5 @@
 /**
- * stdin.ts — read the whole of stdin as the message body.
+ * stdin.ts, read the whole of stdin as the message body.
  *
  * Kept out of command.ts so the command stays a pure function of its arguments
  * and its injected dependencies: every test drives it with a stub rather than
@@ -10,8 +10,8 @@
  * Read stdin to end, as UTF-8.
  *
  * There is deliberately no timeout. `send` reads stdin only when the operator
- * gave no message argument AND stdin is not a terminal — meaning something is
- * piping into it — so waiting for that producer to finish is the correct
+ * gave no message argument AND stdin is not a terminal, meaning something is
+ * piping into it, so waiting for that producer to finish is the correct
  * behaviour, and cutting it off at an arbitrary deadline would silently
  * truncate a long message.
  */

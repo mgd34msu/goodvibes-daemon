@@ -1,19 +1,19 @@
 #!/usr/bin/env bun
 /**
- * release.ts — local release preparation (thin toolchain wrapper).
+ * release.ts, local release preparation (thin toolchain wrapper).
  *
  * The bump / version-file stamping / CHANGELOG / commit / tag mechanics are
  * owned by @pellux/goodvibes-toolchain `release-cut`, parameterized by this
  * repo's toolchain.config.json (releaseCut section: branch, sync commands,
  * commit paths, changelog format). Per the CI/CD design's "CI owns validation"
- * principle, release-cut NEVER re-runs gates — validation happened on the push
+ * principle, release-cut NEVER re-runs gates, validation happened on the push
  * CI run and is verified by-reference at release time.
  *
  * The one repo-specific step kept here is producing the CHANGELOG body that
  * release-cut consumes via --notes-file.
  *
  * Product notes come from GOODVIBES_DAEMON_RELEASE_NOTES, which holds the NOTES
- * THEMSELVES — one release note per line — never a path to a file containing
+ * THEMSELVES, one release note per line, never a path to a file containing
  * them. A path in that variable would be written into the CHANGELOG verbatim as
  * the release's only note, which is how a scratchpad path once reached a
  * shipped changelog in a sibling repo. Raw commit-hash lines are rejected the
@@ -90,7 +90,7 @@ if (notesContent !== undefined && notesContent.trim().length === 0) {
 }
 const bodyLines = notesContent ? bulletsFromNotesContent(notesContent) : bulletsFromGitLog();
 if (!notesContent) {
-  console.warn('[release] GOODVIBES_DAEMON_RELEASE_NOTES not set — falling back to the git log for the CHANGELOG body.');
+  console.warn('[release] GOODVIBES_DAEMON_RELEASE_NOTES not set; falling back to the git log for the CHANGELOG body.');
 }
 // A one-off release-time script (not part of the test suite), so it stays
 // rooted at the real OS temp dir rather than a project-scoped test helper.

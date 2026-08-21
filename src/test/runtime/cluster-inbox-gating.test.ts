@@ -12,7 +12,7 @@
  *     answers questions about what has already arrived;
  *   - an ungated registration behaves exactly as it always has, because every
  *     existing caller and test depends on that;
- *   - composing the coordinator touches nothing — no socket, no state file —
+ *   - composing the coordinator touches nothing, no socket, no state file,
  *     so building a runtime in a test never joins a network.
  */
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
@@ -128,7 +128,7 @@ describe('inbox polling under leadership', () => {
     });
 
     expect(control).not.toBeNull();
-    // The persisted feed is still SERVED — a node that is not fetching must
+    // The persisted feed is still SERVED, a node that is not fetching must
     // still answer what has already arrived.
     await expect(invoke()).resolves.toMatchObject({ items: [], total: 0 });
     expect(pollCount).toBe(0);
@@ -182,7 +182,7 @@ describe('inbox polling under leadership', () => {
       gatePolling: (providerId, received) => { controls.set(providerId, received); },
     });
 
-    // One gate per account, not one for the poller — this is what lets two
+    // One gate per account, not one for the poller, this is what lets two
     // machines split the accounts between them.
     expect([...controls.keys()].sort()).toEqual(['mailbox', 'work-slack']);
 
@@ -231,7 +231,7 @@ describe('cluster composition', () => {
       shellPaths,
     });
 
-    // Composing a runtime must never join a network or mint an identity —
+    // Composing a runtime must never join a network or mint an identity,
     // every test that builds RuntimeServices would otherwise open a UDP socket
     // and write a node-id file into the developer's home.
     expect(coordinator.isMaster).toBe(false);

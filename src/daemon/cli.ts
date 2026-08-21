@@ -72,15 +72,15 @@ import { renderPairingBanner } from '../core/pairing-banner.ts';
 import { readOperatorTokenFile } from '@pellux/goodvibes-sdk/platform/workspace';
 type DaemonCliOwnership = {
   readonly workingDirectory: string;
-  /** The GoodVibes tree root — settings, workspace, and discovery all hang off this. */
+  /** The GoodVibes tree root, settings, workspace, and discovery all hang off this. */
   readonly homeDirectory: string;
   /** The daemon's OWN identity home (auth users, operator tokens, daemon settings). */
   readonly daemonHomeDirectory: string;
-  /** True when GOODVIBES_HOME or GOODVIBES_DAEMON_HOME named an override — see goodvibes-home.ts. */
+  /** True when GOODVIBES_HOME or GOODVIBES_DAEMON_HOME named an override, see goodvibes-home.ts. */
   readonly isOverridden: boolean;
 };
 
-// CLI flag parsing delegated to shared module — see src/cli-flags.ts
+// CLI flag parsing delegated to shared module, see src/cli-flags.ts
 
 type DaemonCliTokens = {
   readonly daemonToken: string | undefined;
@@ -90,11 +90,11 @@ type DaemonCliTokens = {
 /**
  * Two different directories that used to be one.
  *
- * `GOODVIBES_DAEMON_HOME` names the DAEMON's home — the identity directory
+ * `GOODVIBES_DAEMON_HOME` names the DAEMON's home, the identity directory
  * holding auth-users.json, operator-tokens.json, and daemon-settings.json. That
  * is what the name says and what the SDK's `resolveDaemonHomeDir()` has always
  * meant by it. This function used to read it as the GoodVibes tree ROOT, so
- * setting it relocated settings, workspace, and every discovery root as well —
+ * setting it relocated settings, workspace, and every discovery root as well,
  * far more than the daemon's own state.
  *
  * `GOODVIBES_HOME` is the variable for relocating the tree root. It is what a
@@ -104,7 +104,7 @@ type DaemonCliTokens = {
 function resolveDaemonCliOwnership(): DaemonCliOwnership {
   // Both roots come from the SDK's platform/config goodvibes-home, which the CLIENT entry
   // point also uses. They were resolved independently, and the client's copy
-  // simply did not read GOODVIBES_HOME — so a redirected client wrote into the
+  // simply did not read GOODVIBES_HOME, so a redirected client wrote into the
   // real tree while the daemon honoured the redirect.
   const { homeDirectory, daemonHomeDirectory, isOverridden } = resolveGoodVibesHomeOwnership();
   return {
@@ -130,7 +130,7 @@ async function main(): Promise<void> {
   // Before the parser, because the subcommand has its own flag vocabulary
   // (--group, --key, --host, --port, --token) that the daemon parser would
   // reject as unknown. Before the runtime, because this command talks to a
-  // daemon that is ALREADY RUNNING — composing a second runtime here would
+  // daemon that is ALREADY RUNNING, composing a second runtime here would
   // build a competing set of state on a machine that already has one.
   //
   // See the terminal shell's cluster-remote-daemon-target for the
@@ -156,7 +156,7 @@ async function main(): Promise<void> {
     });
     // Every write below is immediately followed by process.exit, so all of them
     // go to the descriptor synchronously rather than through a stream that can
-    // still be in flight when the process stops existing — see
+    // still be in flight when the process stops existing, see
     // fatal-boot-report.ts. (The OSC 52 clipboard sequence is unterminated
     // either way; the line terminator this adds after it is inert.)
     if (result.rawOutput) writeExitingStdoutLine(`\u001b${result.rawOutput}`);
@@ -183,7 +183,7 @@ async function main(): Promise<void> {
   if (rawArgs[0] === 'send') {
     const ownership = resolveDaemonCliOwnership();
     // Named before the delivery runs, because the flushActivityLogSync() below
-    // is what preserves this send's OUTBOUND_HTTP record — and a logger with no
+    // is what preserves this send's OUTBOUND_HTTP record, and a logger with no
     // destination has nothing to flush, so that record was never written.
     configureActivityLogger(join(ownership.workingDirectory, '.goodvibes', 'logs'));
     runDaemonConfigMigration(ownership.homeDirectory);
@@ -214,7 +214,7 @@ async function main(): Promise<void> {
   // `provision-wake-model …` is intercepted here for the same two reasons, plus
   // its own: the curl installer runs it on the binary it has just placed, before
   // any daemon exists, and it must reach the SDK's pinned manifest rather than
-  // have install.sh carry a second copy of the pins. It composes no runtime — it
+  // have install.sh carry a second copy of the pins. It composes no runtime, it
   // resolves a home directory, derives the managed voice root the running daemon
   // uses, and calls one SDK function. See provision-wake-model.ts for why it
   // exits 0 on a failed download.
@@ -236,7 +236,7 @@ async function main(): Promise<void> {
   // placed, right after unpacking the web UI bundle, so that the key names, the
   // settings-tier routing and the "which listener actually serves this" question
   // all stay in one implementation instead of being copied into shell. It
-  // composes no runtime — it resolves a home directory, opens the same config
+  // composes no runtime, it resolves a home directory, opens the same config
   // manager the daemon boots with, and writes two or three keys. See
   // webui-command.ts.
   if (rawArgs[0] === 'webui') {
@@ -323,7 +323,7 @@ async function main(): Promise<void> {
     process.exit(0);
   }
   // `cluster`, `send`, `webui` and `provision-wake-model` are handled at the top
-  // of this function, off the raw argument list, for the reasons stated there —
+  // of this function, off the raw argument list, for the reasons stated there,
   // which means they only work as the FIRST word. Reaching one here means a
   // global flag was written in front of it. Refusing says so; falling through
   // would start a daemon in the foreground, which is the exact behaviour this
@@ -360,8 +360,8 @@ async function main(): Promise<void> {
   // Give the shared logger a destination before anything else runs. It never
   // had one in this entrypoint: `logger` only writes to a file once
   // `configureActivityLogger()` has named one, so every logger.info/warn/error
-  // in this daemon — including the fatal handler at the bottom of this file
-  // and every flushActivityLogSync() call — went nowhere at all. That is why
+  // in this daemon, including the fatal handler at the bottom of this file
+  // and every flushActivityLogSync() call, went nowhere at all. That is why
   // a crash-looping daemon left an empty activity log next to a silent
   // console. The terminal app's own src/cli/entrypoint.ts configures its
   // logger the same way at the same point in startup.
@@ -479,23 +479,23 @@ async function main(): Promise<void> {
 
   // Service lifecycle: install / uninstall / start / stop / restart / status /
   // migrate manage this host's service definition for the shared daemon. They
-  // run BEFORE the daemon boots — no runtime/services are constructed — and
+  // run BEFORE the daemon boots, no runtime/services are constructed, and
   // exit with the honest result code.
   const serviceSubcommand = cli.command;
   if (isDaemonServiceSubcommand(serviceSubcommand)) {
     // The host/port baked into the unit's ExecStart (and displayed) come from
-    // the SAME hostMode-aware resolution the SDK bind path uses — never from
+    // the SAME hostMode-aware resolution the SDK bind path uses, never from
     // the GOODVIBES_DAEMON_HOST env var, which nothing in the bind path reads
     // (the --hostname flag already lands in config via
     // applyRuntimeEndpointFlagOverrides above, so it is covered here).
     const binding = resolveRuntimeEndpointBinding(config, 'controlPlane');
     if (!binding.recognized) {
-      // The SDK bind path has no default case for an unrecognized hostMode —
+      // The SDK bind path has no default case for an unrecognized hostMode,
       // a daemon launched with this config throws before binding. Say so
       // instead of presenting the fallback values as a real binding.
       console.warn(
         `[goodvibes-daemon] warning: controlPlane.hostMode '${binding.hostMode}' is not a recognized mode ` +
-          "(local|network|custom) — the daemon will fail to start until it is corrected.",
+          "(local|network|custom); the daemon will fail to start until it is corrected.",
       );
     }
     const binaryPath = resolveInstalledDaemonBinary({ moduleUrl: import.meta.url });
@@ -504,12 +504,12 @@ async function main(): Promise<void> {
       binaryPath,
       homeDir: homeDirectory,
       // Unit-file paths resolve from the LOGIN home, never the
-      // GOODVIBES_HOME-overridable tree home above — see
+      // GOODVIBES_HOME-overridable tree home above, see
       // BuildManagedDaemonServiceManagerParams.unitHomeDir's doc.
       unitHomeDir: homedir(),
       host: binding.host,
       port: binding.port,
-      // migrate-service only: never auto-migrate — requires the same explicit
+      // migrate-service only: never auto-migrate, requires the same explicit
       // consent as any other non-interactive destructive confirmation.
       confirmMigration: cliFlags.yes,
       // service-status only.
@@ -521,7 +521,7 @@ async function main(): Promise<void> {
       portFlagProvided: cliFlags.port !== undefined,
     });
     // These print the unit path, the follow-up commands and the honest result,
-    // then exit immediately — exactly the race a stream write loses. Descriptor
+    // then exit immediately, exactly the race a stream write loses. Descriptor
     // writes instead.
     for (const line of result.lines) {
       writeExitingStdoutLine(line);
@@ -529,14 +529,14 @@ async function main(): Promise<void> {
     process.exit(result.exitCode);
   }
 
-  // Honest startup identity, printed for EVERY launch shape — including a bare
+  // Honest startup identity, printed for EVERY launch shape, including a bare
   // (no-arg) systemd launch, and BEFORE any runtime construction so it still
   // reaches the journal when a broken config makes the daemon throw during
   // composition. It states the resolved version (never a placeholder) and the
   // home/host/port the daemon will actually bind: the binding comes from the
   // SAME hostMode-aware resolution the SDK bind path uses (resolveHostBinding:
   // 'local' forces 127.0.0.1, 'network' forces 0.0.0.0, port 0/non-numeric
-  // falls back to the default) — never from controlPlane.host alone, and never
+  // falls back to the default), never from controlPlane.host alone, and never
   // from the GOODVIBES_DAEMON_HOST env var, which the bind path does not read.
   const bannerBinding = resolveRuntimeEndpointBinding(config, 'controlPlane');
   // eslint-disable-next-line no-console
@@ -547,14 +547,14 @@ async function main(): Promise<void> {
     // serving). Warn here so the journaled crash is explained.
     console.warn(
       `[goodvibes-daemon] warning: controlPlane.hostMode '${bannerBinding.hostMode}' is not a recognized mode ` +
-        "(local|network|custom) — the daemon cannot bind until it is corrected; the host/port above are fallback values, not a real binding.",
+        "(local|network|custom): the daemon cannot bind until it is corrected; the host/port above are fallback values, not a real binding.",
     );
   }
 
   // Boot-time reconciliation. The banner above states the real bind; this
   // compares it to the URL clients are actually handed. Those are produced by
   // two different resolvers, and when they disagree the daemon is advertising an
-  // address it does not answer on — the state that produced two different click
+  // address it does not answer on, the state that produced two different click
   // hosts from one daemon. The comparison is the SDK's own
   // describeDerivedBindMismatch, which already knows the two cases that are NOT
   // drift: a wildcard bind reported as 0.0.0.0 against a loopback dial target is
@@ -601,7 +601,7 @@ async function main(): Promise<void> {
     daemonHomeDirectory,
     // This daemon observes externally-launched coding-agent sessions on the
     // host read-only (fleet visibility + steer; never counted, never
-    // stopped). Daemon-side only — the interactive process reads this snapshot
+    // stopped). Daemon-side only, the interactive process reads this snapshot
     // rather than double-detecting. Mirrors the SDK daemon cli.
     observeExternalAgents: true,
     // Opt into the REAL host power seam (Linux logind: systemd-inhibit children
@@ -613,7 +613,7 @@ async function main(): Promise<void> {
     // The wake-word model ships with the installation, and this is the retry: at
     // every daemon start, sweep the managed wake tree and fetch whatever the
     // install could not (an offline install, a killed download, a changed pin).
-    // It never blocks startup and never fails it — see the SDK's
+    // It never blocks startup and never fails it, see the SDK's
     // voice/wake/install-provision.ts. The webui reads the model bytes from THIS
     // process, so a provisioned daemon is what makes the browser path work too.
     provisionWakeModelsAtBoot: true,
@@ -669,7 +669,7 @@ async function main(): Promise<void> {
     // against a REMOTE daemon behaves exactly like one run on that machine.
     clusterGroupVerbs: runtimeServices.clusterGroup.verbs,
     // Daemon-hosted sessions. Stating this is what turns `sessions.hosted.*`
-    // on, and what it states is where a hosted run's asks are gated — this
+    // on, and what it states is where a hosted run's asks are gated, this
     // daemon's per-workspace trust decision. See
     // runtime/hosted-session-composition.ts.
     hostedSessions: createHostedSessionOptions(runtimeServices),
@@ -733,7 +733,7 @@ async function main(): Promise<void> {
   // product's rather than the platform's: the legacy memory fold, provider
   // watching, and the notifier/integration attachments. They run AFTER
   // daemon.start(), because the fold has to follow the facade's memoryStore
-  // init(), and none of them may keep the daemon from serving — see
+  // init(), and none of them may keep the daemon from serving, see
   // runtime/boot-tasks.ts.
   await runDaemonBootTasks(runtimeServices);
 
@@ -756,11 +756,11 @@ async function main(): Promise<void> {
     // crash timeout.
     //
     // This process built the runtime graph and handed it to DaemonServer, so by
-    // the SDK's ownership rule the facade leaves it alone — nothing else stops
+    // the SDK's ownership rule the facade leaves it alone, nothing else stops
     // these pollers. Without dispose() the config watch, fleet tick, memory
     // governor, watcher registry and six more kept ticking until process exit.
     // The handler surfaces (inbox store + its poll timers, catalog handlers) are
-    // the FIRST thing dispose() unwinds — they are on the disposal owner list
+    // the FIRST thing dispose() unwinds, they are on the disposal owner list
     // now rather than sequenced by hand here, which is what makes every other
     // shutdown path stop them too instead of only this one.
     const stop = Promise.allSettled([listener.stop(), daemon.stop()])
@@ -768,7 +768,7 @@ async function main(): Promise<void> {
       .then(() => 'done' as const);
     const result = await Promise.race([stop, timeout]);
     if (result === 'timeout') {
-      logger.warn('shutdown deadline exceeded — forcing exit');
+      logger.warn('shutdown deadline exceeded; forcing exit');
       // A forced exit is exactly the case where the log matters most and is
       // least likely to have drained on its own.
       flushActivityLogSync();
@@ -795,16 +795,16 @@ async function main(): Promise<void> {
 
   // Cheap unattended reconcile: if this (canonical) daemon unit is confirmed
   // serving AND a redundant installer-managed goodvibes-daemon.service (the
-  // retired unit name) sits enabled-but-NOT-running beside it — the exact
-  // production-incident state — auto-disable and remove it, printing a
+  // retired unit name) sits enabled-but-NOT-running beside it, the exact
+  // production-incident state, auto-disable and remove it, printing a
   // receipt. A RUNNING legacy daemon, a hand-written unit, or an unanswered
   // configured endpoint all refuse with a notice instead. Best-effort: never
   // let this block or crash daemon boot (per-call systemctl timeouts plus one
   // cumulative pass deadline). The unit search root is the LOGIN user's home
   // (where systemd user units live), never the daemon data home
   // (GOODVIBES_DAEMON_HOME); the tracked name honors service.serviceName. The
-  // endpoint requirement uses the CLIENT view of the config — a fresh read of
-  // settings.json with none of this process's runtime flag overrides — because
+  // endpoint requirement uses the CLIENT view of the config, a fresh read of
+  // settings.json with none of this process's runtime flag overrides, because
   // that is what clients resolve when they look for the daemon.
   try {
     runDaemonConfigMigration(homeDirectory);
@@ -827,8 +827,8 @@ async function main(): Promise<void> {
       }
     }
     if (reconcile.reason !== 'no-legacy-unit') {
-      // Breadcrumb for EVERY outcome where a legacy unit file exists —
-      // including guard refusals — so a persisting two-unit state is never
+      // Breadcrumb for EVERY outcome where a legacy unit file exists,
+      // including guard refusals, so a persisting two-unit state is never
       // silent about why nothing was reconciled.
       logger.info('daemon: legacy-unit reconcile', { action: reconcile.action, reason: reconcile.reason });
     }
@@ -837,7 +837,7 @@ async function main(): Promise<void> {
   }
 
   // Print a device-pairing QR to stdout. The QR encodes the canonical
-  // `#pair=<token>` deep link the web app consumes — a camera scan opens it
+  // `#pair=<token>` deep link the web app consumes, a camera scan opens it
   // already signed in. No raw JSON connection blob is printed. This is also the
   // one place web.publicBaseUrl is frozen from the stable-name resolution (never
   // clobbering a user-set value), so the printed origin survives a DHCP change.
@@ -849,7 +849,7 @@ async function main(): Promise<void> {
     stepUpAvailable: true,
   });
   // Rendered by core/pairing-banner.ts, which `goodvibes-daemon pair` also
-  // calls — so the block printed here and the one printed on demand are the
+  // calls, so the block printed here and the one printed on demand are the
   // same block, from the same token, and cannot drift.
   const banner = renderPairingBanner({
     version: VERSION,
@@ -870,7 +870,7 @@ void main().catch((error) => {
   //
   // Doing it the other way round is what shipped mute. This handler used to
   // call logger.error and flushActivityLogSync and nothing else, and the
-  // logger had no destination this early in boot — so the released 1.27.0
+  // logger had no destination this early in boot, so the released 1.27.0
   // binary crash-looped 77 times with exit 1, zero bytes on stdout, zero bytes
   // on stderr and an empty activity log. See fatal-boot-report.ts.
   reportFatalBootFailure(error);

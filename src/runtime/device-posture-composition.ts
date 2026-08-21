@@ -1,11 +1,11 @@
 /**
- * device-posture-composition.ts — the paired-phone feature inside THIS daemon.
+ * device-posture-composition.ts, the paired-phone feature inside THIS daemon.
  *
  * A phone pairs with whichever daemon the person runs. Until this module
  * existed this daemon had no device posture at all: `device.nodes.maxPaired`
  * was enforced at the pairing path (SDK-side) and `device.capabilities.mode`
  * was an onboarding toggle, while the other eleven `device.*` keys were
- * recorded, read back, and governed nothing — the capability service they
+ * recorded, read back, and governed nothing, the capability service they
  * describe was never built here, so there was nothing for them to govern.
  *
  * The feature itself is platform-owned (`platform/devices`): the settings→policy
@@ -13,16 +13,16 @@
  * confirmation flow, and the `phone` tool. This module supplies the three seams
  * that are actually ours and nothing else:
  *
- *   - the peer transport — the same DistributedRuntimeManager the remote surface
+ *   - the peer transport, the same DistributedRuntimeManager the remote surface
  *     pairs devices onto, so a phone paired here is a node here,
- *   - the approval path — the shared approval broker, so the confirmation
+ *   - the approval path, the shared approval broker, so the confirmation
  *     appears wherever the person is looking (terminal, web app, companion),
  *   - the storage root and the live config manager.
  *
  * Constructing this starts nothing. `startHousekeeping()` is called from the
  * bootstrap tail: grants and captures both outlive a restart, so a grant whose
  * phone is gone, or a capture torn by a crash, is reaped BEFORE the first
- * request of this run is served — and the periodic sweep after it is what keeps
+ * request of this run is served, and the periodic sweep after it is what keeps
  * a long-running daemon from going days without one. A failed sweep is logged
  * and the app still runs: housekeeping failing is a reason to say so, not a
  * reason to refuse to start.
@@ -52,8 +52,8 @@ export interface DevicePostureCompositionOptions {
   /**
    * Binding the catalog turns the whole devices.* family from
    * cataloged-but-unhandled into real handlers: nodes.list, grants.*,
-   * housekeeping.run, and — since a surface with no device runtime of its own
-   * could read the grants and never open a camera — capability.request and
+   * housekeeping.run, and, since a surface with no device runtime of its own
+   * could read the grants and never open a camera, capability.request and
    * artifacts.list/read. That is what makes the paired phone usable from the web
    * app and the companion rather than only through this process's own tool.
    *
@@ -85,8 +85,8 @@ export function createDevicePostureServices(options: DevicePostureCompositionOpt
 
 /**
  * Everything a host with a tool registry has to do once it is up: register the
- * `phone` tool — the only path that reaches the capability service, so without it
- * the posture keys govern nothing a session can observe — and start housekeeping.
+ * `phone` tool, the only path that reaches the capability service, so without it
+ * the posture keys govern nothing a session can observe, and start housekeeping.
  *
  * One call, because these two belong to the same feature and a host that did the
  * first and forgot the second would serve requests while never reaping a grant
@@ -103,7 +103,7 @@ export function installDevicePosture(
 /**
  * The recovery sweep plus the periodic timer. Separate from construction so
  * composing a runtime in a test starts no timer and touches no disk, and
- * separate from the call above so this daemon — which registers no tools —
+ * separate from the call above so this daemon, which registers no tools,
  * still sweeps.
  */
 export function startDeviceHousekeeping(devicePosture: DevicePostureRuntime): void {

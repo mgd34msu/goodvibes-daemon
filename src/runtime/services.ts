@@ -60,7 +60,7 @@ import { createDevicePostureServices } from './device-posture-composition.ts';
 // Re-exported so the daemon entrypoint reaches the housekeeping sweep through
 // the same module it already imports the runtime graph from. `installDevicePosture`
 // is deliberately NOT re-exported: it registers the phone TOOL into a tool
-// registry, and the daemon registers no tools — the sweep is the half it needs.
+// registry, and the daemon registers no tools, the sweep is the half it needs.
 export { startDeviceHousekeeping } from './device-posture-composition.ts';
 import { createClusterServices, startClusterServices } from './cluster-group-composition.ts';
 import { createWorkspaceTrustDecisionAsk, trustGatedApprovalRaiser } from './trust/trust-gated-approvals.ts';
@@ -69,7 +69,7 @@ import type { RuntimeServicesOptions, RuntimeServices } from './runtime-services
 export type { RuntimeServicesOptions, RuntimeServices } from './runtime-services-types.ts';
 
 /**
- * createRuntimeServices — the daemon's service graph.
+ * createRuntimeServices, the daemon's service graph.
  *
  * This is the one composition root the daemon has. Capabilities a client and
  * the daemon both need live in the SDK and are composed from there (memory
@@ -81,7 +81,7 @@ export type { RuntimeServicesOptions, RuntimeServices } from './runtime-services
  */
 export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeServices {
   // The SDK's disposal scope and its all-required poller list, plus the four
-  // pollers only the daemon has — see disposal-wiring.ts.
+  // pollers only the daemon has, see disposal-wiring.ts.
   const disposalScope = createDisposalScope('RuntimeServices');
   const workingDirectory = options.workingDir;
   const homeDirectory = options.homeDirectory;
@@ -105,7 +105,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   // so the scheduler gates and the knowledge background jobs can consult the pause
   // controller before the MemoryGovernor (constructed at the composition tail)
   // drives it. The admission gate is late-bound: expensive entry points capture
-  // this closure now and the governor binds into it at the tail — until then
+  // this closure now and the governor binds into it at the tail, until then
   // everything is admitted (the daemon is still booting).
   const cacheRegistry = new CacheRegistry();
   const pauseController = new PauseController();
@@ -149,7 +149,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   // Launch-tolerant: a provider whose API key is absent from the environment is
   // constructed with a placeholder that is stripped immediately afterwards, so
   // it lands unconfigured instead of throwing during construction. The daemon
-  // has the same must-boot property the agent has — it is a supervised service,
+  // has the same must-boot property the agent has, it is a supervised service,
   // and a constructor that throws on a missing key turns one unset variable into
   // a crash loop with no screen to explain it.
   const providerRegistry = createLaunchTolerantProviderRegistry({
@@ -186,8 +186,8 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   );
   const hookActivityTracker = new HookActivityTracker();
   // featureFlags is REQUIRED here in practice, even though the SDK types it
-  // optional. isFeatureGateEnabled(null, ...) is permissive by design — a narrow
-  // embed with no manager wired gets the capability rather than a silent off —
+  // optional. isFeatureGateEnabled(null, ...) is permissive by design, a narrow
+  // embed with no manager wired gets the capability rather than a silent off,
   // so omitting it did not disable the watcher framework when watchers.enabled
   // is turned off; it made the setting configure nothing.
   const watcherRegistry = new WatcherRegistry({
@@ -235,9 +235,9 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
       task,
       // Conversation first: a follow-up message in a session gets an answer, not
       // a write-review-fix-confirm chain with a reviewer, quality gates and a
-      // second agent. A chain opens only for an explicit authorization marker —
+      // second agent. A chain opens only for an explicit authorization marker,
       // the channel confirmation the owner gave, or the schedule/trigger that
-      // was confirmed when it was created — or for a follow-up typed on a local
+      // was confirmed when it was created, or for a follow-up typed on a local
       // surface. Both `conversationGate.mode` and the gated-surfaces list are
       // read live.
       ...continuationChainOptions(input, {
@@ -256,7 +256,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
       // It also supplies the run's context, which is why the bare
       // `context: shared-session:<id>` line that used to sit below is gone.
       // Spread BEFORE the routing builder so an explicit tool list coming from
-      // a routing intent still wins — that builder emits `tools` only when it
+      // a routing intent still wins, that builder emits `tools` only when it
       // actually has one.
       ...conversationalTurnSpawnOptions(input, { configReader: configManager }),
       // Spawn routing through the SDK's shared model-reference resolver
@@ -286,7 +286,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     // through. Without the secrets manager it cannot resolve a
     // goodvibes://secrets/... credential, so Telegram accepted every inbound
     // message and dropped every reply with "Missing Telegram bot token" while
-    // ntfy — which needs no secret — worked.
+    // ntfy, which needs no secret, worked.
     secretsManager,
     serviceRegistry,
     runtimeBus: options.runtimeBus,
@@ -326,7 +326,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
       return record.id;
     },
   });
-  // Knowledge/wiki + home-graph stack (governor backpressure wired in) — see knowledge-services.ts.
+  // Knowledge/wiki + home-graph stack (governor backpressure wired in), see knowledge-services.ts.
   const {
     knowledgeStore, agentKnowledgeStore, homeGraphKnowledgeStore,
     knowledgeSemanticService, homeGraphSemanticService, agentKnowledgeSemanticService,
@@ -382,7 +382,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   });
 
   // Which machines on this network are "us", and which of them reads the shared
-  // inbox. Both inert until startCluster() — no socket, no key material read;
+  // inbox. Both inert until startCluster(), no socket, no key material read;
   // see cluster-group-composition.ts for why they are built together.
   const { clusterGroup, clusterCoordinator } = createClusterServices({
     configManager, shellPaths, secretsManager,
@@ -427,7 +427,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   // ONE router, not two. This was a second ChannelDeliveryRouter built from the
   // same four arguments AutomationDeliveryManager builds its own from, so the
   // router the gateway verbs held and the router replies actually leave through
-  // were different objects — and a delivery strategy registered on one was
+  // were different objects, and a delivery strategy registered on one was
   // invisible to the other. The manager's is the one that replies; it is the one.
   const channelDeliveryRouter = deliveryManager.getDeliveryRouter();
   const processManager = new ProcessManager();
@@ -447,7 +447,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   });
   const codeInjectionOrchestratorDeps = { codeIndex: codeIndexStore, isCodeInjectionSettingEnabled: () => isCodeInjectionSettingEnabled(configManager), codeIndexReindexScheduler };
   // The trigger family: stream watchers, on-exit process triggers, condition
-  // checks — fed to the fleet below as its trigger supervisor, so a trigger
+  // checks, fed to the fleet below as its trigger supervisor, so a trigger
   // is visible and steerable like every other running thing.
   const triggerManager = createTriggerServices({
     configManager, shellPaths, surfaceRoot: GOODVIBES_DAEMON_SURFACE_ROOT,
@@ -477,7 +477,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     acpHost, // Folds live hosted-agent sessions into the fleet as 'acp' rows
   });
   const modeManager = new ModeManager({ featureFlags }); const fileUndoManager = new FileUndoManager();
-  // Checkpoints, gated on live workspace registration — see workspace-checkpointing.ts.
+  // Checkpoints, gated on live workspace registration, see workspace-checkpointing.ts.
   const checkpointing = createWorkspaceCheckpointing({
     workspaceRoot: workingDirectory, surface, runtimeBus: options.runtimeBus, configManager, shellPaths,
   });
@@ -487,7 +487,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   // admitted (mirrors the SDK's own createRuntimeServices idle gate).
   const { memoryConsolidationScheduler, powerManager, sessionLiveTurnControls } = wireIdlePowerAndLiveTurn({ configManager, memoryRegistry, runtimeBus: options.runtimeBus, isIdle: () => sessionBroker.countBusySessions() === 0 && !pauseController.isPaused('memory-consolidation') && admitExpensiveWork('memory consolidation').allowed, snapshotTick: () => storeSnapshotScheduler.tick(), heartbeat: async () => { await automationManager.triggerHeartbeat({ source: 'wake-catchup' }); }, powerSeam: options.powerSeam });
 
-  // Construct + start the MemoryGovernor (default ON — a safety feature) with the
+  // Construct + start the MemoryGovernor (default ON, a safety feature) with the
   // standard KNOWN cache adapters (knowledge stores + shared session broker),
   // then late-bind the admission gate the expensive entry points captured
   // earlier. The SDK owns this wiring.
@@ -514,7 +514,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   });
   admitExpensiveWorkRef.current = (label) => memoryGovernor.admitExpensiveWork(label);
 
-  // Managed local-voice provisioning (voice.local.status/install) — single-flight
+  // Managed local-voice provisioning (voice.local.status/install), single-flight
   // one-act install + no-network status.
   const { voiceSetup, stopWakeHousekeeping } = wireVoiceSetup({ configManager, shellPaths, voiceProviders, admitExpensiveWork,
     // Boot provisioning of the wake-word model + its recovery sweep, opted into
@@ -543,11 +543,11 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     // to the owner principal instead of unknown.
     channelPolicy,
     approvalBroker, requestApproval: (input) => approvalBroker.requestApproval(input),
-    // approvals.raise — a surface CREATING an ask in this broker. Without it the
+    // approvals.raise, a surface CREATING an ask in this broker. Without it the
     // verb is cataloged and unhandled, and a client whose prompt runs outside
     // this process has no way to raise one.
     approvalRaise: approvalBroker,
-    // credentials.set / credentials.delete — a credential written THROUGH the
+    // credentials.set / credentials.delete, a credential written THROUGH the
     // control plane, so a client with no access to the daemon's settings file can
     // configure one. The value lands in the daemon's secret tier and the verb
     // never echoes it back.
@@ -573,15 +573,15 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   const execPromptAnswerHandler = buildExecPromptAnswerHandler({ requestApproval: (input) => approvalBroker.requestApproval(input) });
   // Tool asks from the runs this daemon HOSTS. Without a manager here, the
   // background permission gate short-circuits to approved and every hosted
-  // write, command and delegation ran ungated — the workspace trust decision
+  // write, command and delegation ran ungated, the workspace trust decision
   // was read by nobody in this process.
   //
   // The ask seam is the trust gate wrapping the approval broker: a workspace
   // with no decision yet has the question raised as an approval record and
-  // answered by whichever surface is attached (trust-gated-approvals.ts) —
+  // answered by whichever surface is attached (trust-gated-approvals.ts),
   // there is no screen here to show a modal on, so the raise replaces it. The
-  // manager's own layers — permission mode, policy, session cache, durable
-  // user rules — still run first and are unchanged.
+  // manager's own layers, permission mode, policy, session cache, durable
+  // user rules, still run first and are unchanged.
   const permissionManager = createBrokeredPermissionManager({
     requestApproval: trustGatedApprovalRaiser(
       workspaceTrustManager,
@@ -648,7 +648,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   // whole high-churn 'ops' domain, and sent over the SAME WebhookNotifier the
   // notification verbs keep live and boot-tasks attaches to the bus. There is
   // no panel notification router here: its targets are all screen targets and
-  // this product has no screen — see notification-dispatch.ts.
+  // this product has no screen, see notification-dispatch.ts.
   wireMemoryPressureChannelNotice(options.runtimeBus, webhookNotifier);
 
   // In-process config changes become key-level events on the `config` domain, so
@@ -780,7 +780,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     // Cancels the agent runs this graph was hosting. By dispose() time the fleet
     // registry, orchestration engine, process registry and bus these runs report
     // through are already down, so a run still described as "running" is orphaned
-    // rather than preserved — and this is the only shutdown-reachable way to
+    // rather than preserved, and this is the only shutdown-reachable way to
     // abort its in-flight provider call instead of letting it sleep out a retry
     // backoff nobody is waiting on.
     cancelHostedAgentRuns: () => cancelAllAgentRuns(agentManager),

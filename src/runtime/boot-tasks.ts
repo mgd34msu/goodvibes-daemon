@@ -98,7 +98,7 @@ export async function runDaemonBootTasks(services: RuntimeServices): Promise<voi
 
   // Load the plugins this host can serve. The manager was constructed by the
   // graph and never initialised, so it could list a plugin directory and never
-  // load anything out of it — `enable` persisted a flag that turned nothing on.
+  // load anything out of it, `enable` persisted a flag that turned nothing on.
   // Both hosts read the same directories; each takes the registrations it can
   // serve (plugin-composition.ts). Best-effort like everything else here: a
   // plugin that will not load is not a reason for the daemon not to start.

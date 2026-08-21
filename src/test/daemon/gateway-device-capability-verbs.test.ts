@@ -1,6 +1,6 @@
 /**
  * Gate: this daemon's device posture composition serves the WHOLE devices.*
- * family over the gateway — including the three verbs that ask a paired phone
+ * family over the gateway, including the three verbs that ask a paired phone
  * for something and read back what it sent.
  *
  * Why this file exists. The paired-phone feature is platform-owned, but the
@@ -11,13 +11,13 @@
  * is what turns the family from cataloged-but-unhandled into handlers.
  *
  * Until devices.capability.request existed, a surface with no device runtime of
- * its own could list the grants and revoke them and could never open a camera —
+ * its own could list the grants and revoke them and could never open a camera,
  * the feature was reachable only through the `phone` tool, in-process. This test
  * drives the wire path end to end over this composition: the request reaches the
  * real capability service, the person is asked through the real approval seam,
  * the bytes the device returned are retained by the real capture store, and the
  * caller reads them back by id. It also pins the properties that must NOT move
- * to the route — the confirmation, the durable grant, and the refusals — because
+ * to the route, the confirmation, the durable grant, and the refusals, because
  * a second place those get decided is a second place they can be decided
  * differently.
  */
@@ -186,7 +186,7 @@ describe('the composed daemon serves the whole devices.* family', () => {
     expect(result.ok).toBe(true);
     expect(result.authority).toBe('confirmed-once');
     // The prompt rode the shared approval broker seam, carrying the caller's
-    // reason verbatim — that is what makes it appear wherever the person is
+    // reason verbatim, that is what makes it appear wherever the person is
     // actually looking rather than only in this process.
     expect(h.asks).toHaveLength(1);
     expect(h.asks[0]?.tool).toBe('phone');

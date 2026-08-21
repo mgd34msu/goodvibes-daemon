@@ -1,5 +1,5 @@
 /**
- * inert-text.ts — make a message arrive as LITERAL TEXT on whichever channel
+ * inert-text.ts, make a message arrive as LITERAL TEXT on whichever channel
  * `goodvibes-daemon send` delivers it to.
  *
  * ## What "inert" means here, and why it is per (surface × transport), not
@@ -12,7 +12,7 @@
  *
  *  - Telegram's `sendMessage` CAN parse MarkdownV2, but the strategy sends with
  *    NO `parse_mode`, which is Telegram's plain-text mode. Running a MarkdownV2
- *    escaper over the body on this path would not protect anything — it would
+ *    escaper over the body on this path would not protect anything, it would
  *    put visible backslashes in front of every `.` `-` `!` `(` in the owner's
  *    message. The correct transform is identity, and the property that makes it
  *    correct is asserted by a test against the real wire payload rather than
@@ -29,7 +29,7 @@
  *
  * `escapeDiscordMarkdown` and `escapeSlackMrkdwn` are the escapers written for
  * the inbound-mail structured notices, in the SDK at
- * `packages/sdk/src/platform/email/inbound-notice.ts` — same character classes,
+ * `packages/sdk/src/platform/email/inbound-notice.ts`, same character classes,
  * same zero-width-space mention break, same rationale. They are reproduced here
  * rather than imported for one reason: that module lives on the unmerged
  * `inbound-email-*` branches and is absent from the published
@@ -72,8 +72,8 @@ function breakMentionForms(text: string): string {
  *
  * `[` `]` `(` `)` are escaped too, and this is REQUIRED rather than
  * precautionary: masked links (`[text](url)`) DO render as clickable in
- * bot-sent and webhook messages — which is exactly how this product delivers to
- * Discord — even though they do not render for text a human typed into the
+ * bot-sent and webhook messages, which is exactly how this product delivers to
+ * Discord, even though they do not render for text a human typed into the
  * client.
  *   https://github.com/discord/discord-api-docs/issues/6096
  *   https://gist.github.com/matthewzring/9f7bbfd102003963f9be7dbcf7d40e51
@@ -97,11 +97,11 @@ function escapeDiscordMarkdown(text: string): string {
  * unescaped `<`.
  *
  * Slack has no backslash escape for `* _ ~ \``, so the zero-width break is
- * applied to those as the best available mitigation — stated as a mitigation,
+ * applied to those as the best available mitigation, stated as a mitigation,
  * not a guarantee, because Slack's whitespace-adjacency rule for what breaks a
  * delimiter pair is not publicly specified to that precision. The residual risk
  * is cosmetic (accidental bold/italic); the injection class this exists to
- * close — a clickable link or a real mention — is closed by the entity escaping
+ * close, a clickable link or a real mention, is closed by the entity escaping
  * above.
  */
 function escapeSlackMrkdwn(text: string): string {
@@ -122,8 +122,8 @@ function escapeGoogleChatMarkup(text: string): string {
 
 /**
  * WhatsApp Cloud API text messages render `*bold*`, `_italic_`, `~strike~` and
- * ```` ```mono``` ````. There is no masked-link syntax — a URL in the body is
- * auto-linked showing its real address — so the injection class Discord has
+ * ```` ```mono``` ````. There is no masked-link syntax, a URL in the body is
+ * auto-linked showing its real address, so the injection class Discord has
  * does not exist here and only the delimiters need neutralizing. WhatsApp
  * documents no backslash escape, so the zero-width break is used.
  */
@@ -136,24 +136,24 @@ function escapeWhatsAppMarkup(text: string): string {
  * markup. Every other routable surface is absent DELIBERATELY, and each absence
  * is a checked claim about the strategy, not an oversight:
  *
- *  - `telegram`  — `sendMessage` without `parse_mode`; Telegram's plain-text
+ *  - `telegram` , `sendMessage` without `parse_mode`; Telegram's plain-text
  *                  mode. Escaping here would corrupt, not protect.
- *  - `ntfy`      — `publish` sends the body as `text/plain` and never sets the
+ *  - `ntfy`     , `publish` sends the body as `text/plain` and never sets the
  *                  `Markdown` header, so ntfy renders it literally. The title
  *                  is derived by `titleFromBody` (first non-empty LINE) and
  *                  passed through `toHeaderSafeTitle`, so no line break or
  *                  non-ASCII byte from the body can reach an HTTP header.
- *  - `webhook`   — the body is a JSON string field; the receiver decides what
+ *  - `webhook`  , the body is a JSON string field; the receiver decides what
  *                  to do with it and there is no markup layer to neutralize.
  *
- *  - `signal`    — the strategy posts `text` to a signal bridge. Signal renders
+ *  - `signal`   , the strategy posts `text` to a signal bridge. Signal renders
  *                  no markup in a plain message body; styling travels as
  *                  explicit range metadata the strategy never sends.
  *  - `imessage`,
- *    `bluebubbles` — both end at iMessage, which renders no markup at all.
- *  - `msteams`   — the strategy sends `textFormat: 'plain'` alongside the text,
+ *    `bluebubbles`, both end at iMessage, which renders no markup at all.
+ *  - `msteams`  , the strategy sends `textFormat: 'plain'` alongside the text,
  *                  which is Teams' own instruction not to parse it.
- *  - `matrix`    — `msgtype: 'm.text'` with no `format`/`formatted_body`. A
+ *  - `matrix`   , `msgtype: 'm.text'` with no `format`/`formatted_body`. A
  *                  Matrix event without the HTML format field is rendered
  *                  literally by clients, per the spec.
  *
@@ -161,7 +161,7 @@ function escapeWhatsAppMarkup(text: string): string {
  * `ControlPlaneGateway` in the same process, which a short-lived CLI does not
  * have, so the command does not offer it as a channel at all. `telephony` is
  * absent because a CLI `send` to it would place a phone call or an SMS through
- * a paid carrier — a different act from messaging a channel — and because the
+ * a paid carrier, a different act from messaging a channel, and because the
  * strategy already XML-escapes the voice path itself via `escapeTwiml`.
  */
 const INERT_TRANSFORMS: Partial<Record<ChannelDeliverySurfaceKind, (text: string) => string>> = {
@@ -173,7 +173,7 @@ const INERT_TRANSFORMS: Partial<Record<ChannelDeliverySurfaceKind, (text: string
   'google-chat': escapeGoogleChatMarkup,
   whatsapp: escapeWhatsAppMarkup,
   // Delivered as plain text by the strategy: transforming would corrupt, not
-  // protect. Each of these is a checked claim about the strategy, not a guess —
+  // protect. Each of these is a checked claim about the strategy, not a guess,
   // see the list above.
   telegram: (text) => text,
   ntfy: (text) => text,

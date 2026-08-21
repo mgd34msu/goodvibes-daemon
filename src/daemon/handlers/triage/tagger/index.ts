@@ -159,7 +159,7 @@ export function createTriageTagger(
         return { ...base, reason: 'autotag-disabled' };
       }
 
-      // Provider-side mutation is effectful — require explicit confirmation.
+      // Provider-side mutation is effectful, require explicit confirmation.
       if (request.confirm !== true || request.explicitUserRequest !== true) {
         throw new HandlerError(
           'Provider-side triage tagging requires explicit user confirmation.',

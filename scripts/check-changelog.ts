@@ -53,4 +53,4 @@ if (!result.ok) {
   process.exit(1);
 }
 
-console.log(`[changelog-check] OK — ${result.detail}`);
+console.log(`[changelog-check] OK: ${result.detail}`);

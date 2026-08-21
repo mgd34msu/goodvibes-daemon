@@ -166,7 +166,7 @@ describe('RemoteDispatcher', () => {
       dispatch: async () => ({ exitCode: 0, stdout: '', stderr: '' }),
       teardown: async () => { cloudTornDown = true; throw new Error('sweep failed'); },
     };
-    // local-process backend has no teardown — must be skipped without error.
+    // local-process backend has no teardown, must be skipped without error.
     const localBackend = makeBackend('local-process', { exitCode: 0, stdout: '', stderr: '' });
     const backends = new Map<PeerRecord['backendKind'], Backend>([
       ['ssh', sshBackend],

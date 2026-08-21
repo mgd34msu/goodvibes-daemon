@@ -3,7 +3,7 @@
  * former OperatorContext. It carries the SDK gateway catalog (handlers attach
  * to it), the daemon credential store, a read-only slice of the config manager,
  * resolved directories, and a logger. No SDK descriptor or schema is declared
- * here — the catalog type is re-exported through the contracts seam.
+ * here, the catalog type is re-exported through the contracts seam.
  */
 import type { ConfigManager } from '@pellux/goodvibes-sdk/platform/config';
 import type { GatewayMethodCatalog } from './contracts.ts';

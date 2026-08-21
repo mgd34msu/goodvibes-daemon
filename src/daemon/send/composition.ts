@@ -1,5 +1,5 @@
 /**
- * composition.ts — the smallest set of services that can put a message on a
+ * composition.ts, the smallest set of services that can put a message on a
  * channel, built from the daemon's own tier.
  *
  * ## Why not `createRuntimeServices`
@@ -7,7 +7,7 @@
  * The daemon's full runtime graph starts a LAN scan, a cluster coordinator, an
  * inbox poller, a fleet tick, a memory governor and a config watch. Composing
  * it to send one message would build a second, competing set of that state on a
- * machine that is already running a daemon — the same reason `cluster …` is
+ * machine that is already running a daemon, the same reason `cluster …` is
  * intercepted before any runtime is constructed (see src/daemon/cli.ts). This
  * builds only the five objects `ChannelDeliveryRouter` needs and starts no
  * timers, binds no sockets and joins no election, so it is safe to run beside a
@@ -18,7 +18,7 @@
  * That was tried before this command existed: the control-plane API answers
  * `401 AUTH_REQUIRED` to the operator token as stored on disk. More importantly
  * an HTTP-backed send would only work while a daemon is up, and the case this
- * command is for — telling the owner that something has stopped — is exactly
+ * command is for, telling the owner that something has stopped, is exactly
  * when it may not be.
  *
  * ## Where the credentials come from
@@ -42,7 +42,7 @@ import { GOODVIBES_DAEMON_SURFACE_ROOT } from '../../config/surface.ts';
 
 export interface SendStackRoots {
   readonly workingDirectory: string;
-  /** The GoodVibes tree root — the directory `.goodvibes/` sits under. */
+  /** The GoodVibes tree root, the directory `.goodvibes/` sits under. */
   readonly homeDirectory: string;
   /** The daemon's own state root, holding the daemon-scoped secret stores. */
   readonly daemonHomeDirectory: string;
@@ -62,7 +62,7 @@ export interface SendStack {
  * roots (goodvibes-tui and goodvibes-agent) omitted it, still type-checked,
  * still delivered on every surface whose credential happens to sit in config or
  * the environment, and failed only on the surfaces that use a secret reference
- * — at send time, as `Missing Telegram bot token`. This composition root does
+ *, at send time, as `Missing Telegram bot token`. This composition root does
  * not repeat that.
  */
 export function createSendStack(roots: SendStackRoots): SendStack {

@@ -60,8 +60,8 @@ function errorMessage(error: unknown): string {
  *
  * An ABSENT context is accepted and read as the empty one: no principal, no
  * scopes, not admin, nobody claiming a person asked. The type says a context is
- * always there and at runtime it is not always — an in-process invoke that
- * builds the invocation by hand can omit it — and reading `.metadata` off
+ * always there and at runtime it is not always, an in-process invoke that
+ * builds the invocation by hand can omit it, and reading `.metadata` off
  * `undefined` turned that into a TypeError thrown out of the handler wrapper
  * instead of the refusal every caller can act on. Defaulting to the least
  * privilege is the only safe reading: it can cost a caller an authorization it
@@ -124,7 +124,7 @@ export function registerCatalogHandler<TBody, TResult>(
   const descriptor = catalog.get(methodId);
   if (!descriptor) {
     // 'METHOD_NOT_FOUND' (not the old locally-coined 'UNKNOWN_METHOD') so this lines
-    // up byte-for-byte with SDKErrorCodes.METHOD_NOT_FOUND — the code the SDK's own
+    // up byte-for-byte with SDKErrorCodes.METHOD_NOT_FOUND, the code the SDK's own
     // uncataloged-method 404 now carries (method-catalog.ts's GatewayMethodCatalog
     // .invoke(), daemon/control-plane.ts's invokeGatewayMethodCall, and daemon-sdk's
     // control-routes.ts getGatewayMethod/invokeGatewayMethod). A literal string, not

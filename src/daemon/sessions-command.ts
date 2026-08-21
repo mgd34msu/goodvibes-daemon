@@ -1,14 +1,14 @@
 /**
- * sessions-command.ts — `goodvibes-daemon sessions list|kill <id>`.
+ * sessions-command.ts, `goodvibes-daemon sessions list|kill <id>`.
  *
  * The sessions this daemon HOSTS: conversation loops running inside it, which
  * outlive the client that started them. That is the whole reason they need a
- * command — a terminal's own session dies with the terminal and never needs
+ * command, a terminal's own session dies with the terminal and never needs
  * listing from outside, while a hosted one can be running on a headless box
  * with nothing attached to it at all.
  *
  * The verbs are `sessions.hosted.list` and `sessions.hosted.kill`, and both are
- * declared ws-only in the method catalog — they have no REST binding, so they
+ * declared ws-only in the method catalog, they have no REST binding, so they
  * go through `callDaemonWsVerb` rather than `callDaemonVerb`. Same target, same
  * operator token, same --host/--port/--token convention; only the transport is
  * different. A daemon built without hosted sessions answers "does not know the
@@ -62,7 +62,7 @@ export interface SessionsCommandFlags extends RemoteCommandFlags {
 
 export interface RunSessionsCommandInput extends RemoteCommandDeps {
   readonly flags: SessionsCommandFlags;
-  /** Positional words after `sessions` — the subcommand and its argument. */
+  /** Positional words after `sessions`, the subcommand and its argument. */
   readonly args: readonly string[];
 }
 
@@ -119,7 +119,7 @@ function renderSession(session: HostedSessionRecord, now: number): string[] {
  *
  * Exit 0 when the daemon answered, 1 when it refused or could not be reached,
  * 2 when the command line was wrong. A `kill` with no id is a usage refusal
- * rather than a "kill everything" — there is no shape of this command that ends
+ * rather than a "kill everything", there is no shape of this command that ends
  * more than the one session named.
  */
 export async function runSessionsCommand(input: RunSessionsCommandInput): Promise<DaemonCommandResult> {
@@ -129,11 +129,11 @@ export async function runSessionsCommand(input: RunSessionsCommandInput): Promis
     return refusal('name what to do with the sessions.', flags.json);
   }
   if (!isSessionsSubcommand(subcommand)) {
-    return refusal(`'${subcommand}' is not a sessions command — try list or kill.`, flags.json);
+    return refusal(`'${subcommand}' is not a sessions command; try list or kill.`, flags.json);
   }
   const sessionId = args[1];
   if (subcommand === 'kill' && sessionId === undefined) {
-    return refusal('kill needs the session to end — run `sessions list` to see them.', flags.json);
+    return refusal('kill needs the session to end; run `sessions list` to see them.', flags.json);
   }
   if (args.length > (subcommand === 'kill' ? 2 : 1)) {
     return refusal(`'${args[subcommand === 'kill' ? 2 : 1]}' is one argument too many.`, flags.json);

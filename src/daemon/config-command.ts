@@ -1,12 +1,12 @@
 /**
- * config-command.ts — `goodvibes-daemon config list|get|set|unset`.
+ * config-command.ts, `goodvibes-daemon config list|get|set|unset`.
  *
  * A headless daemon's settings had no command at all: the only ways to change
  * one were to hand-edit a JSON file whose path and tier you had to already
  * know, or to attach a client. `webui enable` proved the pattern for a
- * settings-writing command that the installer and a person can both run — open
+ * settings-writing command that the installer and a person can both run, open
  * the same ConfigManager the daemon boots with, write through `set()`, print an
- * honest receipt — and this is that pattern generalised to every key.
+ * honest receipt, and this is that pattern generalised to every key.
  *
  * WHICH FILE A WRITE LANDS IN is not decided here. `ConfigManager.set()` routes
  * a daemon-owned key to the daemon's own settings store and a shared key to the
@@ -17,7 +17,7 @@
  * cli-redaction
  * first, so a token, a password, an API key or a card number reads as
  * `<redacted>` and a `config list` pasted into a bug report carries no
- * credential. Writes are NOT redacted — `config set` stores the real value; it
+ * credential. Writes are NOT redacted, `config set` stores the real value; it
  * is the OUTPUT that is cleaned. A `goodvibes://secrets/...` reference is left
  * visible on purpose: it is a pointer, not a secret, and hiding it would make
  * the indirection impossible to verify.
@@ -193,7 +193,7 @@ function setResult(deps: ConfigCommandDeps, key: string, rawValue: string): Conf
     // and its message already names what was wrong. Passing it through beats
     // rewording it into something vaguer.
     return failure(
-      error instanceof ConfigError ? error.message : `could not write ${key} — ${message(error)}`,
+      error instanceof ConfigError ? error.message : `could not write ${key}: ${message(error)}`,
       deps,
     );
   }
@@ -226,7 +226,7 @@ function unsetResult(deps: ConfigCommandDeps, key: string): ConfigCommandResult 
   try {
     deps.configManager.reset(key as ConfigKey);
   } catch (error) {
-    return failure(`could not reset ${key} — ${message(error)}`, deps);
+    return failure(`could not reset ${key}: ${message(error)}`, deps);
   }
   const stored = readValue(deps, key);
   if (deps.json) {
@@ -254,7 +254,7 @@ export function runConfigCommand(args: readonly string[], deps: ConfigCommandDep
   const subcommand = args[0];
   if (subcommand === undefined) return refusal('name what to do with the settings.', deps);
   if (!isConfigSubcommand(subcommand)) {
-    return refusal(`'${subcommand}' is not a config command — try ${CONFIG_SUBCOMMANDS.join(', ')}.`, deps);
+    return refusal(`'${subcommand}' is not a config command; try ${CONFIG_SUBCOMMANDS.join(', ')}.`, deps);
   }
 
   if (subcommand === 'list') {

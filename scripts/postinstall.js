@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * postinstall — place the compiled daemon binary AND the sqlite-vec native
+ * postinstall, place the compiled daemon binary AND the sqlite-vec native
  * addon for this platform.
  *
  * The npm package carries source and the launcher; the daemon itself is a
@@ -11,22 +11,22 @@
  * The sqlite-vec addon gets the identical treatment for the identical reason:
  * `resolveSqliteVecPath()` (platform/state/sqlite-vec-loader.ts, reached from a
  * compiled binary) looks for it at `<execDir>/lib/sqlite-vec-<platform>-<arch>/
- * vec0.<suffix>` — `<execDir>` being vendor/ once bin/goodvibes-daemon has
- * placed the binary there — and nothing else stages it for an npm install. Skip
+ * vec0.<suffix>`, `<execDir>` being vendor/ once bin/goodvibes-daemon has
+ * placed the binary there, and nothing else stages it for an npm install. Skip
  * this and the addon is silently absent forever: the launcher's self-heal
  * (bin/launcher-support.js) only ever re-fetches the BINARY, and the daemon's
  * own auto-updater only refreshes the addon if a copy already exists on disk
  * (there is never a first one to refresh). The daemon degrades to lexical
  * search plus a log warning rather than failing loudly, so the loss is easy to
- * miss — this download is what gives every npm install the same vector search
+ * miss, this download is what gives every npm install the same vector search
  * a curl/install.sh install gets.
  *
  * What it deliberately does NOT do: deploy skills, deploy agents, or fetch the
  * wake-word model. Skills and agents are surface artifacts that ship with the
  * terminal app's own package, not this one. The wake-word model is fetched by
- * the daemon itself — the installer
+ * the daemon itself, the installer
  * runs `goodvibes-daemon provision-wake-model` on the placed binary, and every
- * daemon start retries whatever is still missing — so pulling it here as well
+ * daemon start retries whatever is still missing, so pulling it here as well
  * would be a second copy of a pin that already has one owner.
  *
  * A source checkout is skipped: a repository clone is a development tree, not an
@@ -152,7 +152,7 @@ async function installPlatformBinary() {
 
 /**
  * Places the sqlite-vec native addon at `vendor/lib/sqlite-vec-<platform>-
- * <arch>/vec0.<suffix>` — see the file banner for why this is a separate,
+ * <arch>/vec0.<suffix>`, see the file banner for why this is a separate,
  * equally load-bearing step from `installPlatformBinary`, not an optional
  * extra. Mirrors that function's gating and verification exactly (skip on an
  * unsupported target, `--no-download`, or a source checkout; the smoke-test
@@ -197,7 +197,7 @@ async function installSqliteVecAddon() {
 
   // A fresh manifest fetch (rather than sharing the one `installPlatformBinary`
   // already wrote to vendor/) keeps this function independently correct and
-  // testable — the extra request is a one-time postinstall cost, not a
+  // testable, the extra request is a one-time postinstall cost, not a
   // per-boot one.
   const checksumText = await downloadText(`${releaseBaseUrl}/${CHECKSUM_MANIFEST_NAME}`);
   const checksums = parseChecksumFile(checksumText);

@@ -15,11 +15,11 @@
 // separate store, so this feed store carries only the raw inbound fields.
 //
 // RETENTION. The items table is bounded by BOTH an age TTL and a count cap, and
-// the sweep runs at init() — the recovery point, right after the database file
-// is opened — and then on a timer for the life of the store, so a daemon that
+// the sweep runs at init(), the recovery point, right after the database file
+// is opened, and then on a timer for the life of the store, so a daemon that
 // stays up for weeks keeps reclaiming. `pruneOlderThan` used to exist with no
 // production caller at all, which meant the table grew without bound in
-// practice. Reclaimed counts are handed to the `onSweep` hook (counts only —
+// practice. Reclaimed counts are handed to the `onSweep` hook (counts only,
 // message previews and sender ids never reach a log line).
 //
 // Cursors are deliberately NOT reaped: they are monotonic watermarks, so
@@ -28,7 +28,7 @@
 // Idempotence/concurrency: a sweep re-run immediately reclaims nothing (the
 // DELETEs are set-based over the current contents). Two processes opening the
 // same file each hold their own sql.js snapshot and `save()` writes the whole
-// file via temp+rename, so the last writer wins — that whole-file model is
+// file via temp+rename, so the last writer wins, that whole-file model is
 // HandlerSqliteStore's, and deletion converging on the same surviving set is
 // what makes concurrent sweeps safe rather than corrupting.
 // ---------------------------------------------------------------------------
@@ -45,7 +45,7 @@ export const INBOX_ITEM_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
 /**
  * Count cap for feed items: the newest this many rows survive a sweep, older
- * ones are dropped. Guards the case the TTL cannot — a very chatty month.
+ * ones are dropped. Guards the case the TTL cannot, a very chatty month.
  */
 export const INBOX_ITEM_CAP = 5_000;
 
@@ -57,7 +57,7 @@ export const INBOX_SWEEP_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
 
 const DEFAULT_STORE_FILE_NAME = 'inbox.sqlite';
 
-/** Result of one retention sweep. Counts only — never item content. */
+/** Result of one retention sweep. Counts only, never item content. */
 export interface InboxSweepSummary {
   /** Unix ms of the sweep. */
   readonly at: number;
@@ -202,7 +202,7 @@ export class InboxCursorStore {
   /**
    * One retention pass: age TTL first, then the count cap over what is left.
    * Returns counts only. Running it twice in a row reclaims nothing the second
-   * time — the pass is a function of the table's current contents.
+   * time, the pass is a function of the table's current contents.
    */
   sweepRetention(): InboxSweepSummary {
     const at = this.now();
@@ -240,7 +240,7 @@ export class InboxCursorStore {
   }
 
   /**
-   * Count cap: keep the newest `itemCap` rows (receivedAt DESC, id ASC — the
+   * Count cap: keep the newest `itemCap` rows (receivedAt DESC, id ASC, the
    * same order listItems() uses), delete the rest. Returns rows removed.
    */
   private enforceItemCap(): number {
@@ -266,7 +266,7 @@ export class InboxCursorStore {
     if (items.length === 0) return 0;
     let inserted = 0;
     // Only the ids in THIS batch can collide, so probe for exactly those rather
-    // than loading the whole table — bounds the lookup to the poll size instead
+    // than loading the whole table, bounds the lookup to the poll size instead
     // of growing O(n) with the (unbounded) feed.
     const batchIds = [...new Set(items.map((i) => i.id))];
     const placeholders = batchIds.map(() => '?').join(', ');
@@ -364,7 +364,7 @@ export class InboxCursorStore {
     if (query.after && Number.isFinite(query.after.receivedAt)) {
       // Strictly after the cursor row in (receivedAt DESC, id ASC) order: an
       // older timestamp, or the same timestamp with a higher id. Both halves
-      // are needed — several items can share a receivedAt, and comparing on
+      // are needed, several items can share a receivedAt, and comparing on
       // the timestamp alone would drop every one of its ties.
       clauses.push('(receivedAt < ? OR (receivedAt = ? AND id > ?))');
       const at = Math.floor(query.after.receivedAt);

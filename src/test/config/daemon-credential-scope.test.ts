@@ -1,11 +1,11 @@
 /**
- * daemon-credential-scope.test.ts — where a credential lands, and who can read
+ * daemon-credential-scope.test.ts, where a credential lands, and who can read
  * it afterwards.
  *
  * ── The failure this comes from ──────────────────────────────────────────
  *
- * The owner configured Google credentials on one surface and the daemon —
- * serving Telegram, with that surface closed — reported no email integration
+ * The owner configured Google credentials on one surface and the daemon,
+ * serving Telegram, with that surface closed, reported no email integration
  * available, because the value had been filed in a tier only that surface reads.
  * The rule that came out of it: a credential configured anywhere has to be
  * usable by the daemon afterwards, including when the surface that configured it
@@ -15,7 +15,7 @@
  *
  * This repository's daemon-side subjects had zero test coverage:
  * `createDaemonCredentialStore` had no test importers here, and
- * `secret-config.ts` — the derivation the whole scheme rests on — had none
+ * `secret-config.ts`, the derivation the whole scheme rests on, had none
  * either. These are the assertions whose subjects live in this repository;
  * write-site behavior (the settings modal, the onboarding wizard, `/config
  * set`, provider key intake) is tested where those surfaces live.
@@ -48,7 +48,7 @@ const roots: string[] = [];
  * A temp home, with the workspace kept OUTSIDE it. The project tier is searched
  * up the ancestor chain, so a workspace nested under the home would make the
  * home's own store reachable as both the user store and an ancestor project
- * store — and the tier a key landed in would stop being decidable. Siblings keep
+ * store, and the tier a key landed in would stop being decidable. Siblings keep
  * the three tiers genuinely distinct on disk.
  */
 function makeHome(): string {
@@ -114,7 +114,7 @@ describe('defaultSecretBackedScope', () => {
 });
 
 // ---------------------------------------------------------------------------
-// The write path itself — the config value is a reference, the value is in the
+// The write path itself, the config value is a reference, the value is in the
 // store, and no settings file anywhere holds the plaintext.
 // ---------------------------------------------------------------------------
 

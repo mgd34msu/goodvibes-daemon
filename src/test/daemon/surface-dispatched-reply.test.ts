@@ -5,7 +5,7 @@
  * The daemon has always bound a reply for the executors it spawns itself: the
  * broker pairs the agent with the input it was started for, the pairing is
  * announced, and the completion poll delivers the answer. None of that could
- * happen for work the daemon handed to a client process — the client's
+ * happen for work the daemon handed to a client process, the client's
  * `sessions.inputs.deliver` dropped the id of the agent it started, so no
  * pairing existed, and the daemon's completion poll can only ever see agents
  * this process spawned, so no answer arrived either. A message from a channel
@@ -236,7 +236,7 @@ describe('a conversation dispatched to a surface', () => {
     });
     expect(response.status).toBe(200);
 
-    // Nothing ran, so nothing is bound and nothing is sent — the honest outcome
+    // Nothing ran, so nothing is bound and nothing is sent, the honest outcome
     // for a runner that declined the work or handed it somewhere else.
     expect(runtimeServices.sessionBroker.getSession(sessionId)?.activeAgentId).toBeUndefined();
     expect(channelSends).toEqual([]);

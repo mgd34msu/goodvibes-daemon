@@ -88,7 +88,7 @@ describe('the receipt store', () => {
     expect(receipts[receipts.length - 1]?.text).toBe('r39');
   });
 
-  test('reading never marks a receipt delivered — the file is not written', () => {
+  test('reading never marks a receipt delivered; the file is not written', () => {
     let written = false;
     const readOnly: LocalStateIo = {
       read: (path: string) => (path === paths.receiptsPath ? '[{"id":"a","text":"x","at":1}]' : null),

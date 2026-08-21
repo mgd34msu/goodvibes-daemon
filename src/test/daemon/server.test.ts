@@ -85,7 +85,7 @@ function waitForSocketFrame(
 
 /**
  * Every graph built below is INJECTED into DaemonServer, and the facade
- * deliberately disposes only a graph it composed itself — an injected one may
+ * deliberately disposes only a graph it composed itself, an injected one may
  * outlive the daemon, so stopping it is the caller's job. `daemon.stop()`
  * therefore leaves this file's graphs running, one per test.
  */
@@ -114,7 +114,7 @@ describe('DaemonServer', () => {
   const makeFeatureFlags = () => {
     const featureFlags = createFeatureFlagManager();
     // Seed from a real config (registry-complete), then force the daemon's
-    // capability set on — every id below exists in the registry (unknown ids
+    // capability set on, every id below exists in the registry (unknown ids
     // now throw; there is no filtering wrapper).
     const flags = deriveFeatureStates(makeConfig());
     for (const id of [
@@ -278,7 +278,7 @@ describe('DaemonServer', () => {
 
     // Transport IDs/endpoints are built from the CONFIGURED port, which is 0
     // here (ephemeral bind). DaemonServer never rewrites this.port to the OS-
-    // assigned port, so these strings stay deterministically ':0' — the real
+    // assigned port, so these strings stay deterministically ':0', the real
     // bound port is captured separately (boundPort) for the fetch-based tests.
     expect(transportEvents).toEqual([
       {
@@ -300,7 +300,7 @@ describe('DaemonServer', () => {
     ]);
   });
 
-  test('start is idempotent — does not throw when called twice', async () => {
+  test('start is idempotent; does not throw when called twice', async () => {
     daemon.enable({ daemon: true }, TEST_TOKEN);
     await daemon.start();
     await daemon.start(); // second call should be a no-op
@@ -849,7 +849,7 @@ describe('DaemonServer', () => {
     expect(Array.isArray(reviewBody.routes)).toBe(true);
     expect((reviewBody.routes as string[]).includes('GET /api/settings')).toBe(true);
 
-    // Panels are a surface concept and the daemon has none — the route answers
+    // Panels are a surface concept and the daemon has none, the route answers
     // with an empty list rather than an error, and opening one is a 404. Pinned
     // here because "the daemon grew a panel" is the shape of a regression that
     // would put screen state back inside the process that has no screen.
@@ -3240,7 +3240,7 @@ describe('HttpListener', () => {
     rl.enable({ httpListener: true }, TEST_TOKEN);
     await rl.start();
     try {
-      // Send 60 requests — all should succeed (or 404, not 429)
+      // Send 60 requests, all should succeed (or 404, not 429)
       for (let i = 0; i < 60; i++) {
         await fetch(`http://127.0.0.1:${boundPort}/health`, {
           headers: { Authorization: `Bearer ${TEST_TOKEN}` },

@@ -2,7 +2,7 @@
  * The provider-inbound aggregator, over the real inbox composition.
  *
  * `channels.inbox.list` spent a release cataloged with `invokable: false`
- * because no client could reach it — the SDK descriptor said "cataloged, not
+ * because no client could reach it, the SDK descriptor said "cataloged, not
  * callable" and the handler this repo already had sat behind that flag. The flag
  * is off now, so what a client actually GETS is what needs pinning, and the
  * properties below are the ones a caller would be misled by if they broke:
@@ -12,8 +12,8 @@
  *   - Paging walks the whole feed with no duplicate and no skipped item, using
  *     the opaque nextCursor rather than an offset.
  *   - A provider whose sync FAILED contributes nothing and SAYS SO, and the
- *     answer is flagged partial. The alternative — a short list with no
- *     explanation — is indistinguishable from a quiet week.
+ *     answer is flagged partial. The alternative, a short list with no
+ *     explanation, is indistinguishable from a quiet week.
  *   - A daemon with nothing configured answers an EMPTY LIST, not an error, and
  *     names each unconfigured provider. The verb is callable in every state; a
  *     fresh install asking "what's in my inbox" gets "nothing yet, and here is
@@ -75,7 +75,7 @@ function healthyProvider(id: string, items: readonly InboundChannelItem[]): void
   }));
 }
 
-/** A provider that is wired up and whose sync failed — items exist, we cannot see them. */
+/** A provider that is wired up and whose sync failed, items exist, we cannot see them. */
 function failingProvider(id: string, error: string): void {
   registerAdapterFactory(id, () => ({
     id,
@@ -180,7 +180,7 @@ describe('several configured providers', () => {
     }
   });
 
-  test('pagination walks the whole feed once — no duplicate, no gap', async () => {
+  test('pagination walks the whole feed once; no duplicate, no gap', async () => {
     healthyProvider('slack', [1, 3, 5, 7, 9].map((n) => mkItem('slack', `slack:${n}`, n * 100)));
     healthyProvider('email', [2, 4, 6, 8].map((n) => mkItem('email', `email:${n}`, n * 100)));
     const unregister = registerInboxMethods(ctx, undefined, { registerBuiltins: false });
@@ -264,7 +264,7 @@ describe('several configured providers', () => {
       const out = await invoke({ provider: 'email' });
       expect(out.items.map((item) => item.id)).toEqual(['email:2', 'email:1']);
       expect(out.total).toBe(2);
-      // Only the asked-about provider reports — a status list that still
+      // Only the asked-about provider reports, a status list that still
       // included slack would be describing rows the answer excluded.
       expect(out.providers.map((entry) => entry.provider)).toEqual(['email']);
     } finally {
@@ -362,7 +362,7 @@ describe('a provider whose sync failed', () => {
     try {
       const out = await invoke();
 
-      // The healthy provider still answers — one bad provider does not take the
+      // The healthy provider still answers, one bad provider does not take the
       // feed down with it.
       expect(out.items.map((item) => item.id)).toEqual(['slack:2', 'slack:1']);
       expect(out.items.some((item) => item.provider === 'email')).toBe(false);
@@ -408,7 +408,7 @@ describe('a provider whose sync failed', () => {
 // ── nothing configured is an answer, not a failure ─────────────────────────
 
 describe('a daemon with nothing configured', () => {
-  test('answers an empty list with an unconfigured status per provider — not an error', async () => {
+  test('answers an empty list with an unconfigured status per provider; not an error', async () => {
     unconfiguredProvider('slack', 'surfaces.slack.botToken');
     unconfiguredProvider('discord', 'surfaces.discord.botToken');
     unconfiguredProvider('email', 'email IMAP credentials');
@@ -420,7 +420,7 @@ describe('a daemon with nothing configured', () => {
       expect(out.total).toBe(0);
       expect(out.hasMore).toBe(false);
       // Nothing is MISSING from a provider nobody wired up, so this is not a
-      // partial answer — it is a complete answer about an empty inbox.
+      // partial answer, it is a complete answer about an empty inbox.
       expect(out.partial).toBe(false);
 
       expect(out.providers.map((entry) => entry.provider).sort()).toEqual(['discord', 'email', 'slack']);
@@ -473,7 +473,7 @@ describe('a node that is not the elected fetcher', () => {
       expect(slack.state).toBe('pending');
       expect(slack.syncing).toBe(false);
       expect(slack.lastSyncAt).toBeUndefined();
-      // The READ still serves — a standby answers about what has arrived.
+      // The READ still serves, a standby answers about what has arrived.
       expect(out.items).toEqual([]);
     } finally {
       unregister();

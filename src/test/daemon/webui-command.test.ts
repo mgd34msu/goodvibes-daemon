@@ -1,5 +1,5 @@
 /**
- * webui-command.test.ts — `goodvibes-daemon webui enable|disable|status`.
+ * webui-command.test.ts, `goodvibes-daemon webui enable|disable|status`.
  *
  * The properties under test are the ones an installer and an operator both
  * depend on:
@@ -7,7 +7,7 @@
  *   - `enable` never widens network exposure as a side effect. A daemon bound to
  *     loopback keeps serving to that machine only; widening is `--lan` and
  *     nothing else.
- *   - The URL it prints is the origin that actually answers — the CONTROL-PLANE
+ *   - The URL it prints is the origin that actually answers, the CONTROL-PLANE
  *     one, because that is the listener serving the bundle. `web.port` is the
  *     surface's declared endpoint and nothing binds it, so a command that
  *     printed it would be handing out a URL that fails to connect.
@@ -72,7 +72,7 @@ describe('webui enable', () => {
       expect(config.values['controlPlane.webui.serve']).toBe(true);
       expect(config.values['controlPlane.webui.bundleDir']).toBe(dir);
       expect(config.values['web.enabled']).toBe(true);
-      // The control-plane port, not web.port — that is where the bundle is served.
+      // The control-plane port, not web.port, that is where the bundle is served.
       expect(result.lines.join('\n')).toContain('http://127.0.0.1:3421');
       expect(result.lines.join('\n')).not.toContain(':3423');
     } finally {
@@ -176,7 +176,7 @@ describe('webui enable', () => {
   });
 });
 
-describe('webui enable — refusals', () => {
+describe('webui enable: refusals', () => {
   test('a directory with no index.html is refused before anything is written', () => {
     const dir = makeProjectTempDir('webui-empty');
     try {

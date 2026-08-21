@@ -20,7 +20,7 @@ export interface DaemonCredentialStore {
    * Store a daemon-owned credential. scope defaults 'daemon'.
    *
    * This is the DAEMON's own credential store: every caller is daemon code, and
-   * every value written through it is one the daemon itself has to read back —
+   * every value written through it is one the daemon itself has to read back,
    * including its own generated draft encryption key (createAtRestCipher below,
    * which calls put() with no scope at all). Defaulting to 'user' filed those
    * in a surface-scoped tier, so the daemon's own material lived somewhere it

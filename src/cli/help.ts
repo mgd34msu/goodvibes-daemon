@@ -14,7 +14,7 @@ function readJsonVersion(path: string): string | null {
   try {
     if (!existsSync(path)) return null;
     const parsed = JSON.parse(readFileSync(path, 'utf-8')) as { name?: unknown; version?: unknown };
-    // Only trust OUR package.json — a compiled single-file binary can resolve
+    // Only trust OUR package.json, a compiled single-file binary can resolve
     // this path to a different package.json (a bundled dependency's) that
     // reports a placeholder like "0.0.0". Fall through to the baked VERSION in
     // that case rather than rendering a stray version in `--version`/banners.
@@ -37,7 +37,7 @@ export function renderGoodVibesVersion(binary = 'goodvibes-daemon'): string {
 
 /**
  * Honest one-line startup identity for the daemon binary, emitted right as it
- * begins serving — including on a bare (no-arg) systemd launch. It states the
+ * begins serving, including on a bare (no-arg) systemd launch. It states the
  * RESOLVED version (never a placeholder), the home/host/port it actually bound,
  * and points at the real service-setup command. This replaces the field
  * behavior where a bare launch showed a wrong "v0.0.0" banner and gave an
@@ -51,7 +51,7 @@ export function renderDaemonStartupBanner(
   binary = 'goodvibes-daemon',
 ): string {
   return (
-    `${binary} ${version} starting — ` +
+    `${binary} ${version} starting: ` +
     `home=${binding.homeDir} host=${binding.host} port=${binding.port} ` +
     `(manage as a service: ${binary} install-service)`
   );
@@ -124,7 +124,7 @@ export function renderGoodVibesDaemonHelp(
     '',
     'Exit codes:',
     `${pad('  0')}the command did what it says`,
-    `${pad('  1')}it ran and failed — the reason is printed`,
+    `${pad('  1')}it ran and failed: the reason is printed`,
     `${pad('  2')}the command line was wrong: an unknown command, an unknown flag,`,
     `${pad('   ')}a flag this command does not take, or a missing value`,
     `${pad('  3')}service-status only: installed, but not running`,
@@ -133,7 +133,7 @@ export function renderGoodVibesDaemonHelp(
 }
 
 /**
- * `help <command>` — one command's usage, its own flags, and what it does.
+ * `help <command>`, one command's usage, its own flags, and what it does.
  *
  * Returns null when the word names no command, so the caller can refuse with
  * the same "Unknown command" message the parser produces rather than printing

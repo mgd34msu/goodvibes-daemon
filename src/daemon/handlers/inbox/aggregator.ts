@@ -8,7 +8,7 @@
 //
 //   * The mirror is already live. Each adapter polls its provider on that
 //     provider's own cadence (Slack/Discord 30s, email 60s) and writes what it
-//     pulls straight into the store — that is what the triage pipeline scores.
+//     pulls straight into the store, that is what the triage pipeline scores.
 //     Reading it IS reading what has arrived.
 //   * A fetch-per-call would put a third-party rate limit behind a read verb
 //     any client may call at any rate, so one impatient UI could get every
@@ -16,7 +16,7 @@
 //   * The cluster hands FETCHING for each inbox account to one elected node
 //     (runtime/cluster-composition.ts). A read that fetched would make every
 //     standby node fetch too, which is exactly the double-read the election
-//     exists to prevent — while the READ is deliberately ungated so a standby
+//     exists to prevent, while the READ is deliberately ungated so a standby
 //     still answers.
 //   * Triage scores are applied as items are persisted. Items fetched inline
 //     would arrive unscored, so the verb would answer two different shapes
@@ -26,7 +26,7 @@
 //
 // The cost of serving a mirror is that its age is not visible in the items. So
 // the aggregator does not leave it implicit: `providers` reports every provider
-// this node knows about on EVERY call — its state, when it last synced, how
+// this node knows about on EVERY call, its state, when it last synced, how
 // much of the mirror is its, and whether this node is the one fetching it.
 //
 // ── Honest partial results ────────────────────────────────────────────────
@@ -119,7 +119,7 @@ export interface InboxAggregatorSources {
 /**
  * A page cursor is the position of the last item handed out, base64url-encoded
  * so it reads as opaque and callers do not build one by hand. It is NOT the
- * `cursor` field in the answer — that one is the freshness watermark a caller
+ * `cursor` field in the answer, that one is the freshness watermark a caller
  * feeds back as `since`. Two different questions ("what is new" vs "the next
  * page down"), so two different values; collapsing them is how a paging client
  * ends up silently re-reading page one forever.
@@ -234,7 +234,7 @@ export function toWireItem(item: InboundChannelItem): ChannelInboxItem {
  *
  * The merge itself is the store's ordering (receivedAt DESC, id ASC across all
  * providers), so items interleave by arrival rather than being grouped by
- * provider — an inbox is a timeline, and each item carries its own `provider`
+ * provider, an inbox is a timeline, and each item carries its own `provider`
  * so attribution survives the merge.
  */
 export function aggregateInbox(
@@ -300,7 +300,7 @@ export function aggregateInbox(
  * Turn the poller's per-provider record into the wire statuses.
  *
  * Every provider the node has an adapter for appears, including ones that
- * contributed nothing and ones nobody has configured — a provider missing from
+ * contributed nothing and ones nobody has configured, a provider missing from
  * this list would be a hole the caller could not even see.
  */
 function describeProviders(input: {
@@ -313,7 +313,7 @@ function describeProviders(input: {
   const known = poller.snapshotStatuses(requested);
 
   // A `?provider=` filter naming something this node has no adapter for gets an
-  // empty list and no status, which reads as "we have nothing" — so it is
+  // empty list and no status, which reads as "we have nothing", so it is
   // reported explicitly instead.
   const reported = new Set(known.map((status) => status.id));
   const unknownRequested = (requested ?? []).filter((id) => !reported.has(id));
@@ -354,7 +354,7 @@ function describeProviders(input: {
  * Map the poller's internal state onto the wire vocabulary.
  *
  * The internal 'unavailable' covers two situations the wire deliberately keeps
- * apart — nothing configured, versus configured and failing — because a caller
+ * apart, nothing configured, versus configured and failing, because a caller
  * does something different about each.
  *
  * ready-vs-empty is decided by the MIRROR, not by the last poll. The poller's

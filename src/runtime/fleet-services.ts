@@ -1,5 +1,5 @@
 /**
- * fleet-services.ts — the shared, archive-aware fleet registry construction,
+ * fleet-services.ts, the shared, archive-aware fleet registry construction,
  * lifted out of services.ts so the composition root stays under the file-size
  * cap. Mirrors the sibling create*Services helpers (durability, code-index,
  * workstream): a single dependency-injected call that services.ts makes once.

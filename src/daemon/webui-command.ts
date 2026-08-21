@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// webui-command.ts — `goodvibes-daemon webui enable|disable|status`.
+// webui-command.ts, `goodvibes-daemon webui enable|disable|status`.
 //
 // WHAT THIS IS FOR
 //
@@ -8,7 +8,7 @@
 // serve such a directory: with `controlPlane.webui.serve` on, its own HTTP
 // router answers `/` from `controlPlane.webui.bundleDir` and falls back to
 // index.html for app routes. So installing the web UI is two config writes and
-// a directory on disk — and this is the command that makes those writes, so the
+// a directory on disk, and this is the command that makes those writes, so the
 // curl installer does not have to know the key names, the file format, or which
 // of the three settings tiers a daemon-owned key belongs in. Same reason
 // `provision-wake-model` exists: the installer runs the binary it just placed
@@ -17,12 +17,12 @@
 // WHERE IT IS SERVED, AND WHY THE URL SAYS WHAT IT SAYS
 //
 // The bundle is served BY THE CONTROL-PLANE LISTENER, same origin as the API
-// (that is the whole point — a same-origin bundle makes the browser's
+// (that is the whole point, a same-origin bundle makes the browser's
 // same-origin policy a non-issue and needs no CORS allowlist). So the URL that
 // opens the web UI is the control-plane origin: `http://<host>:<controlPlane.port>`,
 // not `web.port`. `web.port` is the surface's DECLARED endpoint, used for links
-// and for `tailscale serve`; nothing binds it. This command therefore reports —
-// and, when it is still sitting on the shipped placeholder, writes —
+// and for `tailscale serve`; nothing binds it. This command therefore reports,
+// and, when it is still sitting on the shipped placeholder, writes,
 // `web.publicBaseUrl` as the origin that actually answers, so the printed URL,
 // the pairing deep link and the running server all agree.
 //
@@ -41,7 +41,7 @@ import type { ConfigManager } from '@pellux/goodvibes-sdk/platform/config';
 import { resolveRuntimeEndpointBinding } from '@pellux/goodvibes-terminal-shell';
 import { probeStableHostInputs, stableUrlHostForBindHost, type StableHostInputs } from '@pellux/goodvibes-sdk/platform/pairing';
 
-/** The shipped `web.publicBaseUrl` placeholder — a port nothing binds. */
+/** The shipped `web.publicBaseUrl` placeholder, a port nothing binds. */
 const SHIPPED_PUBLIC_BASE_URL = 'http://127.0.0.1:3423';
 
 export interface WebuiCommandResult {
@@ -175,13 +175,13 @@ function postureLines(origin: string, loopback: boolean): string[] {
     ];
   }
   return [
-    `  reachable from your network at ${origin} — the control-plane listener is bound to all interfaces.`,
+    `  reachable from your network at ${origin}; the control-plane listener is bound to all interfaces.`,
     '  To take it back to this machine only:  goodvibes-daemon webui enable --loopback',
   ];
 }
 
 /**
- * Run the command and report it. Never throws for an ordinary refusal — a bad
+ * Run the command and report it. Never throws for an ordinary refusal, a bad
  * argument, a missing bundle, an unwritable settings file all come back as an
  * exit code and lines, because the caller is often an installer reading both.
  */
@@ -212,14 +212,14 @@ export function runWebuiCommand(argv: readonly string[], deps: WebuiCommandDeps)
     try {
       config.set('controlPlane.webui.serve', false);
     } catch (error) {
-      return { exitCode: 1, lines: [`webui: could not write settings — ${message(error)}`] };
+      return { exitCode: 1, lines: [`webui: could not write settings: ${message(error)}`] };
     }
     const kept = readString(config, 'controlPlane.webui.bundleDir');
     return {
       exitCode: 0,
       lines: [
         'web UI: no longer served by the daemon.',
-        ...(kept ? [`  the bundle is left on disk at ${kept} — 'goodvibes-daemon webui enable' serves it again`] : []),
+        ...(kept ? [`  the bundle is left on disk at ${kept}; 'goodvibes-daemon webui enable' serves it again`] : []),
         '  Restart the daemon for this to take effect on a running process.',
       ],
     };
@@ -242,7 +242,7 @@ export function runWebuiCommand(argv: readonly string[], deps: WebuiCommandDeps)
     return {
       exitCode: 1,
       lines: [
-        `webui: refusing to serve ${bundleDir} — ${problem}.`,
+        `webui: refusing to serve ${bundleDir}: ${problem}.`,
         '  Nothing was changed.',
       ],
     };
@@ -260,7 +260,7 @@ export function runWebuiCommand(argv: readonly string[], deps: WebuiCommandDeps)
       config.set('web.hostMode', 'local');
     }
   } catch (error) {
-    return { exitCode: 1, lines: [`webui: could not write settings — ${message(error)}`] };
+    return { exitCode: 1, lines: [`webui: could not write settings: ${message(error)}`] };
   }
 
   const serving = servingOrigin(config, probe);
@@ -284,7 +284,7 @@ export function runWebuiCommand(argv: readonly string[], deps: WebuiCommandDeps)
   }
 
   if (!serving.recognized) {
-    lines.push('  note: controlPlane.hostMode is not one of local|network|custom — the daemon cannot bind until that is corrected.');
+    lines.push('  note: controlPlane.hostMode is not one of local|network|custom; the daemon cannot bind until that is corrected.');
   }
   lines.push(...postureLines(serving.origin, serving.loopback));
   lines.push('  Restart the daemon for this to take effect on a running process.');
@@ -324,7 +324,7 @@ function renderStatus(
   } else {
     const absoluteDir = deps.absolute(directory);
     const problem = describeBundleProblem(absoluteDir, deps.directoryExists, deps.fileExists);
-    lines.push(problem ? `  bundle (${source}): ${absoluteDir} — UNUSABLE: ${problem}` : `  bundle (${source}): ${absoluteDir}`);
+    lines.push(problem ? `  bundle (${source}): ${absoluteDir} (UNUSABLE: ${problem})` : `  bundle (${source}): ${absoluteDir}`);
   }
   const currentPublic = readString(config, 'web.publicBaseUrl');
   if (currentPublic && currentPublic !== serving.origin) {

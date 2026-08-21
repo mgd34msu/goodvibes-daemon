@@ -1,9 +1,9 @@
 /**
- * notification-dispatch.ts — how this daemon dispatches notices without a screen.
+ * notification-dispatch.ts, how this daemon dispatches notices without a screen.
  *
  * The SDK's NotificationRouter decides where a domain notification goes and
- * collapses bursts and batches. Its three targets — `conversation`,
- * `status_bar`, `panel_only` — are all SCREEN targets: an inline conversation
+ * collapses bursts and batches. Its three targets, `conversation`,
+ * `status_bar`, `panel_only`, are all SCREEN targets: an inline conversation
  * line, a status bar, a panel. There is no channel member in that type, and
  * there never was. Which means the router is a surface mechanism end to end,
  * and this process has no screen.
@@ -11,7 +11,7 @@
  * This module used to wire the router to every curated domain anyway, writing
  * into a bounded ring whose `list()` had no caller anywhere in this repository.
  * Six domains of events, for the daemon's whole lifetime, into a buffer nobody
- * read — and the type declaring it still described the ring as "the panel's
+ * read, and the type declaring it still described the ring as "the panel's
  * live producer", for a product with no panels. That silent-success failure
  * class is exactly what this module removes: the producer goes.
  *
@@ -23,7 +23,7 @@
  *
  * One notice had no such path: memory pressure. The MemoryGovernor measures the
  * process it runs in, so the daemon's pressure is the daemon's own and no
- * surface can report it — and the daemon that ran out of memory is exactly the
+ * surface can report it, and the daemon that ran out of memory is exactly the
  * one that cannot tell you afterwards. It now goes out over the operator's
  * configured notice destination (`notifications.webhookUrls`, the same list the
  * bus bridge uses), and says so at its own level in the activity log when no
@@ -56,7 +56,7 @@ export interface DaemonNoticeChannel {
  * one event type rather than a subscription to the domain: the tier change is
  * the operator's business and the churn is not.
  *
- * Delivery failure is logged, never thrown — a webhook endpoint being down is
+ * Delivery failure is logged, never thrown, a webhook endpoint being down is
  * not a reason for the process reporting memory pressure to also crash.
  */
 export function wireMemoryPressureChannelNotice(
@@ -69,7 +69,7 @@ export function wireMemoryPressureChannelNotice(
     const level = memoryPressureLevel(payload);
     const line = memoryPressureLine(payload);
     if (!channel.isConfigured()) {
-      // No destination configured. The notice still exists — at its own
+      // No destination configured. The notice still exists, at its own
       // severity, where the operator looks when the daemon misbehaves.
       if (level === 'critical') logger.error(line);
       else if (level === 'warning') logger.warn(line);

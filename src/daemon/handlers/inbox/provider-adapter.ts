@@ -4,11 +4,11 @@
 // Each adapter owns ONE provider (slack, discord, email, ...). The poller calls
 // adapter.poll() on a cadence, dedups by item.id, and persists into the cursor
 // store. Adapters resolve credentials ONLY through the daemon credential store
-// and NEVER return raw sender ids or unredacted bodies — mapping/redaction is
+// and NEVER return raw sender ids or unredacted bodies, mapping/redaction is
 // the adapter's responsibility (see mapping helpers in `./mapping.ts`).
 //
 // CRITICAL: when a credential is missing/misconfigured an adapter returns
-// state 'unavailable' WITH an error string. It is NEVER silently omitted — the
+// state 'unavailable' WITH an error string. It is NEVER silently omitted, the
 // caller must be able to distinguish "configured-but-empty" from "not wired".
 // ---------------------------------------------------------------------------
 
@@ -16,7 +16,7 @@ import type { DaemonCredentialStore } from '../credentials.ts';
 import type { HandlerLogger } from '../context.ts';
 
 /**
- * Daemon-internal inbound item. This is NOT the SDK wire shape — the inbox
+ * Daemon-internal inbound item. This is NOT the SDK wire shape, the inbox
  * surface maps it onto the SDK `CHANNEL_INBOX_ITEM_SCHEMA` shape
  * (`from`/`subject`/`bodyPreview`/...) before returning. `fromDigest` is the
  * redacted sender (the only sender value that ever leaves the daemon).
@@ -27,7 +27,7 @@ export interface InboundChannelItem {
   provider: string;
   kind: 'dm' | 'thread' | 'mention' | 'reaction';
   /**
-   * sha256First(senderExternalId, 16) — NEVER the raw id. 16 hex chars == the
+   * sha256First(senderExternalId, 16), NEVER the raw id. 16 hex chars == the
    * first 8 bytes of the SHA-256 digest.
    */
   fromDigest: string;
@@ -61,9 +61,9 @@ export interface ProviderPollResult {
    * is an outage hiding items that exist, and `channels.inbox.list` reports
    * them as different states because a caller acts on them differently.
    *
-   * `false` — no credential (or an unusable one), so nothing was even asked.
-   * `true`  — credentials resolved; whatever happened next happened WITH them.
-   * absent  — the adapter could not find out (the credential store itself
+   * `false`, no credential (or an unusable one), so nothing was even asked.
+   * `true` , credentials resolved; whatever happened next happened WITH them.
+   * absent , the adapter could not find out (the credential store itself
    *           failed), which is neither claim and is reported as neither.
    */
   configured?: boolean;
@@ -108,7 +108,7 @@ export interface InboundProviderAdapter {
    */
   readonly pollIntervalMs: number;
   /**
-   * Pull recent DMs/threads/mentions. MUST resolve (never reject) — failures
+   * Pull recent DMs/threads/mentions. MUST resolve (never reject), failures
    * are reported via state:'unavailable' + error so one bad provider cannot
    * crash the aggregate feed.
    */

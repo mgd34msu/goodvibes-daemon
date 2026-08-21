@@ -1,5 +1,5 @@
 /**
- * surface.ts — the daemon's single surface-root identifier.
+ * surface.ts, the daemon's single surface-root identifier.
  *
  * Every piece of the daemon's own on-disk state (sessions, recovery snapshots,
  * checkpoints, the transcript journal, watchers, triggers, control-plane stores)
@@ -10,8 +10,8 @@
  * ── Why the daemon's surface root is still `tui` ────────────────────────────
  *
  * Because that is where the running daemon's state already is. Every store
- * this daemon has written on every installed machine — sessions, approvals,
- * watchers, devices, channel policies, the code index — sits under
+ * this daemon has written on every installed machine, sessions, approvals,
+ * watchers, devices, channel policies, the code index, sits under
  * `.goodvibes/tui/`. Renaming the segment here would not move that state; it
  * would make the daemon stop finding it, silently, on machines that have been
  * running for months.

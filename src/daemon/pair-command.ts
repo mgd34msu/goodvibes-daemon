@@ -1,9 +1,9 @@
 /**
- * pair-command.ts — `goodvibes-daemon pair`.
+ * pair-command.ts, `goodvibes-daemon pair`.
  *
  * Two forms.
  *
- * LOCAL FORM — `pair` with no `--host`, or one naming this machine — reprints
+ * LOCAL FORM, `pair` with no `--host`, or one naming this machine, reprints
  * the pairing block a daemon prints once as it starts: the web origin, the
  * offers a new device can accept, what it will be able to do, and a QR code
  * encoding the deep link that opens the web app already signed in. It reads
@@ -12,13 +12,13 @@
  * resolve to) and reprints the EXISTING token rather than minting a new one,
  * so a link printed here and the one printed at boot are the same link.
  *
- * REMOTE FORM — `pair --host <name> [--port] [--token]` — asks THAT daemon to
+ * REMOTE FORM, `pair --host <name> [--port] [--token]`, asks THAT daemon to
  * MINT A NEW per-device pairing token over `pairing.handoff.create` and prints
  * the pairing block for it. Minting is a different act than reprinting: it is
  * a fresh token, and every token that daemon already issued (its own shared
  * token included) is left exactly as it was. Because it changes state on a
  * daemon that may not be this process's own, it states the plan and asks for
- * confirmation before acting — `-y`/`--yes` satisfies that non-interactively,
+ * confirmation before acting, `-y`/`--yes` satisfies that non-interactively,
  * the same convention `migrate-service` uses. An unreachable daemon, a
  * rejected token, and a daemon too old to serve the verb are each refused by
  * name (see `callDaemonWsVerb`), never a stack trace.
@@ -84,7 +84,7 @@ function failure(error: string, fix: string, json: boolean): DaemonCommandResult
 /**
  * The web origin a remote handoff's deep link opens, recovered from the link
  * itself. `buildPairingHandoffLink` in the SDK builds the link as exactly
- * `<webOrigin, trailing slashes stripped>/#<params>` — so slicing at the
+ * `<webOrigin, trailing slashes stripped>/#<params>`, so slicing at the
  * first `/#` is the precise inverse, and feeding the result back into
  * `renderPairingBanner` (which rebuilds the SAME link from origin + token +
  * offers) reproduces byte-for-byte what the remote daemon already returned.
@@ -103,19 +103,19 @@ interface PairingHandoffOfferDetail {
   readonly available?: boolean;
 }
 
-/** The shape `pairing.handoff.create` returns — see routes/pairing-handoff.ts. */
+/** The shape `pairing.handoff.create` returns, see routes/pairing-handoff.ts. */
 interface PairingHandoffCreateResult {
   readonly token: {
     readonly id: string;
     readonly name: string;
-    /** The plaintext secret — returned exactly once. */
+    /** The plaintext secret, returned exactly once. */
     readonly token: string;
     readonly createdAt: number;
   };
   readonly offers: readonly PairingHandoffOfferDetail[];
-  /** `#pair=<token>&offers=...` — present even when no web origin is configured. */
+  /** `#pair=<token>&offers=...`, present even when no web origin is configured. */
   readonly fragment: string;
-  /** `<webOrigin>/#pair=...` — present only when that daemon has a web origin configured. */
+  /** `<webOrigin>/#pair=...`, present only when that daemon has a web origin configured. */
   readonly deepLink?: string;
 }
 
@@ -127,7 +127,7 @@ function runLocalReprint(input: RunPairCommandInput): DaemonCommandResult {
   if (token === undefined) {
     return failure(
       'no operator token was found for this machine, so there is no link to print',
-      'start the daemon once — it creates the token as it starts: goodvibes-daemon serve',
+      'start the daemon once; it creates the token as it starts: goodvibes-daemon serve',
       flags.json,
     );
   }
@@ -175,7 +175,7 @@ function mintPlanResult(target: RemoteDaemonTarget, json: boolean): DaemonComman
     `pair --host: this will MINT A NEW per-device pairing token on the daemon at ${target.baseUrl}`,
     'and print the pairing link/QR for that new token.',
     '',
-    "That daemon's existing tokens — its shared token and every other paired device — are",
+    "That daemon's existing tokens (its shared token and every other paired device) are",
     'left exactly as they are: minting is a different act than reprinting, and this is a',
     'fresh token, not a link to one that already exists.',
     '',
@@ -208,15 +208,15 @@ async function runRemoteMint(input: RunPairCommandInput, target: RemoteDaemonTar
   const mintedLine = `minted a new per-device pairing token ("${data.token.name}") on the daemon at ${target.baseUrl}.`;
 
   if (data.deepLink === undefined) {
-    // Honest degraded path: the mint itself succeeded — the token is real and
-    // usable — but that daemon has no web origin configured, and this process
+    // Honest degraded path: the mint itself succeeded, the token is real and
+    // usable, but that daemon has no web origin configured, and this process
     // has no way to read or fabricate one for it. `resolvePairingWebOrigin` is
     // what the local form reads instead, and it is exactly the thing this
     // process cannot ask a REMOTE daemon for outside this verb's own reply.
     const lines = [
       mintedLine,
       '',
-      'that daemon has no web origin configured, so no deep link or QR could be built — only',
+      'that daemon has no web origin configured, so no deep link or QR could be built; only',
       'the raw token and pairing fragment:',
       '',
       `  token:    ${data.token.token}`,

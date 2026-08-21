@@ -153,7 +153,7 @@ describe('PlatformServiceManager', () => {
     launchdManager.stop();
     launchdManager.restart();
     // restart() has no native launchd verb, so it dispatches an honest
-    // unload-then-load pair (the unload is best-effort — the agent may not be
+    // unload-then-load pair (the unload is best-effort, the agent may not be
     // loaded yet) rather than a bare `load`, matching suggestedCommands()'
     // human-facing `launchctl unload <path> || true` / `launchctl load <path>`.
     // Filter out the SDK status()'s read-only `launchctl list` probes, same

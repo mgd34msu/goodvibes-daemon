@@ -3,8 +3,8 @@
  *
  * Teardown for every poller the daemon's runtime graph starts.
  *
- * The mechanics — the ordered, best-effort, idempotent scope and the
- * all-required owner list — live in the SDK (`platform/runtime/disposal`), so
+ * The mechanics, the ordered, best-effort, idempotent scope and the
+ * all-required owner list, live in the SDK (`platform/runtime/disposal`), so
  * the daemon and the SDK's own composition root cannot drift into two different
  * ideas of what "stop the graph" means. What lives here is only the mapping from
  * the daemon's assembled graph onto that list, plus the four pollers the daemon
@@ -19,7 +19,7 @@
  * Ownership note, and the reason any of this exists: this product builds the
  * graph and hands the SAME object to `DaemonServer`. The SDK facade disposes
  * only a graph it constructed itself, so it deliberately leaves this one alone
- * — nothing upstream will ever stop these pollers. The shutdown paths in
+ *, nothing upstream will ever stop these pollers. The shutdown paths in
  * daemon/cli.ts and the one-shot CLI commands are the only things that can.
  *
  * The owner type below is declared structurally rather than imported from
@@ -44,7 +44,7 @@ export interface DaemonRuntimePollerOwners extends Omit<RuntimePollerOwners, 'st
   /**
    * Daemon-only: the wake-word recovery sweep and a pending boot provision
    * Started only when an entrypoint opted into boot
-   * provisioning, and a no-op otherwise — but it is on this list unconditionally,
+   * provisioning, and a no-op otherwise, but it is on this list unconditionally,
    * because "the graph did not start it this time" is not a reason for the
    * teardown path to have no way to stop it.
    */
@@ -53,7 +53,7 @@ export interface DaemonRuntimePollerOwners extends Omit<RuntimePollerOwners, 'st
    * Daemon-only: the product handler surfaces (daemon-handler-composition.ts).
    *
    * `unregister()` detaches the gateway handlers AND stops the two pollers this
-   * product's inbox surface owns — the retention sweep inside `InboxCursorStore`
+   * product's inbox surface owns, the retention sweep inside `InboxCursorStore`
    * and the per-provider `InboundPoller` intervals. The SDK does not know either
    * exists, so if this surface does not stop them nothing does.
    */
@@ -68,7 +68,7 @@ export interface DaemonRuntimePollerOwners extends Omit<RuntimePollerOwners, 'st
 
 /**
  * The poller owners this daemon holds that are NOT reachable from the
- * assembled graph — handles the factory keeps as locals.
+ * assembled graph, handles the factory keeps as locals.
  */
 export interface RuntimeDisposalExtras {
   /** Handle returned by `ConfigManager.watchConfigFiles()`. */
@@ -79,7 +79,7 @@ export interface RuntimeDisposalExtras {
  * Register the stop call for every poller the graph started.
  *
  * `services` is the fully-assembled graph, which already exposes each poller
- * owner as a field — so a poller whose owner reaches the public surface is
+ * owner as a field, so a poller whose owner reaches the public surface is
  * wired by name rather than by threading another local out of the factory.
  */
 export function registerDaemonRuntimePollers(
@@ -93,7 +93,7 @@ export function registerDaemonRuntimePollers(
   registry.add('wake-word housekeeping', services.stopWakeHousekeeping);
   // Registered LAST so it tears down FIRST (the scope unwinds in reverse), which
   // is the order daemon/cli.ts already used by hand: release the handler surfaces
-  // — closing the inbox store and stopping its poll timers — before the pollers
+  //, closing the inbox store and stopping its poll timers, before the pollers
   // the rest of the graph owns. Being on this list is what makes a plain
   // `dispose()` total: every shutdown path stops these, not just the one that
   // remembered to call `unregister()` itself.

@@ -1,5 +1,5 @@
 /**
- * command.ts — `goodvibes-daemon send`, the shell's way to put a message on one
+ * command.ts, `goodvibes-daemon send`, the shell's way to put a message on one
  * of the owner's channels.
  *
  * ## Why this exists
@@ -7,7 +7,7 @@
  * Nothing on this machine could send the owner a message from a script. The
  * three binaries exposed no send verb, the daemon's HTTP API answers
  * `401 AUTH_REQUIRED` to the operator token as stored, and driving the agent to
- * do it failed with `Missing Telegram bot token` — because the credential lives
+ * do it failed with `Missing Telegram bot token`, because the credential lives
  * in the DAEMON tier (`~/.goodvibes/daemon/settings.json`) and the agent was
  * reading its own surface silo. So the one process that could always send was
  * the daemon, and only while it was running.
@@ -15,7 +15,7 @@
  * ## Three properties this command is built around
  *
  * 1. **It uses the delivery path, it is not a second sender.** Everything below
- *    ends in `ChannelDeliveryRouter.deliver()` — the same call
+ *    ends in `ChannelDeliveryRouter.deliver()`, the same call
  *    `AutomationDeliveryManager.sendTarget` makes, reaching the same
  *    per-surface strategies in `strategies-core.ts`. Nothing here talks to a
  *    provider API directly.
@@ -26,7 +26,7 @@
  *    was NOT used, deliberately: it returns an empty array when a feature gate
  *    is off and returns failed attempts rather than throwing, so a caller that
  *    did not inspect its result would report success for a message that never
- *    left the machine — the exact false-green this command exists to avoid. The
+ *    left the machine, the exact false-green this command exists to avoid. The
  *    gate check it would have done is done here instead, explicitly, and a gate
  *    that is off produces a refusal naming the settings key rather than silence.
  *
@@ -34,8 +34,8 @@
  *    through `inertBodyFor` for the target surface before it reaches the router,
  *    and there is no flag, env var or code path that skips that. The message
  *    normally comes from the operator's own shell, but the command must not
- *    become the way something else's text — a log line, a captured error, a
- *    remote agent's output piped in — arrives on the owner's phone rendered as
+ *    become the way something else's text, a log line, a captured error, a
+ *    remote agent's output piped in, arrives on the owner's phone rendered as
  *    live markup with a clickable link in it. See inert-text.ts.
  */
 
@@ -51,7 +51,7 @@ import { inertBodyFor } from './inert-text.ts';
 export type SendDeliver = (request: ChannelDeliveryRequest) => Promise<string | undefined>;
 
 export interface SendCommandDeps {
-  /** Built with a `homeDir` so the daemon tier overlays — see channels.ts. */
+  /** Built with a `homeDir` so the daemon tier overlays, see channels.ts. */
   readonly configManager: Pick<ConfigManager, 'get'>;
   readonly deliver: SendDeliver;
   /** Reads the whole of stdin; only called when no message argument was given. */
@@ -93,12 +93,12 @@ const USAGE = [
   '      --list           Show every channel, whether it is on, and where it sends.',
   '  -h, --help           Print this help',
   '',
-  'A channel that is switched off is refused by name and NOTHING is sent — the',
+  'A channel that is switched off is refused by name and NOTHING is sent: the',
   'command never quietly falls back to the default, so a message meant for a',
   'quiet channel cannot end up on a noisy one.',
   '',
   'The message is always delivered as literal text: markup a channel would',
-  'otherwise render — a Discord masked link, a Slack mention — arrives inert.',
+  'otherwise render (a Discord masked link, a Slack mention) arrives inert.',
 ].join('\n');
 
 function parseSendArgs(argv: readonly string[]): ParsedSendArgs {
@@ -153,7 +153,7 @@ function describeConfiguredChannels(config: Pick<ConfigManager, 'get'>): string 
     .map((entry) => entry.channel.id);
   return usable.length > 0
     ? `Configured and ready: ${usable.join(', ')}.`
-    : 'No channel is currently both switched on and given a destination — run: goodvibes-daemon send --list';
+    : 'No channel is currently both switched on and given a destination; run: goodvibes-daemon send --list';
 }
 
 function renderChannelList(config: Pick<ConfigManager, 'get'>): string[] {
@@ -304,7 +304,7 @@ export async function runSendCommand(
   };
 
   const preamble = usedDefault
-    ? [`No channel named — using ${channel.id}: ${defaultReason}.`]
+    ? [`No channel named; using ${channel.id}: ${defaultReason}.`]
     : [];
   try {
     const responseId = await deps.deliver(request);

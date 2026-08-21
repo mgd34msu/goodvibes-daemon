@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Triage tagger — shared types and provider-agnostic helpers.
+// Triage tagger, shared types and provider-agnostic helpers.
 //
 // Provider config shapes, the apply request/result contract, and the tag
 // normalization helpers used by the IMAP/Slack/Discord modules. No I/O here.
@@ -17,7 +17,7 @@ export interface TaggerProviderConfig {
    * optional forum-tag mapping. When `forumTagIds` maps a GoodVibes triage tag
    * (e.g. 'GoodVibes/Spam') to a forum tag SNOWFLAKE id, items that target a
    * forum/media-channel thread get that REAL thread tag applied (PATCH
-   * applied_tags) — exact fidelity to the contract's "Discord thread tags".
+   * applied_tags), exact fidelity to the contract's "Discord thread tags".
    * Without a mapping (or for non-thread messages) tagging degrades to a
    * unicode reaction analog.
    */
@@ -29,7 +29,7 @@ export interface ApplyTagsRequest {
   /** Provider-side tags to apply. Defaults to [labelToTag(label)] when omitted. */
   tags?: readonly string[];
   label?: TriageLabel;
-  /** Must be true — provider-side mutation requires explicit confirmation. */
+  /** Must be true, provider-side mutation requires explicit confirmation. */
   confirm?: boolean;
   /** Mirror of the operator invocation context flag. */
   explicitUserRequest?: boolean;

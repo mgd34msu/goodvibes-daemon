@@ -9,14 +9,14 @@
  *
  * With ONE deliberate exception, pinned below: workspace-registrations.json is
  * cross-product state (goodvibes-agent reads and writes the same file), so it
- * lives in the platform's shared tier — no surface root — and every product
+ * lives in the platform's shared tier, no surface root, and every product
  * must resolve the identical path.
  *
  * Two stores are exercised end to end:
- *  - pairing-tokens.json — the daemon's own PairingTokenManager, built the
+ *  - pairing-tokens.json, the daemon's own PairingTokenManager, built the
  *    same way services.ts:135 builds it (controlPlaneStorePath over
  *    GOODVIBES_DAEMON_SURFACE_ROOT).
- *  - workspace-registrations.json — written by the SDK's WorkspaceRegistration
+ *  - workspace-registrations.json, written by the SDK's WorkspaceRegistration
  *    Store (as the gateway verb group constructs it) and read back by THIS
  *    repo's own reader (checkpoint-eligibility.ts), proving writer and reader
  *    actually agree on disk, not just in a source-string comparison.
@@ -55,7 +55,7 @@ describe('a real pairing-token write lands under the surface-scoped control-plan
 describe("workspace-registrations.json: the SDK writer and this daemon's reader agree on disk", () => {
   test('the register writes to the SHARED tier, and this repo\'s reader resolves the identical file', async () => {
     // Not surface-scoped: goodvibes-agent reads and writes the same file, so
-    // scoping it to this daemon's root would split the register — workspaces
+    // scoping it to this daemon's root would split the register, workspaces
     // registered from the agent vanishing from the daemon, and checkpoint
     // eligibility refusing workspaces the operator had registered. It lives in
     // the platform's shared tier instead, which takes no surface root.
@@ -76,13 +76,13 @@ describe("workspace-registrations.json: the SDK writer and this daemon's reader 
 
     expect(writerPath).toBe(join(home, '.goodvibes', 'shared', 'workspace-registrations.json'));
     expect(existsSync(writerPath)).toBe(true);
-    // Emphatically NOT under this daemon's surface root — that is the split —
+    // Emphatically NOT under this daemon's surface root, that is the split,
     // and not at the pre-split address the boot fold is clearing out.
     expect(existsSync(join(home, '.goodvibes', GOODVIBES_DAEMON_SURFACE_ROOT, 'control-plane', 'workspace-registrations.json'))).toBe(false);
     expect(existsSync(join(home, '.goodvibes', 'control-plane', 'workspace-registrations.json'))).toBe(false);
 
     // The reader: this repo's own checkpoint-eligibility.ts resolver, pointed
-    // at the identical shellPaths. A mismatch here is invisible at runtime —
+    // at the identical shellPaths. A mismatch here is invisible at runtime,
     // it just reads an empty register and silently refuses every checkpoint.
     expect(sharedWorkspaceRegistrationStorePath(shellPaths)).toBe(writerPath);
     expect(readFileSync(writerPath, 'utf8')).toContain('app');

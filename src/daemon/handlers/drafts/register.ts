@@ -9,7 +9,7 @@
  *
  * The SDK owns every id, descriptor, access flag, and I/O schema (auto-
  * registered with handler:undefined). This module NEVER re-declares any of
- * them — it looks each up via catalog.get(id) (inside registerCatalogHandler)
+ * them, it looks each up via catalog.get(id) (inside registerCatalogHandler)
  * and re-registers with the wrapped handler. save/delete are confirm-gated via
  * RegisterHandlerOptions.confirm; the wrapper enforces body.confirm === true
  * AND context.explicitUserRequest === true before the handler runs.
@@ -17,7 +17,7 @@
  * SECURITY: the message body is encrypted at rest and NEVER returned (the wire
  * `message` field carries the sha256First(body,12) digest). Webhooks are
  * encrypted at rest and ALWAYS redacted on read; RAW webhook tokens submitted
- * to save are REJECTED — the agent must redact ('[redacted]') or pass a
+ * to save are REJECTED, the agent must redact ('[redacted]') or pass a
  * goodvibes://secrets/ reference before transmission.
  */
 import type { HandlerContext } from '../context.ts';
@@ -131,7 +131,7 @@ function optionalIso8601(value: unknown, field: string): string | undefined {
  * to be redacted before transmission; the daemon only stores '[redacted]' or a
  * goodvibes://secrets/ reference (which carries no token material). Any other
  * value bearing a scheme (e.g. an https:// URL with an embedded token) is a raw
- * secret and is rejected outright — never persisted, never logged.
+ * secret and is rejected outright, never persisted, never logged.
  */
 function validateWebhook(value: string | undefined): string | undefined {
   if (value === undefined) return undefined;
@@ -287,7 +287,7 @@ export function registerDraftMethods(
     const id = parseDraftId(body);
     const record = store.get(id);
     if (record === null) return { notFound: true, id };
-    // get output permits additional properties — expose messageDigest explicitly
+    // get output permits additional properties, expose messageDigest explicitly
     // alongside the schema-required `message` field (both carry the digest).
     return { ...record, messageDigest: record.message };
   };

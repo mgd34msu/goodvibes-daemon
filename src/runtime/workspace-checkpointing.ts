@@ -17,19 +17,19 @@ import { createWorkspaceRegistrationLiveChecker, type StoreShellPaths } from './
  * runtime bus, so building it without one for an unregistered workspace would
  * mean registering that workspace mid-run had no effect until a restart. It is
  * always built WITH the bus and each individual automatic snapshot attempt is
- * refused instead — by overriding this one instance's own `create`, since the
+ * refused instead, by overriding this one instance's own `create`, since the
  * manager has no predicate hook and `create` is the single seam both the
  * automatic subscription and every explicit caller pass through.
  */
 
 export interface WorkspaceCheckpointing {
-  /** The manager itself — automatic snapshots gated, explicit creates unrestricted. */
+  /** The manager itself, automatic snapshots gated, explicit creates unrestricted. */
   readonly manager: WorkspaceCheckpointManager;
   /**
    * The narrower surface handed to the `checkpoints.*` gateway verbs: identical
    * except that an explicit create refuses, with an actionable message, when the
    * workspace is not checkpoint-eligible. Reads (list/diff/sessionChanges) and
-   * restore stay unrestricted — they operate over checkpoints that may already
+   * restore stay unrestricted, they operate over checkpoints that may already
    * exist, including from a since-unregistered workspace.
    */
   readonly gatewayManager: Pick<WorkspaceCheckpointManager, 'list' | 'create' | 'diff' | 'restore' | 'sessionChanges' | 'workspaceRoot'>;
@@ -69,7 +69,7 @@ export function createWorkspaceCheckpointing(opts: {
   });
 
   // Automatic snapshots ('turn' | 'agent-run', fired by the manager's own bus
-  // subscription) resolve to null quietly when the workspace is not eligible —
+  // subscription) resolve to null quietly when the workspace is not eligible,
   // there is no caller to throw to, and the manager already documents a null
   // return as the cheap no-op for an unchanged tree. Explicit ('manual') creates
   // are NOT re-gated here: they go through the gateway surface below, which
@@ -82,7 +82,7 @@ export function createWorkspaceCheckpointing(opts: {
 
   // Eagerly initialize so the automatic-snapshot subscription is live before the
   // first turn completes. If init() rejects, the manager caches that rejection
-  // forever and every later call re-throws it — the catch here only prevents an
+  // forever and every later call re-throws it, the catch here only prevents an
   // unhandled rejection at startup; the checkpoint verbs report the failure to
   // whoever calls them.
   void manager.init().catch((error: unknown) => {
@@ -104,7 +104,7 @@ export function createWorkspaceCheckpointing(opts: {
         );
       }
       // Default the session stamp from the live resolver when the caller omits
-      // it — the resolveSessionId hook only auto-stamps automatic snapshots, so
+      // it, the resolveSessionId hook only auto-stamps automatic snapshots, so
       // without this an explicit checkpoint made this launch would be written
       // unstamped and excluded by the session-scoped restore lookup.
       const sessionId = createOpts.sessionId ?? opts.resolveSessionId?.({});

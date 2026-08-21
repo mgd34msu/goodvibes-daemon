@@ -54,7 +54,7 @@ const PREFIXED_KEY_RE =
 const KV_SECRET_RE =
   /\b(?:api[_-]?key|access[_-]?token|refresh[_-]?token|client[_-]?secret|secret|token|password|passwd|pwd|authorization|auth)\b\s*[:=]\s*(?:"[^"]*"|'[^']*'|[A-Za-z0-9._~+/=-]{6,})/gi;
 // Generic high-entropy opaque blobs (>=24 chars of base64url/hex) not already
-// caught above — catches raw API keys pasted without a recognizable prefix.
+// caught above, catches raw API keys pasted without a recognizable prefix.
 const OPAQUE_SECRET_RE = /\b[A-Za-z0-9_-]{24,}\b/g;
 
 /**
@@ -169,7 +169,7 @@ export function stripMarkup(input: string): string {
   return decodeEntities(text);
 }
 
-/** Collapse whitespace and trim — keeps previews single-line and tidy. */
+/** Collapse whitespace and trim, keeps previews single-line and tidy. */
 export function normalizeWhitespace(input: string): string {
   return input.replace(/\s+/g, ' ').trim();
 }

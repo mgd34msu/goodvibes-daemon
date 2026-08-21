@@ -1,5 +1,5 @@
 /**
- * channels.ts — which channels `goodvibes-daemon send` can reach, and which one
+ * channels.ts, which channels `goodvibes-daemon send` can reach, and which one
  * it uses when the operator names none.
  *
  * The surface list, labels and required-setup keys are IMPORTED from
@@ -7,7 +7,7 @@
  * list` and `goodvibes-daemon send --list` can never disagree about what a
  * channel is called or what it needs. What this module adds on top is the two
  * facts that command needs and `SURFACE_CONFIGS` does not carry: the routable
- * `ChannelDeliverySurfaceKind` for each surface id (they differ in case —
+ * `ChannelDeliverySurfaceKind` for each surface id (they differ in case,
  * `googleChat` vs `google-chat`), and the settings key holding each surface's
  * default destination.
  */
@@ -18,7 +18,7 @@ import { SURFACE_CONFIGS } from '../../cli/surface-catalog.ts';
 import { canRenderInert } from './inert-text.ts';
 
 /**
- * The settings key holding each supported surface's default destination — the
+ * The settings key holding each supported surface's default destination, the
  * chat, channel, topic or URL a message goes to when `--to` is not given.
  *
  * These are the SAME keys the delivery strategies in the SDK's
@@ -58,7 +58,7 @@ const SURFACE_KIND_BY_ID: Readonly<Record<string, ChannelDeliverySurfaceKind>> =
  * This is naming, not a scheme: `--to` becomes `ChannelDeliveryTarget.address`,
  * which is the first thing every strategy in `strategies-core.ts`,
  * `strategies-bridge.ts` and `strategies-enterprise.ts` already checks before
- * falling back to its configured default. Nothing new is invented — the label
+ * falling back to its configured default. Nothing new is invented, the label
  * exists so `--list` and the help can say "topic" where the channel says topic
  * and "chat id" where it says chat id, rather than making the operator work out
  * what an "address" is for ntfy.
@@ -120,7 +120,7 @@ export const SEND_CHANNELS: readonly SendChannel[] = SURFACE_CONFIGS
 
 /**
  * Look a channel up by the id an operator typed, accepting either the settings
- * id (`googleChat`) or the routable kind (`google-chat`) — the two spellings
+ * id (`googleChat`) or the routable kind (`google-chat`), the two spellings
  * are both visible in this product's own output, and making the operator
  * remember which one this command wants would be a trap.
  */
@@ -172,7 +172,7 @@ export type DefaultChannelResolution =
 /**
  * Which channel a `send` with no `--channel` goes to.
  *
- * A channel qualifies when it is switched on AND has a destination configured —
+ * A channel qualifies when it is switched on AND has a destination configured,
  * "enabled" alone is not enough, because an enabled surface with a blank
  * destination is a channel that would throw at the provider rather than deliver.
  *
@@ -180,7 +180,7 @@ export type DefaultChannelResolution =
  * no non-arbitrary winner, and this command has an outward effect: sending the
  * owner's message to the wrong one of his channels is worse than printing the
  * list and exiting non-zero. There is deliberately no priority order here to
- * silently break that tie — a preference ordering baked into this file would be
+ * silently break that tie, a preference ordering baked into this file would be
  * an invisible decision about where his messages go.
  */
 export function resolveDefaultChannel(config: Pick<ConfigManager, 'get'>): DefaultChannelResolution {

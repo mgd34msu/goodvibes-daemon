@@ -5,7 +5,7 @@
 // runtime composition root calls. It DECORATES the inbox surface's
 // `channels.inbox.list` handler (overlaying persisted triage metadata) and
 // returns the poller-facing pipeline + tagger. inbox.triage.* are NOT published
-// catalog methods — this surface registers no triage method id.
+// catalog methods, this surface registers no triage method id.
 // ---------------------------------------------------------------------------
 
 export {

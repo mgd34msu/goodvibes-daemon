@@ -74,14 +74,14 @@ describe('runProcess', () => {
     const elapsed = Date.now() - start;
     expect(result.timedOut).toBe(true);
     // The await resolves on child.exited (post-SIGKILL), so it returns promptly
-    // rather than waiting the full sleep — no orphaned child is left running.
+    // rather than waiting the full sleep, no orphaned child is left running.
     //
     // The threshold used to be 5_000 with no per-test budget, which is bun's
     // own default: the assertion could never fail, because the test died of the
     // timeout at exactly the moment `elapsed` reached the number it was being
     // compared against. A measurement that cannot fail its own assertion proves
     // nothing. The budget now sits above the threshold, so the assertion is
-    // what fails — and the threshold is still two orders of magnitude below the
+    // what fails, and the threshold is still two orders of magnitude below the
     // 10 s sleep this guards against waiting out.
     expect(elapsed).toBeLessThan(5_000);
   }, 30_000);
@@ -103,7 +103,7 @@ describe('buildRemoteShellCommand', () => {
   });
 
   it('does NOT shell-escape args: the joined string is handed verbatim to the remote shell', () => {
-    // An arg containing a space stays unquoted on purpose — the remote shell
+    // An arg containing a space stays unquoted on purpose, the remote shell
     // re-splits it. Callers needing a literal arg must pre-quote it themselves.
     expect(buildRemoteShellCommand('echo', ['a b'])).toBe('echo a b');
   });
@@ -139,6 +139,60 @@ describe('backend teardown sweeps ephemeral credential dirs', () => {
     const home = makeProjectTempDir('noop-teardown-home');
     const backend = createSshBackend({ credentials: stubCredentials, logger: noopLogger, homeDirectory: home });
     await expect(backend.teardown?.()).resolves.toBeUndefined();
+  });
+});
+
+describe('backend construction sweeps a crashed prior process\'s leftovers', () => {
+  it('ssh: a stale ssh-keys/ file from before a SIGKILL is gone before the first write', async () => {
+    const home = makeProjectTempDir('ssh-crash-sweep-home');
+    const keyDir = join(home, '.goodvibes', 'tui', 'operator', 'ssh-keys');
+    mkdirSync(keyDir, { recursive: true });
+    writeFileSync(join(keyDir, 'stale-peer.abcd1234.key'), 'leftover-from-a-sigkilled-daemon');
+    expect(existsSync(keyDir)).toBe(true);
+
+    // No teardown() call between construction and dispatch: this is exactly the
+    // crash case (only construction runs; a graceful unregister() never does).
+    const backend = createSshBackend({ credentials: stubCredentials, logger: noopLogger, homeDirectory: home });
+    const peer: PeerRecord = {
+      peerId: 'p1',
+      displayName: 'P1',
+      backendKind: 'ssh',
+      backendConfig: { kind: 'ssh', sshHost: 'h', sshUser: 'u', identityRef: 'goodvibes://secrets/x' },
+    };
+    // stubCredentials.resolveRef always returns null, so ensureIdentity throws
+    // right after awaiting the construction-time sweep, never itself writing a
+    // key file. Reaching this rejection proves the sweep already ran to
+    // completion (a still-pending sweep would leave the `await` unresolved).
+    await expect(backend.dispatch(peer, 'true'))
+      .rejects.toMatchObject({ code: 'REMOTE_BACKEND_CREDENTIAL_MISSING' });
+    expect(existsSync(keyDir)).toBe(false);
+  });
+
+  it('cloud-terminal: a stale cloud-creds/ file from before a SIGKILL is gone before the first write', async () => {
+    const home = makeProjectTempDir('cloud-crash-sweep-home');
+    const credDir = join(home, '.goodvibes', 'tui', 'operator', 'cloud-creds');
+    mkdirSync(credDir, { recursive: true });
+    const staleFile = join(credDir, 'stale-peer.deadbeef.cred');
+    writeFileSync(staleFile, 'leftover-cloud-credential-from-a-sigkilled-daemon');
+    expect(existsSync(staleFile)).toBe(true);
+
+    const credentialingStub: DaemonCredentialStore = {
+      ...stubCredentials,
+      resolveRef: async () => 'fake-cloud-credential-word-not-a-ref',
+    };
+    const backend = createCloudTerminalBackend({ credentials: credentialingStub, logger: noopLogger, homeDirectory: home });
+    const peer: PeerRecord = {
+      peerId: 'p2',
+      displayName: 'P2',
+      backendKind: 'cloud-terminal',
+      backendConfig: { kind: 'cloud-terminal', provider: 'gcp', instance: 'cloudshell', credentialRef: 'goodvibes://secrets/y' },
+    };
+    // The gcloud CLI is not installed in this test environment, so the actual
+    // command spawn fails; that happens AFTER writeCredentialFile, which itself
+    // waits on the construction-time sweep before touching credDir. Whatever
+    // dispatch resolves or rejects with, the stale file must already be gone.
+    await backend.dispatch(peer, 'true').catch(() => {});
+    expect(existsSync(staleFile)).toBe(false);
   });
 });
 

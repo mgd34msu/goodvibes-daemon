@@ -9,7 +9,7 @@ goodvibes-daemon config set <key> <value>
 goodvibes-daemon config unset <key>
 ```
 
-This is the way in for every key below — there is no separate settings UI shipped with
+This is the way in for every key below. There is no separate settings UI shipped with
 the daemon itself (the terminal app's `/config` workspace and the web UI edit the same
 files). `config set`/`unset` write to disk immediately and work whether or not a daemon
 is running; a running daemon picks up most changes live, and any that only take effect
@@ -20,7 +20,7 @@ redaction pass first: a key whose name ends in `token`, `secret`, `password`,
 `apiKey`, `botToken`, `signingSecret`, `webhookSecret`, `verifyToken`,
 `verificationToken`, or `keyFile` (plus a short list of named exceptions such as
 `surfaces.email.imapPassword` and `cluster.secret`) prints as `<redacted>` whatever it
-actually holds. `config set` still writes the real value — only the *output* is
+actually holds. `config set` still writes the real value; only the *output* is
 cleaned, so a settings dump pasted into a bug report carries no credential. A
 `goodvibes://secrets/...` reference is left visible on purpose: it is a pointer, not a
 secret.
@@ -29,12 +29,12 @@ secret.
 
 Two files matter for an operator:
 
-- `<GOODVIBES_HOME>/.goodvibes/tui/settings.json` — the shared settings file. Most
+- `<GOODVIBES_HOME>/.goodvibes/tui/settings.json`. The shared settings file. Most
   keys live here.
 - `<daemon home>/settings.json` (default `<GOODVIBES_HOME>/.goodvibes/daemon/settings.json`,
-  relocatable with `GOODVIBES_DAEMON_HOME`/`--daemon-home`) — the **daemon tier**.
-  Daemon-owned keys — `controlPlane.*`, `hostedSessions.*`, `update.*`, `daemon.*`, and
-  more — are written here instead, and overlay the shared file last, so a stale value
+  relocatable with `GOODVIBES_DAEMON_HOME`/`--daemon-home`). This is the **daemon tier**.
+  Daemon-owned keys, `controlPlane.*`, `hostedSessions.*`, `update.*`, `daemon.*`, and
+  more, are written here instead, and overlay the shared file last, so a stale value
   left behind in the shared file can never win. `config set`/`config list` name which
   file a key actually came from; you never have to guess.
 
@@ -60,7 +60,7 @@ channel whose keys are unset is refused rather than accepted and dropped.
 | `mattermost` | `surfaces.mattermost.baseUrl`, `surfaces.mattermost.botToken` |
 | `matrix` | `surfaces.matrix.homeserverUrl`, `surfaces.matrix.accessToken`, `surfaces.matrix.userId` |
 
-Example — configure Telegram and confirm it is usable:
+Example: configure Telegram and confirm it is usable.
 
 ```sh
 goodvibes-daemon config set surfaces.telegram.botToken 123456:AA...
@@ -73,7 +73,7 @@ Every channel key that looks like a credential (`botToken`, `signingSecret`,
 
 ## The browser operator surface (`controlPlane.webui.*`, `web.*`)
 
-The web UI is served **by the control-plane listener**, same origin as the API — not
+The web UI is served **by the control-plane listener**, same origin as the API, not
 on the port named by `web.port`. Prefer `goodvibes-daemon webui enable|disable|status`
 over editing these directly (see [commands-reference.md](commands-reference.md)); the
 keys themselves are:
@@ -83,9 +83,9 @@ keys themselves are:
 | `controlPlane.webui.serve` | `false` | Serve a built web UI bundle same-origin from the daemon |
 | `controlPlane.webui.bundleDir` | `""` | Directory holding the built bundle (`index.html` + assets). Takes precedence over `web.staticAssetsDir` |
 | `web.enabled` | `true` | Enable the browser-based operator surface at all |
-| `web.hostMode` | `local` | `local` \| `network` \| `custom` — widening this is what actually exposes the webui to your LAN |
+| `web.hostMode` | `local` | `local` \| `network` \| `custom`. Widening this is what actually exposes the webui to your LAN |
 | `web.host` | `127.0.0.1` | Bind host when `web.hostMode` is `custom` |
-| `web.port` | `3423` | The surface's *declared* endpoint (used for links); nothing binds it directly — the control-plane port is what actually answers |
+| `web.port` | `3423` | The surface's *declared* endpoint (used for links); nothing binds it directly, the control-plane port is what actually answers |
 | `web.publicBaseUrl` | `http://127.0.0.1:3423` | Public base URL for web links and notification deep links |
 | `web.staticAssetsDir` | `dist/web` | Fallback bundle directory when `controlPlane.webui.bundleDir` is empty |
 
@@ -98,7 +98,7 @@ keys themselves are:
 | `controlPlane.hostMode` | `local` | `local` (127.0.0.1, default port) \| `network` (0.0.0.0, default port) \| `custom` (editable host and port) |
 | `controlPlane.host` | `127.0.0.1` | Bind host when `hostMode` is `custom` |
 | `controlPlane.port` | `3421` | Bind port for the control-plane HTTP server |
-| `controlPlane.publicBaseUrl` | `""` | Override for a genuinely external address (tunnel or reverse proxy); leave empty otherwise — it is derived |
+| `controlPlane.publicBaseUrl` | `""` | Override for a genuinely external address (tunnel or reverse proxy); leave empty otherwise, since it is derived |
 | `controlPlane.streamMode` | `sse` | `sse` \| `websocket` \| `both` |
 | `controlPlane.allowRemote` | `false` | Allow remote clients to connect to the control plane |
 | `controlPlane.trustProxy` | `false` | Trust `x-forwarded-for`/`CF-Connecting-IP`-style forwarding headers |
@@ -107,7 +107,7 @@ keys themselves are:
 
 `--host`/`--port` on `serve` are runtime-only overrides for one launch; `install-service`
 and `migrate-service` refuse those same flags because the installed unit re-resolves
-these keys from disk at every boot — set the persistent binding with `config set`
+these keys from disk at every boot. Set the persistent binding with `config set`
 instead.
 
 ## Daemon-hosted sessions (`hostedSessions.*`)
@@ -119,7 +119,7 @@ settings:
 | --- | --- | --- |
 | `hostedSessions.detachPolicy` | `kill` | What happens when a hosted session's last client detaches. `kill` ends the session (what closing a client has always done); `survive` leaves it idle and reattachable. A single session can override this at creation |
 | `hostedSessions.maxSessions` | `8` | How many hosted sessions may be live at once. Creating one past this is refused with the count and this setting named. Terminated sessions do not count |
-| `hostedSessions.maxMessagesPerSession` | `500` | How many of a session's most recent messages are written to disk — bounds what a restart can restore, not the in-memory transcript |
+| `hostedSessions.maxMessagesPerSession` | `500` | How many of a session's most recent messages are written to disk. Bounds what a restart can restore, not the in-memory transcript |
 | `hostedSessions.terminatedRetentionMs` | `86400000` (24h) | How long a terminated session's record is kept, listable with its termination reason, before it is retired |
 | `hostedSessions.promoteInboundConversations` | `false` | Off: an inbound channel message (Telegram, Slack, email, ...) is answered by the process that received it. On: the first message of a conversation creates a hosted session and every later message steers into it, so the conversation keeps running while no surface is open |
 
@@ -152,6 +152,6 @@ settings:
 
 ## Everything else
 
-`config list` enumerates every settings key with its current value and source — run it
+`config list` enumerates every settings key with its current value and source. Run it
 after any change you are not sure landed where you expected. `config list --json`
 returns the same data as a structured document, including which keys were redacted.

@@ -1,10 +1,10 @@
 // ---------------------------------------------------------------------------
-// Triage tagger — Discord provider.
+// Triage tagger, Discord provider.
 //
 // Two paths, in priority order:
 //   1. REAL thread tags: when the item targets a forum/media-channel thread and
 //      a forum-tag mapping resolves >=1 tag id, PATCH the thread's applied_tags
-//      (read-then-merge — never blind overwrite). Exact fidelity to the
+//      (read-then-merge, never blind overwrite). Exact fidelity to the
 //      contract's "Discord thread tags".
 //   2. Reaction analog: Discord has no arbitrary per-message tags, so otherwise
 //      add a unicode reaction (PUT .../reactions/{emoji}/@me).
@@ -114,7 +114,7 @@ async function applyDiscordThreadTags(
   // DATA-LOSS GUARD: we PATCH the thread's full applied_tags array, so we must
   // first read the EXISTING tags and merge. If that read fails (network error
   // OR a non-ok HTTP status), we have no idea what tags are currently on the
-  // thread — PATCHing with only our new ids would silently destroy whatever
+  // thread, PATCHing with only our new ids would silently destroy whatever
   // forum tags were already applied. Abort instead of overwriting.
   const existing = await fetchDiscordAppliedTags(url, token, fetchImpl, ctx);
   if (existing === null) {

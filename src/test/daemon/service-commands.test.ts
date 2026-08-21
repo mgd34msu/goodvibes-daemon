@@ -26,7 +26,7 @@ import {
 import { resolveRuntimeEndpointBinding } from '@pellux/goodvibes-terminal-shell';
 import { makeProjectTempDir } from '../helpers/project-temp.ts';
 
-describe('resolveConfiguredServiceName — config-honest name for pre-manager callers', () => {
+describe('resolveConfiguredServiceName: config-honest name for pre-manager callers', () => {
   function config(value: unknown): { get(key: string): unknown } {
     return { get: (key: string) => (key === 'service.serviceName' ? value : undefined) };
   }
@@ -62,7 +62,7 @@ describe('isDaemonServiceSubcommand', () => {
  * install-service/migrate-service refuse an explicit --hostname/--port
  * rather than printing/probing a binding the installed unit will never
  * actually have (the unit re-resolves controlPlane.* from persisted settings
- * at boot — see buildManagedDaemonServiceManager's ExecStart doc).
+ * at boot, see buildManagedDaemonServiceManager's ExecStart doc).
  */
 describe('validateServiceEndpointFlags', () => {
   test('install-service refuses when --hostname or --port was provided', () => {
@@ -97,7 +97,7 @@ describe('validateServiceEndpointFlags', () => {
   });
 });
 
-describe('runDaemonServiceCli — D4 wired end to end', () => {
+describe('runDaemonServiceCli: D4 wired end to end', () => {
   let dir = '';
   beforeEach(() => { dir = makeProjectTempDir('gv-service-commands-d4'); });
   afterEach(() => { rmSync(dir, { recursive: true, force: true }); });
@@ -120,7 +120,7 @@ describe('runDaemonServiceCli — D4 wired end to end', () => {
     expect(existsSync(join(dir, '.config', 'systemd', 'user', 'goodvibes.service'))).toBe(false);
   });
 
-  test('service-status with portFlagProvided is unaffected — the refusal is scoped to install/migrate', async () => {
+  test('service-status with portFlagProvided is unaffected; the refusal is scoped to install/migrate', async () => {
     const result = await runDaemonServiceCli({
       subcommand: 'service-status',
       binaryPath: '/usr/local/bin/goodvibes-daemon',
@@ -184,14 +184,14 @@ describe('resolveInstalledDaemonBinary', () => {
  * dev/CI hosts actually use), independent of `process.platform`. Every
  * filesystem write is scoped to a per-test tempdir passed as both `homeDir`
  * and `workingDirectory`, and every systemctl dispatch goes through an
- * injected `actionRunner` — nothing here ever touches a real
+ * injected `actionRunner`, nothing here ever touches a real
  * `~/.config/systemd/user` entry or invokes a real `systemctl` binary.
  *
  * `baseInput` supplies that injected runner by DEFAULT (see `stubSystemctl`).
  * Omitting it used to fall through to the SDK's real `spawnSync('systemctl',
  * ['--user', 'is-active', …])`, which made `service-status` results depend on
  * whether the developer running the suite happened to have goodvibes.service
- * active — the whole file now answers every probe from an injected stub.
+ * active, the whole file now answers every probe from an injected stub.
  */
 describe('runDaemonServiceCli (systemd path, real PlatformServiceManager, stubbed systemctl)', () => {
   let dir = '';
@@ -267,7 +267,7 @@ describe('runDaemonServiceCli (systemd path, real PlatformServiceManager, stubbe
     // preserve the old shim's "install implies enabled + running" behavior.
     // The SDK's status() now also issues read-only `is-active` probes, and
     // install() enforces the unit's survival contract via loginctl
-    // (show-user probe, enable-linger when lingering is off) — filter both
+    // (show-user probe, enable-linger when lingering is off), filter both
     // out of the mutating action check and pin the linger calls' shape.
     const lingerCalls = calls.filter((c) => c[0] === 'loginctl');
     for (const call of lingerCalls) {
@@ -336,7 +336,7 @@ describe('runDaemonServiceCli (systemd path, real PlatformServiceManager, stubbe
     // running, and the CLI adds a caveat rather than claiming certainty.
     expect(result.status.running).toBe(false);
     // An earlier finding: the old wording asserted HOW `running` was computed
-    // ("only reflects processes this tool started directly") — true for the
+    // ("only reflects processes this tool started directly"), true for the
     // pid-file-only check this (currently linked) SDK build still uses, but
     // stale once the parallel SDK batch makes status().running query systemd
     // honestly via `is-active`. The caveat now just offers the escape hatch
@@ -347,7 +347,7 @@ describe('runDaemonServiceCli (systemd path, real PlatformServiceManager, stubbe
   /**
    * Isolation contract for the whole file. `service-status` reports the unit's
    * liveness from whatever `actionRunner` it was handed, so the reported state
-   * must follow the stub in BOTH directions — proving the host's own
+   * must follow the stub in BOTH directions, proving the host's own
    * goodvibes.service (active or not) can never decide this suite's result.
    */
   test('service-status reads liveness from the injected runner, never from host systemd', async () => {
@@ -377,7 +377,7 @@ describe('runDaemonServiceCli (systemd path, real PlatformServiceManager, stubbe
 /**
  * Unit-file paths must resolve from the LOGIN home (`unitHomeDir`)
  * everywhere on the service-subcommand path, never from the
- * GOODVIBES_HOME-overridable tree home (`homeDir`) — the exact split the
+ * GOODVIBES_HOME-overridable tree home (`homeDir`), the exact split the
  * boot-time reconcile in `src/daemon/cli.ts` already gets right (`homeDir:
  * homedir()`, a comment there states the invariant explicitly). Before this
  * fix, `install-service`/`service-status` rooted BOTH the unit search and the
@@ -385,10 +385,10 @@ describe('runDaemonServiceCli (systemd path, real PlatformServiceManager, stubbe
  * GOODVIBES_HOME set (a test harness, an isolated install, or any future
  * multi-tree setup) would install its systemd unit under
  * `$GOODVIBES_HOME/.config/systemd/user/` instead of the real
- * `~/.config/systemd/user/` systemd actually reads — a unit that looks
+ * `~/.config/systemd/user/` systemd actually reads, a unit that looks
  * installed to this tool and invisible to the real service manager.
  */
-describe('runDaemonServiceCli — unit paths use the login home, never the tree home', () => {
+describe('runDaemonServiceCli: unit paths use the login home, never the tree home', () => {
   let treeHome = '';
   let loginHome = '';
 
@@ -438,7 +438,7 @@ describe('runDaemonServiceCli — unit paths use the login home, never the tree 
 
   test('legacy-unit detection reads unitHomeDir, never homeDir: a legacy unit file under homeDir is invisible', async () => {
     // A legacy unit file planted under the TREE home (the pre-fix bug's own
-    // mistake) must never be detected — only one planted under the login home.
+    // mistake) must never be detected, only one planted under the login home.
     mkdirSync(join(treeHome, '.config', 'systemd', 'user'), { recursive: true });
     writeFileSync(join(treeHome, '.config', 'systemd', 'user', 'goodvibes-daemon.service'), '[Service]\n');
 
@@ -454,14 +454,14 @@ describe('runDaemonServiceCli — unit paths use the login home, never the tree 
 
 /**
  * Legacy-unit detection (`goodvibes-daemon.service`, the prior
- * command's literal unit name — distinct from this module's tracked
+ * command's literal unit name, distinct from this module's tracked
  * `goodvibes.service`). Both the file-existence check and the `is-active`
  * query are fully faked here: `legacyUnitFileExists` never touches the real
  * `~/.config/systemd/user`, and the `is-active` query goes through the same
- * injected `actionRunner` used above — this suite never touches, stops, or
+ * injected `actionRunner` used above, this suite never touches, stops, or
  * modifies a real running service.
  */
-describe('runDaemonServiceCli — install-script unit detection', () => {
+describe('runDaemonServiceCli: install-script unit detection', () => {
   let dir = '';
 
   beforeEach(() => {
@@ -568,7 +568,7 @@ describe('runDaemonServiceCli — install-script unit detection', () => {
       expect(result.exitCode).toBe(1);
       expect(result.lines.join('\n')).toContain('goodvibes-daemon.service (the unit name an older install script/release used)');
       expect(existsSync(join(dir, '.config', 'systemd', 'user', 'goodvibes.service'))).toBe(false);
-      // Only read-only is-active queries ran — no install/enable dispatched.
+      // Only read-only is-active queries ran, no install/enable dispatched.
       expect(calls).toContainEqual(['systemctl', '--user', 'is-active', 'goodvibes-daemon.service']);
       expect(calls.some((c) => c.includes('enable') || c.includes('start'))).toBe(false);
     });
@@ -639,10 +639,10 @@ describe('runDaemonServiceCli — install-script unit detection', () => {
  * `goodvibes-daemon.service` unit. Every step (legacy stop/disable/remove,
  * daemon-reload) goes through the SAME injected `actionRunner`/
  * `legacyUnitFileRemove`/`legacyUnitFileExists`/`portProbe` seams the rest of
- * this suite uses — this describe block never touches a real port, a real
+ * this suite uses, this describe block never touches a real port, a real
  * systemd unit, or a real filesystem path outside the per-test tempdir.
  */
-describe('runDaemonServiceCli — migrate-service', () => {
+describe('runDaemonServiceCli: migrate-service', () => {
   let dir = '';
 
   beforeEach(() => {
@@ -670,7 +670,7 @@ describe('runDaemonServiceCli — migrate-service', () => {
    * and legacy ('goodvibes-daemon') unit names, so tests can assert full call
    * ordering across new-unit-up and legacy-unit-down. `isActiveState` controls
    * what `systemctl --user is-active goodvibes.service` reports for the NEW
-   * unit — this is how tests make the post-start health check honestly pass
+   * unit, this is how tests make the post-start health check honestly pass
    * or fail without touching a real systemd.
    */
   function fakeMigrationRunner(options: {
@@ -685,7 +685,7 @@ describe('runDaemonServiceCli — migrate-service', () => {
         const unit = args[2] ?? '';
         // The legacy unit is only ever probed by detectLegacyUnit's own
         // up-front check (fed via legacyUnitFileExists in these tests, not
-        // this runner) — if migrate-service's post-start health check ever
+        // this runner), if migrate-service's post-start health check ever
         // queried the LEGACY name instead of the tracked one, this would
         // wrongly report it healthy, so keep the two names' liveness distinct.
         if (unit === 'goodvibes-daemon.service') return { status: 0, stdout: 'active' };
@@ -709,7 +709,7 @@ describe('runDaemonServiceCli — migrate-service', () => {
       expect(result.ok).toBe(true);
       expect(result.lines.join('\n')).toContain('nothing to migrate');
       expect(result.lines.join('\n')).toContain('Run install-service');
-      // Purely informational — no systemctl action was needed to answer this.
+      // Purely informational, no systemctl action was needed to answer this.
       expect(calls.some((c) => c.includes('stop') || c.includes('disable') || c.includes('enable'))).toBe(false);
     });
 
@@ -762,7 +762,7 @@ describe('runDaemonServiceCli — migrate-service', () => {
       expect(existsSync(join(dir, '.config', 'systemd', 'user', 'goodvibes.service'))).toBe(false);
       // The only tracked-unit traffic allowed here is a read-only status
       // probe (used to confirm this host is even on the systemd path before
-      // printing the plan) — never a mutating action.
+      // printing the plan), never a mutating action.
       const trackedCalls = calls.filter((c) => !c.includes('goodvibes-daemon.service'));
       for (const call of trackedCalls) expect(call).toEqual(['systemctl', '--user', 'is-active', 'goodvibes.service']);
       expect(calls.some((c) => c.includes('enable') || c.includes('stop') || c.includes('disable'))).toBe(false);
@@ -822,14 +822,14 @@ describe('runDaemonServiceCli — migrate-service', () => {
       expect(text).toContain("resolves to 'goodvibes-daemon'");
       expect(text).toContain('goodvibes-daemon.service');
       expect(text).toContain('nothing has been changed');
-      // Zero mutating calls anywhere — only read-only is-active probes (from
+      // Zero mutating calls anywhere, only read-only is-active probes (from
       // detectLegacyUnit's own check and manager.status()) are allowed.
       expect(calls.some((c) => c.includes('enable') || c.includes('stop') || c.includes('disable'))).toBe(false);
       // Never wrote (or would-be-overwrote) the colliding path.
       expect(existsSync(join(dir, '.config', 'systemd', 'user', 'goodvibes-daemon.service'))).toBe(false);
     });
 
-    test('declined (dry run): also aborts — a colliding config makes even the printed plan unsafe to execute', async () => {
+    test('declined (dry run): also aborts; a colliding config makes even the printed plan unsafe to execute', async () => {
       const { runner, calls } = fakeMigrationRunner();
       const result = await runDaemonServiceCli(
         baseInput({
@@ -940,7 +940,7 @@ describe('runDaemonServiceCli — migrate-service', () => {
   });
 });
 
-describe('buildInstallResultLines — "suggested follow-ups" gating (W3 Finding 4 friction fix)', () => {
+describe('buildInstallResultLines: "suggested follow-ups" gating (W3 Finding 4 friction fix)', () => {
   function fakeStatus(overrides: Partial<Parameters<typeof buildInstallResultLines>[0]> = {}): Parameters<typeof buildInstallResultLines>[0] {
     return {
       platform: 'systemd',
@@ -956,14 +956,14 @@ describe('buildInstallResultLines — "suggested follow-ups" gating (W3 Finding 
     };
   }
 
-  test('running: true — "service is enabled and running", no "suggested follow-ups" block (it already started)', () => {
+  test('running: true; "service is enabled and running", no "suggested follow-ups" block (it already started)', () => {
     const lines = buildInstallResultLines(fakeStatus({ running: true }));
 
     expect(lines).toContain('service is enabled and running');
     expect(lines.some((line) => line.includes('suggested follow-ups'))).toBe(false);
   });
 
-  test('running: false — keeps the "suggested follow-ups" block, no false claim that it is running', () => {
+  test('running: false; keeps the "suggested follow-ups" block, no false claim that it is running', () => {
     const lines = buildInstallResultLines(fakeStatus({ running: false }));
 
     expect(lines).not.toContain('service is enabled and running');
@@ -973,18 +973,18 @@ describe('buildInstallResultLines — "suggested follow-ups" gating (W3 Finding 
 });
 
 /**
- * The unattended startup reconcile (`reconcileRedundantLegacyUnit`) — the fix
+ * The unattended startup reconcile (`reconcileRedundantLegacyUnit`), the fix
  * for the production incident where an installer-managed legacy
  * `goodvibes-daemon.service` sat ENABLED alongside the canonical, ENABLED +
  * ACTIVE `goodvibes.service` and nothing ever disabled it. Every side effect
  * goes through injected seams: the `is-active`/MainPID probes and
  * disable/daemon-reload through a fake `actionRunner`, file
- * existence/read/remove and process-liveness/cgroup checks through fakes —
+ * existence/read/remove and process-liveness/cgroup checks through fakes,
  * this suite never touches a real service or a real ~/.config/systemd/user
  * unit. (The one exception, clearly marked, is the default-runner timeout
  * test, which spawns a deliberately-hanging FAKE systemctl from a scratch dir.)
  */
-describe('reconcileRedundantLegacyUnit — auto-retire a redundant install-script unit at startup', () => {
+describe('reconcileRedundantLegacyUnit: auto-retire a redundant install-script unit at startup', () => {
   const HOME = '/home/mike';
   const LEGACY_PATH = legacyUnitPath(HOME);
   const OWN_PID = 999_999;
@@ -1091,7 +1091,7 @@ describe('reconcileRedundantLegacyUnit — auto-retire a redundant install-scrip
     expect(text).toContain('migrate-service');
   });
 
-  test('a FAILED legacy MainPID query (rc 1 bus flap) is UNKNOWN, not "legacy stopped" — refuses instead of disabling a possibly-live daemon', async () => {
+  test('a FAILED legacy MainPID query (rc 1 bus flap) is UNKNOWN, not "legacy stopped"; refuses instead of disabling a possibly-live daemon', async () => {
     // Pins the verifier's scenario B: same wrong-port state with a live legacy
     // daemon, but the one systemctl call that would reveal it flaps (rc=1).
     // The old guard read the unparseable reply as MainPID-undefined = not
@@ -1111,7 +1111,7 @@ describe('reconcileRedundantLegacyUnit — auto-retire a redundant install-scrip
     expect(result.lines.join('\n')).toContain('refusing to act on a guess');
   });
 
-  test('a TIMED-OUT legacy MainPID query (status null) is UNKNOWN too — never read as "legacy stopped"', async () => {
+  test('a TIMED-OUT legacy MainPID query (status null) is UNKNOWN too; never read as "legacy stopped"', async () => {
     // Verifier scenario C: the spawnSync timeout shape of the same flap.
     const { runner, calls } = fakeReconcileRunner({ legacyMainPidReply: { status: null } });
     const removed: string[] = [];
@@ -1160,7 +1160,7 @@ describe('reconcileRedundantLegacyUnit — auto-retire a redundant install-scrip
     expect(result.lines.join('\n')).toContain('127.0.0.1:3500');
   });
 
-  test('hand-written legacy unit (no marker) is never removed — a one-line actionable notice instead', async () => {
+  test('hand-written legacy unit (no marker) is never removed; a one-line actionable notice instead', async () => {
     const { runner, calls } = fakeReconcileRunner();
     const removed: string[] = [];
     const result = await reconcileRedundantLegacyUnit(baseReconcileInput({
@@ -1178,10 +1178,10 @@ describe('reconcileRedundantLegacyUnit — auto-retire a redundant install-scrip
     expect(result.lines.join('\n')).toContain(`disable --now ${LEGACY_SERVICE_UNIT_NAME}.service`);
   });
 
-  test('an UNREADABLE legacy unit file is reported as unreadable — never misdiagnosed as hand-written', async () => {
+  test('an UNREADABLE legacy unit file is reported as unreadable; never misdiagnosed as hand-written', async () => {
     // Reproduces the verifier's chmod-000/root-owned probe: existsSync sees
     // the file, readFileSync throws EACCES. The old code printed "It is
-    // hand-written (no installer marker)" — a false provenance claim about a
+    // hand-written (no installer marker)", a false provenance claim about a
     // file whose contents (which DO carry the marker) were never read.
     const { runner, calls } = fakeReconcileRunner();
     const removed: string[] = [];
@@ -1250,7 +1250,7 @@ describe('reconcileRedundantLegacyUnit — auto-retire a redundant install-scrip
     expect(calls.some((c) => c.includes('disable'))).toBe(false);
   });
 
-  test('refuses to disable the unit supervising THIS process (legacy MainPID == own pid) — never SIGTERMs itself', async () => {
+  test('refuses to disable the unit supervising THIS process (legacy MainPID == own pid); never SIGTERMs itself', async () => {
     // Reproduces the verifier's self-kill scenario: the currently-booting
     // daemon was launched BY the legacy unit; `disable --now` on it would
     // SIGTERM this process's own cgroup mid-boot from inside the blocking
@@ -1287,7 +1287,7 @@ describe('reconcileRedundantLegacyUnit — auto-retire a redundant install-scrip
   test('a FAILED disable (nonzero exit) leaves the unit file in place and never prints a false success receipt', async () => {
     // Reproduces the verifier's dangling-symlink scenario: disable --now
     // exits non-zero (bus hiccup); the old code removed the unit file anyway
-    // and claimed success, leaving an enabled symlink pointing at nothing —
+    // and claimed success, leaving an enabled symlink pointing at nothing,
     // unrecoverable by the next reconcile pass (which noops on file-absent).
     const { runner, calls } = fakeReconcileRunner({ disableStatus: 1 });
     const removed: string[] = [];
@@ -1299,7 +1299,7 @@ describe('reconcileRedundantLegacyUnit — auto-retire a redundant install-scrip
     expect(result.action).toBe('failed');
     expect(result.reason).toBe('disable-failed');
     expect(removed).toEqual([]); // the unit file was NOT removed
-    // No daemon-reload after a failed disable — nothing was changed.
+    // No daemon-reload after a failed disable, nothing was changed.
     expect(calls.some((c) => c.includes('daemon-reload'))).toBe(false);
     const text = result.lines.join('\n');
     expect(text).toContain('reported failure');
@@ -1311,7 +1311,7 @@ describe('reconcileRedundantLegacyUnit — auto-retire a redundant install-scrip
     // Pins the verifier's >5s-stop probe: `disable --now` removes the
     // enablement symlinks synchronously, THEN blocks on the stop job; a
     // client timeout does not undo the disable. The old code printed
-    // 'could not disable ... nothing was removed' — false on both counts.
+    // 'could not disable ... nothing was removed', false on both counts.
     const { runner } = fakeReconcileRunner({
       disableStatus: null,
       isEnabledReply: { status: 1, stdout: 'disabled\n' },
@@ -1332,7 +1332,7 @@ describe('reconcileRedundantLegacyUnit — auto-retire a redundant install-scrip
     expect(text).not.toContain('could not disable');
   });
 
-  test('a TIMED-OUT disable whose outcome CANNOT be re-confirmed reports UNKNOWN — never a blanket denial', async () => {
+  test('a TIMED-OUT disable whose outcome CANNOT be re-confirmed reports UNKNOWN; never a blanket denial', async () => {
     const { runner } = fakeReconcileRunner({
       disableStatus: null,
       isEnabledReply: { status: null },
@@ -1376,7 +1376,7 @@ describe('reconcileRedundantLegacyUnit — auto-retire a redundant install-scrip
     // does nothing under Bun (a spawned program is resolved from the PATH
     // captured at process start): every run of this test actually queried the
     // HOST's systemctl, so it only passed while the developer's own
-    // goodvibes.service happened to be inactive — and, with an active one, it
+    // goodvibes.service happened to be inactive, and, with an active one, it
     // could have dispatched a real `systemctl --user disable`.
     const dir = makeProjectTempDir('gv-reconcile-timeout');
     const stub = join(dir, 'systemctl');
@@ -1401,7 +1401,7 @@ describe('reconcileRedundantLegacyUnit — auto-retire a redundant install-scrip
     }
     // The threshold above is 10 s and bun's default per-test budget is 5 s, so
     // without this the test died of the timeout before `elapsedMs` could ever
-    // reach the number it is compared against — the bound was decorative. The
+    // reach the number it is compared against, the bound was decorative. The
     // budget now sits above the threshold so the assertion is what fails.
   }, 60_000);
 
@@ -1414,7 +1414,7 @@ describe('reconcileRedundantLegacyUnit — auto-retire a redundant install-scrip
     // unset (the point is that the DEFAULT spawnSync runner never gets to run),
     // so PATH is pointed at a systemctl stub that records its own invocation.
     // If the deadline wrapper ever regressed, the marker file would appear and
-    // this test would say so — instead of quietly querying the host's systemd.
+    // this test would say so, instead of quietly querying the host's systemd.
     const dir = makeProjectTempDir('gv-reconcile-deadline');
     const marker = join(dir, 'systemctl-was-invoked');
     const stub = join(dir, 'systemctl');
@@ -1444,13 +1444,13 @@ describe('reconcileRedundantLegacyUnit — auto-retire a redundant install-scrip
 
 /**
  * Unit-content parity (installer vs product) on a NON-DEFAULT config fixture:
- * both writers must produce the same ExecStart shape — the daemon binary plus
+ * both writers must produce the same ExecStart shape, the daemon binary plus
  * `--daemon-home <home>` and NOTHING else. Neither may bake the configured
  * endpoint into the unit: the daemon resolves controlPlane at boot, which is
  * exactly how a hostMode=network / port-3500 host keeps its endpoint across
  * upgrades instead of being silently re-pinned to installer constants.
  */
-describe('canonical unit content parity — installer and product agree, endpoint comes from config at boot', () => {
+describe('canonical unit content parity: installer and product agree, endpoint comes from config at boot', () => {
   test('product-written unit on a hostMode=network/port-3500 fixture bakes no endpoint; boot-time resolution yields the configured endpoint', () => {
     const dir = makeProjectTempDir('gv-unit-parity');
     try {
@@ -1472,7 +1472,7 @@ describe('canonical unit content parity — installer and product agree, endpoin
       const productUnit = readFileSync(join(dir, '.config', 'systemd', 'user', 'goodvibes.service'), 'utf-8');
       const productExec = productUnit.split('\n').find((l) => l.startsWith('ExecStart=')) ?? '';
 
-      // The product unit: binary + --daemon-home only — no endpoint flags, no
+      // The product unit: binary + --daemon-home only, no endpoint flags, no
       // endpoint VALUES.
       const productArgs = productExec.replace('ExecStart=', '').split(/\s+/).slice(1);
       // The flag's value is the daemon's STATE directory, not the home above

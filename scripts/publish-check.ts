@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * publish-check.ts — pre-publish gate (thin toolchain orchestrator).
+ * publish-check.ts, pre-publish gate (thin toolchain orchestrator).
  *
  * The shared mechanics are owned by @pellux/goodvibes-toolchain and driven by
  * this repo's toolchain.config.json:
@@ -73,12 +73,12 @@ if (!skipAuthCheck) {
     execSync(`npm whoami --registry ${registry}`, { stdio: ['ignore', 'pipe', 'pipe'], encoding: 'utf8' });
   } catch {
     console.error(
-      `FAIL  registry-auth — npm token invalid for ${registry} — refresh NPM_TOKEN / npm login\n` +
+      `FAIL  registry-auth — npm token invalid for ${registry}; refresh NPM_TOKEN / npm login\n` +
         '  (set GOODVIBES_SKIP_NPM_AUTH_CHECK=1 to bypass in offline/dry-run contexts)',
     );
     failed += 1;
   }
 }
 
-console.log(`publish-check: ${failed === 0 ? 'OK — all gates passed' : `${failed} gate(s) failed`}`);
+console.log(`publish-check: ${failed === 0 ? 'OK, all gates passed' : `${failed} gate(s) failed`}`);
 process.exit(failed > 0 ? 1 : 0);

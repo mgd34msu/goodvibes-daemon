@@ -2,15 +2,15 @@
  * CLI barrel for the daemon product.
  *
  * Two halves, deliberately separable:
- *   - `command-catalog.ts` is WHAT this binary understands — every command,
+ *   - `command-catalog.ts` is WHAT this binary understands, every command,
  *     alias, flag and help string, as data.
  *   - `parser.ts`, `help.ts` and `completion.ts` are the ENGINE that reads a
  *     catalog and produces a parse, a help page or a completion script. None of
  *     them names a daemon command.
  *
- * The argument surface a `goodvibes` front-end shares — the parse engine's
+ * The argument surface a `goodvibes` front-end shares, the parse engine's
  * catalog contract, redaction, config overrides, settings-value reading and
- * endpoint resolution — is @pellux/goodvibes-terminal-shell's, imported at the
+ * endpoint resolution, is @pellux/goodvibes-terminal-shell's, imported at the
  * point of use. What stays here is what only this binary has: its own command
  * vocabulary, and the help and completion built on it.
  */

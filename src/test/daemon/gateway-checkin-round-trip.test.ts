@@ -4,7 +4,7 @@
  * Ported from goodvibes-agent/src/test/daemon/checkin-gateway.test.ts. That
  * package composes no server and serves no gateway verb; the suite drove a
  * catalog a test helper rebuilt from a hand-copied dependency list. The
- * behaviour it pinned is real and still worth pinning — at the process that
+ * behaviour it pinned is real and still worth pinning, at the process that
  * implements it. Here the catalog is `createRuntimeServices(...).gatewayMethods`.
  *
  * The SDK registers checkin.* handlers only when channelDeliveryRouter,

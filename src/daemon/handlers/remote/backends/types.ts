@@ -29,7 +29,7 @@ export interface BackendDispatchResult {
 export interface BackendContext {
   credentials: DaemonCredentialStore;
   logger: HandlerLogger;
-  /** Daemon home dir — used for ephemeral key material under a 0700 subdir. */
+  /** Daemon home dir, used for ephemeral key material under a 0700 subdir. */
   homeDirectory: string;
 }
 
@@ -84,7 +84,7 @@ export class BackendDispatchError extends Error {
  * REMOTE-SHELL SEMANTICS (intentional, documented asymmetry vs local-process):
  * positional `payload.args` are joined onto the command with a single space and
  * are NOT shell-escaped, because these backends hand a single command STRING to
- * a remote shell — the operator's `command` may itself contain pipes, redirects,
+ * a remote shell, the operator's `command` may itself contain pipes, redirects,
  * globs, or quoting that must survive the hop verbatim. The local-process
  * backend, by contrast, never invokes a shell and passes args as discrete argv.
  *

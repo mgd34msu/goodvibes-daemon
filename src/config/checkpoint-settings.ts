@@ -7,15 +7,15 @@ import type { ConfigManager } from '@pellux/goodvibes-sdk/platform/config';
  * decide which directory it is safe to snapshot and how the first sweep and
  * retention behave:
  *
- *   - `checkpoints.preferGitRoot` (boolean, SDK default true) — prefer the
+ *   - `checkpoints.preferGitRoot` (boolean, SDK default true), prefer the
  *     enclosing git repository's top level over the raw working directory.
- *   - `checkpoints.allowBroadRoot` (boolean, SDK default false) — opt in to
+ *   - `checkpoints.allowBroadRoot` (boolean, SDK default false), opt in to
  *     snapshotting a broad root (filesystem root, home directory, ~/.goodvibes).
- *   - `checkpoints.allowLargeFirstSnapshot` (boolean, SDK default false) — opt
+ *   - `checkpoints.allowLargeFirstSnapshot` (boolean, SDK default false), opt
  *     in to a first snapshot whose full sweep exceeds `maxFirstSnapshotFiles`.
- *   - `checkpoints.maxFirstSnapshotFiles` (number, SDK default) — ceiling for
+ *   - `checkpoints.maxFirstSnapshotFiles` (number, SDK default), ceiling for
  *     the first-ever snapshot's file sweep.
- *   - `checkpoints.autoRetention` (boolean, SDK default true) — run a retention
+ *   - `checkpoints.autoRetention` (boolean, SDK default true), run a retention
  *     sweep automatically after each successful create and once at init.
  *
  * A sixth key, `checkpoints.unregisteredWorkspaces`, is read separately by
@@ -90,14 +90,14 @@ export function readCheckpointGuardSettings(
  * The registered-workspaces-only override (owner ruling, 2026-07-10):
  *
  *   - `checkpoints.unregisteredWorkspaces` (`'off' | 'guarded'`, default `'off'`)
- *     — `'off'` is the ruling's default: automatic (turn-end/lifecycle)
+ *    , `'off'` is the ruling's default: automatic (turn-end/lifecycle)
  *     checkpoints, and explicit checkpoint creation through the ws-only
  *     `checkpoints.create` gateway verb, both refuse when the resolved
  *     workspace root is not covered by the shared registration store
  *     (the SDK's workspace registration, platform/workspace).
  *     `'guarded'` opts back into the pre-ruling behavior for an unregistered
  *     workspace: automatic snapshots subscribe and explicit create proceeds,
- *     subject only to the SDK's own root/size guards above — never a silent
+ *     subject only to the SDK's own root/size guards above, never a silent
  *     re-enable, an explicit per-workspace opt-out of the registration gate.
  *
  * Any other value (including absence) reads as `'off'`.

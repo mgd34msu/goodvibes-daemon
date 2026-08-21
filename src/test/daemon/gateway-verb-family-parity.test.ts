@@ -9,7 +9,7 @@
  * own catalog; it built a SECOND catalog from a test-only helper
  * (src/test/helpers/daemon-gateway.ts) that re-passed, by hand, the dependency
  * list this daemon's composition root passes for real. What it verified was
- * that a reconstruction of the composition answers — not that the composition
+ * that a reconstruction of the composition answers, not that the composition
  * does. The two can disagree the moment services.ts drops a dep the helper
  * still lists, which is the exact regression the sweep exists to catch.
  *
@@ -22,14 +22,14 @@
  * Every gateway verb family this composition serves is (a) cataloged and (b)
  * HANDLER-ATTACHED. A descriptor with no handler answers 501 "Gateway method is
  * not invokable" over both websocket and HTTP invoke, so a whole family can
- * look present in the contract and be dead — the regression class
+ * look present in the contract and be dead, the regression class
  * gateway-ws-only-invokable.test.ts's header documents, found in the field
  * against a shipped build.
  *
  * The table below is the single source of truth for "does family X register
  * live here". Two properties make it one rather than a sample:
  *
- *   1. Every family carries the REASON it registers — read from the SDK's
+ *   1. Every family carries the REASON it registers, read from the SDK's
  *      register-gateway-verb-groups.ts and this repo's services.ts, not
  *      inferred. A family is either always registered (built internally from
  *      shellPaths/config) or gated on a dep this composition threads. When a
@@ -41,18 +41,18 @@
  *
  * Deeper functional round-trips live in their own files and are deliberately
  * not duplicated here:
- *   - gateway-ws-only-invokable.test.ts — fleet.*, checkpoints.* core,
+ *   - gateway-ws-only-invokable.test.ts, fleet.*, checkpoints.* core,
  *     sessions.search, push.*, permissions.rules.*
- *   - gateway-initiative-verbs.test.ts — checkin.*, ci.*, principals.*,
+ *   - gateway-initiative-verbs.test.ts, checkin.*, ci.*, principals.*,
  *     channels.profiles.*
- *   - gateway-occasions-verbs.test.ts — occasions.*
- *   - gateway-checkin-round-trip.test.ts — the check-in loop end to end
- *   - gateway-ci-principals-channel-profiles-round-trip.test.ts — those three
+ *   - gateway-occasions-verbs.test.ts, occasions.*
+ *   - gateway-checkin-round-trip.test.ts, the check-in loop end to end
+ *   - gateway-ci-principals-channel-profiles-round-trip.test.ts, those three
  *     families end to end
- *   - gateway-device-capability-verbs.test.ts — devices.*
- *   - gateway-rewind-conversation-scope.test.ts — the conversation half of
+ *   - gateway-device-capability-verbs.test.ts, devices.*
+ *   - gateway-rewind-conversation-scope.test.ts, the conversation half of
  *     rewind.*
- *   - gateway-catalog-handler-or-route.test.ts — the whole-catalog partition:
+ *   - gateway-catalog-handler-or-route.test.ts, the whole-catalog partition:
  *     every descriptor is handler-attached, route-served, or declared
  *     uncallable.
  */
@@ -60,7 +60,7 @@ import { describe, expect, test } from 'bun:test';
 import { assertEveryDescriptorHasHandler } from '@pellux/goodvibes-terminal-shell/conformance';
 import { getTestRuntimeServices, disposeTestRuntimeServicesAfterAll } from '../helpers/runtime-services.ts';
 
-// Stop the shared test runtime graph when this file ends — see that helper's doc.
+// Stop the shared test runtime graph when this file ends, see that helper's doc.
 disposeTestRuntimeServicesAfterAll();
 
 interface VerbFamily {
@@ -91,7 +91,7 @@ const VERB_FAMILIES: readonly VerbFamily[] = [
   },
   {
     family: 'fleet.conflicts.*',
-    reason: 'Registered only when the attempts engine exposes listWorkstreams/stampConflictSession/retryItemIntegration AND automationManager is present — both are threaded here (register-gateway-verb-groups.ts, the conflict block).',
+    reason: 'Registered only when the attempts engine exposes listWorkstreams/stampConflictSession/retryItemIntegration AND automationManager is present; both are threaded here (register-gateway-verb-groups.ts, the conflict block).',
     methodIds: ['fleet.conflicts.list', 'fleet.conflicts.resolve'],
   },
   {
@@ -109,7 +109,7 @@ const VERB_FAMILIES: readonly VerbFamily[] = [
   },
   {
     family: 'push.*',
-    reason: 'Always registered — the SDK builds the push subscription service internally from shellPaths and config.',
+    reason: 'Always registered: the SDK builds the push subscription service internally from shellPaths and config.',
     methodIds: [
       'push.vapid.get', 'push.subscriptions.list', 'push.subscriptions.create',
       'push.subscriptions.delete', 'push.subscriptions.verify', 'push.subscriptions.reconcile',
@@ -117,12 +117,12 @@ const VERB_FAMILIES: readonly VerbFamily[] = [
   },
   {
     family: 'permissions.rules.*',
-    reason: 'Registered because userPermissionRuleStore is threaded in services.ts (durable remembered-approval rules; the same store feeds the brokered permission manager). Read/delete only by design — rules are written by remembered approval decisions, never by a verb.',
+    reason: 'Registered because userPermissionRuleStore is threaded in services.ts (durable remembered-approval rules; the same store feeds the brokered permission manager). Read/delete only by design: rules are written by remembered approval decisions, never by a verb.',
     methodIds: ['permissions.rules.list', 'permissions.rules.delete'],
   },
   {
     family: 'workspaces.registrations.* / workspaces.resolve',
-    reason: 'Always registered — the SDK constructs the shared WorkspaceRegistrationStore internally from shellPaths.',
+    reason: 'Always registered: the SDK constructs the shared WorkspaceRegistrationStore internally from shellPaths.',
     methodIds: [
       'workspaces.registrations.list', 'workspaces.registrations.add',
       'workspaces.registrations.remove', 'workspaces.resolve',
@@ -130,12 +130,12 @@ const VERB_FAMILIES: readonly VerbFamily[] = [
   },
   {
     family: 'rewind.plan / rewind.apply',
-    reason: 'Always registered (files-only rewind over the workspace checkpoint manager already threaded). The conversation scope is a separate honesty concern — see gateway-rewind-conversation-scope.test.ts.',
+    reason: 'Always registered (files-only rewind over the workspace checkpoint manager already threaded). The conversation scope is a separate honesty concern; see gateway-rewind-conversation-scope.test.ts.',
     methodIds: ['rewind.plan', 'rewind.apply'],
   },
   {
     family: 'rewind.conversation.* (host registry)',
-    reason: 'Always registered — the host registry that lets a client hold the mutable conversation and answer this daemon\'s rewind requests is built internally.',
+    reason: 'Always registered: the host registry that lets a client hold the mutable conversation and answer this daemon\'s rewind requests is built internally.',
     methodIds: [
       'rewind.conversation.host.register', 'rewind.conversation.host.release',
       'rewind.conversation.hosts.list', 'rewind.conversation.requests.take',
@@ -144,12 +144,12 @@ const VERB_FAMILIES: readonly VerbFamily[] = [
   },
   {
     family: 'skills.*',
-    reason: 'Always registered — the SDK constructs a FileSystemSkillStore-backed SkillService internally from shellPaths.',
+    reason: 'Always registered: the SDK constructs a FileSystemSkillStore-backed SkillService internally from shellPaths.',
     methodIds: ['skills.list', 'skills.get', 'skills.create', 'skills.update', 'skills.delete'],
   },
   {
     family: 'principals.*',
-    reason: 'Always registered — the SDK constructs the PrincipalRegistry internally from shellPaths. Deeper round-trip: gateway-ci-principals-channel-profiles-round-trip.test.ts.',
+    reason: 'Always registered: the SDK constructs the PrincipalRegistry internally from shellPaths. Deeper round-trip: gateway-ci-principals-channel-profiles-round-trip.test.ts.',
     methodIds: [
       'principals.list', 'principals.get', 'principals.create',
       'principals.update', 'principals.delete', 'principals.resolve',
@@ -157,7 +157,7 @@ const VERB_FAMILIES: readonly VerbFamily[] = [
   },
   {
     family: 'channels.profiles.*',
-    reason: 'Always registered — the SDK constructs the ChannelProfileRegistry internally from shellPaths. Deeper round-trip: gateway-ci-principals-channel-profiles-round-trip.test.ts.',
+    reason: 'Always registered: the SDK constructs the ChannelProfileRegistry internally from shellPaths. Deeper round-trip: gateway-ci-principals-channel-profiles-round-trip.test.ts.',
     methodIds: [
       'channels.profiles.list', 'channels.profiles.get',
       'channels.profiles.set', 'channels.profiles.delete',
@@ -185,17 +185,17 @@ const VERB_FAMILIES: readonly VerbFamily[] = [
   },
   {
     family: 'flags.graduation.report',
-    reason: 'Always registered — reads the static flag registry plus graduation annotations, no runtime dependency.',
+    reason: 'Always registered: reads the static flag registry plus graduation annotations, no runtime dependency.',
     methodIds: ['flags.graduation.report'],
   },
   {
     family: 'cost.attribution.get / quota.*',
-    reason: 'Always registered — CostAttributionService and QuotaWindowTracker are constructed internally; ingestion is enriched when providerRegistry/runtimeBus are present (both are here) but the verbs register regardless.',
+    reason: 'Always registered: CostAttributionService and QuotaWindowTracker are constructed internally; ingestion is enriched when providerRegistry/runtimeBus are present (both are here) but the verbs register regardless.',
     methodIds: ['cost.attribution.get', 'quota.fanout.get', 'quota.snapshot.get'],
   },
   {
     family: 'sessions.permissionMode.* / sessions.contextUsage.get',
-    reason: "Always registered — the SDK's createSessionRuntimeControls is built internally from configManager plus runtimeStore, both always present in this composition.",
+    reason: "Always registered: the SDK's createSessionRuntimeControls is built internally from configManager plus runtimeStore, both always present in this composition.",
     methodIds: ['sessions.permissionMode.get', 'sessions.permissionMode.set', 'sessions.contextUsage.get'],
   },
   {
@@ -208,7 +208,7 @@ const VERB_FAMILIES: readonly VerbFamily[] = [
   },
   {
     family: 'profile.*',
-    reason: "Always registered — the SDK's composeOwnerProfile builds the OwnerProfileStore internally from configManager plus the resolved daemon home. One Markdown file at daemon scope, and this is the process that owns it.",
+    reason: "Always registered: the SDK's composeOwnerProfile builds the OwnerProfileStore internally from configManager plus the resolved daemon home. One Markdown file at daemon scope, and this is the process that owns it.",
     methodIds: [
       'profile.read', 'profile.get', 'profile.person', 'profile.provenance',
       'profile.set', 'profile.append', 'profile.forget', 'profile.undo', 'profile.status',
@@ -216,7 +216,7 @@ const VERB_FAMILIES: readonly VerbFamily[] = [
   },
   {
     family: 'occasions.*',
-    reason: "Always registered — installOccasions runs INSIDE composeOwnerProfile over the same store, with the machine-owned state file resolved from shellPaths. Deeper round-trip: gateway-occasions-verbs.test.ts.",
+    reason: "Always registered: installOccasions runs INSIDE composeOwnerProfile over the same store, with the machine-owned state file resolved from shellPaths. Deeper round-trip: gateway-occasions-verbs.test.ts.",
     methodIds: [
       'occasions.list', 'occasions.pending', 'occasions.state', 'occasions.sweep',
       'occasions.propose', 'occasions.confirm', 'occasions.remove', 'occasions.answer', 'occasions.acknowledge',
@@ -296,12 +296,12 @@ const VERB_FAMILIES: readonly VerbFamily[] = [
   },
   {
     family: 'tailscale.get / tailscale.serve.run',
-    reason: 'Always registered — built internally from configManager and shellPaths.',
+    reason: 'Always registered: built internally from configManager and shellPaths.',
     methodIds: ['tailscale.get', 'tailscale.serve.run'],
   },
   {
     family: 'runtime.metrics.get',
-    reason: 'Always registered — reads process-local runtime metrics, no dependency.',
+    reason: 'Always registered: reads process-local runtime metrics, no dependency.',
     methodIds: ['runtime.metrics.get'],
   },
   {

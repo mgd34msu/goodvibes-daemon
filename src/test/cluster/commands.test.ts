@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// cluster-commands.test.ts — the `cluster` subcommands and the remote-target
+// cluster-commands.test.ts, the `cluster` subcommands and the remote-target
 // convention they established.
 //
 // Two things are load-bearing here and both are tested directly:
@@ -414,7 +414,7 @@ describe('wiring', () => {
   });
 
   test('this repository builds no cluster requests of its own', () => {
-    // Every caller — this CLI, a client's /cluster command, a web view — goes
+    // Every caller, this CLI, a client's /cluster command, a web view, goes
     // through runClusterCommand, so a command run against a REMOTE daemon
     // behaves exactly like one run on that machine. A second request builder
     // in this repository is how those two drift apart. The one `/api/cluster/`

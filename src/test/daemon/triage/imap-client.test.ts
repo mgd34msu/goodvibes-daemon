@@ -60,7 +60,7 @@ describe('imapStoreFlagOverTls CRLF-injection guard', () => {
   });
 
   // flag is interpolated UNQUOTED into the `+FLAGS (...)` list. A flag with a
-  // space carries no control chars but would inject a SECOND flag atom — the
+  // space carries no control chars but would inject a SECOND flag atom, the
   // grammar check at the client boundary rejects it independent of any upstream
   // normalizer.
   it('rejects a flag containing a space (second-atom injection)', async () => {
@@ -293,7 +293,7 @@ describe('imapStoreFlagOverTls data pump (mock socket)', () => {
         await Promise.resolve();
         s.feed(`${s.tagFor(0)} OK LOGIN ok`);
         await Promise.resolve();
-        // Server vanishes before SELECT completes — no `completed` flag set.
+        // Server vanishes before SELECT completes, no `completed` flag set.
         s.fireClose();
       })();
     });

@@ -51,7 +51,7 @@ describe('registerDiscoveredProviders idempotency', () => {
     registry.registerDiscoveredProviders([serverA, serverB]);
     const countAfterFirst = registry.listProviders().length;
 
-    // Second call: B + C (e.g., from scan() — B is in both sets).
+    // Second call: B + C (e.g., from scan(), B is in both sets).
     // SDK semantics: clears previous discovered providers, registers B+C.
     registry.registerDiscoveredProviders([serverB, serverC]);
     const countAfterSecond = registry.listProviders().length;

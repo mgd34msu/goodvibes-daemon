@@ -1,5 +1,5 @@
 /**
- * parser.ts — this binary's command line, read by the shared argument engine.
+ * parser.ts, this binary's command line, read by the shared argument engine.
  *
  * The engine is `parseWithCatalog` in @pellux/goodvibes-terminal-shell: tokens,
  * values, arity, `--`, refusals, and no knowledge of any product's commands.
@@ -15,7 +15,7 @@
  *    all silently served. `unmatchedFirstToken: 'reject'` is what ends that.
  *
  * 2. Every refusal is a refusal. An unrecognized command, a flag that belongs
- *    to another surface, a flag this command does not take, a missing value —
+ *    to another surface, a flag this command does not take, a missing value,
  *    each produces an error line, and the caller exits 2 with the help. Nothing
  *    is accepted-and-ignored.
  */

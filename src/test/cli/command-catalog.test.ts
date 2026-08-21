@@ -42,7 +42,7 @@ const EXPECTED_COMMANDS = [
 ] as const;
 
 describe('the daemon command vocabulary', () => {
-  test('is exactly the daemon\'s real commands — no more, no fewer', () => {
+  test('is exactly the daemon\'s real commands; no more, no fewer', () => {
     expect([...DAEMON_COMMANDS.map((spec) => spec.name)].sort())
       .toEqual([...EXPECTED_COMMANDS].sort());
   });
@@ -112,7 +112,7 @@ describe('the catalog\'s flag table', () => {
 
   test('`--host` means the bind address for serve and the target for status', () => {
     // The same token, two meanings, kept apart by the command it appears under
-    // — which is exactly why flags are per-command data rather than one list.
+    //, which is exactly why flags are per-command data rather than one list.
     const serveHost = daemonCommandSpec('serve').flags.find((flag) => flag.tokens.includes('--host'));
     const statusHost = daemonCommandSpec('status').flags.find((flag) => flag.tokens.includes('--host'));
     expect(serveHost?.field).toBe('hostname');

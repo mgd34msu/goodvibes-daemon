@@ -1,11 +1,11 @@
 // ---------------------------------------------------------------------------
-// provision-wake-model.ts — `goodvibes-daemon provision-wake-model`.
+// provision-wake-model.ts, `goodvibes-daemon provision-wake-model`.
 //
 // WHAT THIS IS FOR
 //
 // The curl installer needs to put the wake-word model on the machine, and it must
 // not hold the pinned URLs, byte counts or checksums to do it. Those live in ONE
-// place — the SDK's wake-word manifest — and a shell script that copied them
+// place, the SDK's wake-word manifest, and a shell script that copied them
 // would be a second copy of a pin, drifting silently the first time the model is
 // retrained. So the installer runs the binary it just installed and lets the SDK
 // do what the SDK owns.
@@ -14,8 +14,8 @@
 //
 // The caller is an installer. A wake-word model is not a reason to fail installing
 // a coding tool, and an installer that aborts half-way through is worse than one
-// that finishes without a wake word. The outcome is printed either way — one plain
-// line naming what happened and how to retry — and a running daemon retries at
+// that finishes without a wake word. The outcome is printed either way, one plain
+// line naming what happened and how to retry, and a running daemon retries at
 // every boot. `--strict` is there for a caller that genuinely wants the exit code
 // to carry the result (a test, a provisioning script that is checking); the
 // installer does not pass it.
@@ -66,7 +66,7 @@ export async function runProvisionWakeModelCommand(
     const message = error instanceof Error ? error.message : String(error);
     return {
       exitCode: strict ? 1 : 0,
-      lines: [`wake-word model: skipped — ${message}`],
+      lines: [`wake-word model: skipped: ${message}`],
     };
   }
   const outcome = await provision({

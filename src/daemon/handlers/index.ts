@@ -1,5 +1,5 @@
 /**
- * Composition root for the daemon handler layer — the only module that
+ * Composition root for the daemon handler layer, the only module that
  * `src/runtime/services.ts` imports. It assembles every surface (routing,
  * inbox+triage, drafts, calendar, email, remote) onto the SDK gateway catalog
  * and returns a single teardown plus the cross-surface handles the runtime
@@ -50,13 +50,13 @@ export interface DaemonHandlerSurfaces {
  * email → remote.
  */
 export interface DaemonHandlerSurfaceProviders {
-  /** channels.routing.* — returns the resolver consumed by the inbox surface. */
+  /** channels.routing.*, returns the resolver consumed by the inbox surface. */
   readonly registerRouting: (ctx: HandlerContext) => RoutingRegistration;
   /** channels.inbox.list (triage-decorated) + inbox.triage.* (daemon-internal). */
   readonly registerInbox: (ctx: HandlerContext, routing: RoutingRegistration) => Unregister;
   /** channels.drafts.* */
   readonly registerDrafts: SurfaceRegister;
-  /** remote.peers.* — supplies the host DistributedRuntimeRouteService + dispatch adapter. */
+  /** remote.peers.*, supplies the host DistributedRuntimeRouteService + dispatch adapter. */
   readonly registerRemote: (ctx: HandlerContext) => RemoteSurfaceRegistration;
 }
 
@@ -83,7 +83,7 @@ export function registerDaemonHandlers(
   // CalDAV/Google and IMAP/SMTP implementations), registered through
   // registerGatewayVerbGroups in runtime/services.ts. This product used to
   // carry its own handlers for the same descriptor ids and, registering later,
-  // won — two implementations behind one path, which is the drift the hoist
+  // won, two implementations behind one path, which is the drift the hoist
   // exists to end.
 
   const remote = providers.registerRemote(ctx);
@@ -91,7 +91,7 @@ export function registerDaemonHandlers(
 
   // Idempotent: teardown is reachable from more than one shutdown path now that
   // the runtime disposal scope owns it, and the surfaces underneath are not all
-  // safe to unwind twice — the inbox surface closes a SQLite handle, which a
+  // safe to unwind twice, the inbox surface closes a SQLite handle, which a
   // second pass would close again inside a floating promise (an unhandled
   // rejection, not a caught one). Running once is also simply the honest
   // meaning of "release these surfaces".

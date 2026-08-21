@@ -1,5 +1,5 @@
 /**
- * Composition gate — pins the wiring facts the daemon's composition root must
+ * Composition gate, pins the wiring facts the daemon's composition root must
  * keep in step with the SDK's own.
  *
  * These are source-level assertions on purpose: the wiring differences they
@@ -35,7 +35,7 @@ function createRuntimeServicesCallArgs(source: string): string {
   throw new Error('unbalanced createRuntimeServices call braces');
 }
 
-describe('composition parity — observed foreign-agent detection is daemon-side only', () => {
+describe('composition parity: observed foreign-agent detection is daemon-side only', () => {
   test('the standalone daemon composes observed agents (observeExternalAgents: true)', () => {
     const args = createRuntimeServicesCallArgs(read('src/daemon/cli.ts'));
     expect(args).toContain('observeExternalAgents: true');
@@ -44,7 +44,7 @@ describe('composition parity — observed foreign-agent detection is daemon-side
   test('there is exactly one composition root, and one entrypoint that opts in', () => {
     // Observed detection scans the real process table. Two processes doing it on
     // one machine is double-detection, which is why it is an opt-in the daemon
-    // entrypoint alone takes — and why this repository must never grow a second
+    // entrypoint alone takes, and why this repository must never grow a second
     // caller of it.
     const services = read('src/runtime/services.ts');
     expect(services).toContain('export function createRuntimeServices(');
@@ -65,7 +65,7 @@ describe('composition parity — observed foreign-agent detection is daemon-side
   });
 });
 
-describe('composition parity — the retention janitor and live config apply are composed here', () => {
+describe('composition parity: the retention janitor and live config apply are composed here', () => {
   // createDurabilityServices itself (the sweep roots, the append-only startup
   // sweep, the config watch) is SDK-owned and covered by the SDK's own suite.
   // What this repository has to keep true is that its composition root calls
@@ -88,10 +88,10 @@ describe('composition parity — the retention janitor and live config apply are
   });
 });
 
-describe('composition parity — the idle/power seam is composed here', () => {
-  // What wireIdlePowerAndLiveTurn DOES with these — the live config
+describe('composition parity: the idle/power seam is composed here', () => {
+  // What wireIdlePowerAndLiveTurn DOES with these, the live config
   // subscription behind keep-awake, the consolidation scheduler, the live-turn
-  // holder — is SDK-owned and covered by the SDK's own suite. What this
+  // holder, is SDK-owned and covered by the SDK's own suite. What this
   // repository has to keep true is that its composition root calls it, and
   // hands it the config manager and the idle/heartbeat seams it decides from.
   test('createRuntimeServices composes the idle-power services with the config manager and its seams', () => {
@@ -104,7 +104,7 @@ describe('composition parity — the idle/power seam is composed here', () => {
   });
 });
 
-describe('composition parity — memory governance is composed (governor default ON, real caches, pausable jobs)', () => {
+describe('composition parity: memory governance is composed (governor default ON, real caches, pausable jobs)', () => {
   const services = read('src/runtime/services.ts');
 
   test('the CacheRegistry, PauseController and the deferrable job ids are built EARLY (before the schedulers that consult them)', () => {
@@ -161,7 +161,7 @@ describe('composition parity — memory governance is composed (governor default
     // ownership-aware preconfigure and the admission gate all live behind
     // wireVoiceSetup. This composition reaches them by calling it and passing
     // the admission gate, rather than by rebuilding any of it from the voice
-    // primitives — which is what a second copy of this wiring would be.
+    // primitives, which is what a second copy of this wiring would be.
     expect(services).toContain('wireVoiceSetup({');
     expect(services.slice(services.indexOf('wireVoiceSetup({'), services.indexOf('wireVoiceSetup({') + 400))
       .toContain('admitExpensiveWork');
@@ -169,9 +169,9 @@ describe('composition parity — memory governance is composed (governor default
   });
 });
 
-describe('composition parity — host power seam is opt-in (non-spawning default)', () => {
+describe('composition parity: host power seam is opt-in (non-spawning default)', () => {
   // SDK 1.9.0's wireRuntimePower defaults an ABSENT seam to the real host seam
-  // (createHostPowerSeam — spawns systemd-inhibit + a dbus-monitor sleep-edge
+  // (createHostPowerSeam, spawns systemd-inhibit + a dbus-monitor sleep-edge
   // watcher). That host-level spawn must never fire on a test-constructed
   // runtime, so this composition mirrors the SDK's own createRuntimeServices:
   // default to the non-spawning unavailable seam, and only the real long-lived
@@ -180,7 +180,7 @@ describe('composition parity — host power seam is opt-in (non-spawning default
   test('the real host seam is constructed at the entrypoint and nowhere else in this repository', () => {
     // An absent seam falls back to the non-spawning unavailable one inside the
     // SDK helper. What must stay true here is that nothing BUT the daemon
-    // entrypoint constructs the real one — a second construction site is a
+    // entrypoint constructs the real one, a second construction site is a
     // systemd-inhibit and a dbus-monitor started by a test, or by a one-shot
     // CLI command that exits a second later.
     const src = resolve(import.meta.dir, '../..');
@@ -213,10 +213,10 @@ describe('composition parity — host power seam is opt-in (non-spawning default
 
 });
 
-describe('composition parity — wake-model boot provisioning is opt-in, like the power seam', () => {
+describe('composition parity: wake-model boot provisioning is opt-in, like the power seam', () => {
   // The wake-word model arrives with the installation, and the daemon retries at
   // boot for whatever the install could not get. That retry does network I/O and
-  // starts an hourly recovery sweep, so it must be an explicit opt-in — the same
+  // starts an hourly recovery sweep, so it must be an explicit opt-in, the same
   // treatment the host power seam gets, for the same reason: a test composing this
   // graph, and a one-shot CLI command, must fetch nothing and start no timer.
   test('the standalone daemon opts in', () => {
@@ -226,8 +226,8 @@ describe('composition parity — wake-model boot provisioning is opt-in, like th
   test('the one-shot subcommands compose no runtime at all', () => {
     // `send`, `cluster` and `provision-wake-model` answer one thing and exit.
     // They are intercepted before the runtime is composed, so there is nothing
-    // to opt in or out of: no hourly sweep, no download, and — the reason it
-    // matters most — no second copy of the pollers, the leader election and the
+    // to opt in or out of: no hourly sweep, no download, and, the reason it
+    // matters most, no second copy of the pollers, the leader election and the
     // LAN scan a running daemon on this machine already owns.
     const cli = read('src/daemon/cli.ts');
     const composeIndex = cli.indexOf('createRuntimeServices({');

@@ -1,9 +1,9 @@
-# Command Reference
+# Command reference
 
 Every command `goodvibes-daemon` accepts, generated from the command catalog
 (`src/cli/command-catalog.ts`) as of daemon `1.28.0` and fleshed out with the exact
-help text and behavior. This vocabulary is the complete set — a word that matches
-none of it is refused with `Unknown command: <word>` and exit code 2, it does not
+help text and behavior. This vocabulary is the complete set. A word that matches
+none of it is refused with `Unknown command: <word>` and exit code 2; it does not
 fall through to starting a daemon. There is no `docs:*` script that regenerates this
 file automatically; when a command or flag changes in the catalog, update this page
 by hand in the same change.
@@ -16,15 +16,15 @@ Accepted before or after any command:
 | --- | --- | --- |
 | `--daemon-home <dir>` | value | The daemon's own identity directory (operator tokens, auth users, daemon settings) |
 | `-C`, `--cd`, `--working-dir <dir>` | value | The directory the daemon treats as its workspace |
-| `-h`, `--help` | — | Print help and exit 0 |
-| `-v`, `--version` | — | Print the version and exit 0 |
+| `-h`, `--help` | none | Print help and exit 0 |
+| `-v`, `--version` | none | Print the version and exit 0 |
 
 ## Exit codes
 
 | Code | Meaning |
 | --- | --- |
 | `0` | the command did what it says |
-| `1` | it ran and failed — the reason is printed |
+| `1` | it ran and failed, the reason is printed |
 | `2` | the command line was wrong: an unknown command, an unknown flag, a flag this command does not take, or a missing value |
 | `3` | `service-status` only: installed, but not running |
 | `4` | `service-status` only: not installed |
@@ -40,11 +40,11 @@ Every command that talks to an already-running daemon (`status`, `update`, `pair
 | `--port <n>` | the control plane's configured port |
 | `--token <t>` | this machine's own operator token, read from `<daemon home>/operator-tokens.json` |
 
-Authentication is `Authorization: Bearer <operator token>` against the control plane —
+Authentication is `Authorization: Bearer <operator token>` against the control plane,
 the same credential the terminal app and the web UI already use. The defaults are the
 point: a headless box the operator has SSHed into works with no flags at all; the flags
 exist for driving a machine in the next room, or for scripting. A missing token is a
-refusal rather than an anonymous attempt — the daemon on this machine has never started
+refusal rather than an anonymous attempt. The daemon on this machine has never started
 and so has never minted one, or the wrong directory was named.
 
 ## Commands
@@ -58,7 +58,7 @@ goodvibes-daemon [serve] [OPTIONS]
 Start the control plane, the channel pollers, the cluster membership and every verb
 family a GoodVibes client calls, and keep running until stopped. This is what a bare
 invocation does; running with no command or with `serve` are the only two ways to
-start serving — any other first word is a command, and an unrecognized one is refused
+start serving. Any other first word is a command, and an unrecognized one is refused
 rather than treated as "start serving" anyway.
 
 Flags (beyond the global ones):
@@ -83,7 +83,7 @@ goodvibes-daemon install-service
 
 Write the service definition for this platform, then start it, so the daemon comes
 back after a reboot with nobody logged in required. Refused when a unit from the
-older install script is still present — installing beside it would leave two daemons
+older install script is still present, since installing beside it would leave two daemons
 competing for one port. Take that one over with `migrate-service` first. Refuses an
 explicit `--hostname`/`--port` (the installed unit carries no endpoint flags; use
 `config set controlPlane.host` / `controlPlane.port` instead).
@@ -117,7 +117,7 @@ goodvibes-daemon migrate-service [-y]
 
 Move from the older install script's `goodvibes-daemon.service` unit to the one this
 binary manages (`goodvibes.service`). Without `-y`/`--yes` it prints the exact plan
-and changes nothing — this command never auto-migrates. The new service is installed,
+and changes nothing. This command never auto-migrates. The new service is installed,
 started and verified healthy **before** the old one is stopped or removed; a new
 service that does not come up rolls itself back and leaves the working one alone. A
 process merely listening on the port with no unit behind it is reported, never killed.
@@ -157,22 +157,23 @@ goodvibes-daemon pair [--json] [--host <name>] [--port <n>] [--token <t>] [-y]
 
 Two forms.
 
-**Local** — no `--host`, or one naming this machine: print the same pairing block a
-daemon prints once at startup, reusing the existing shared token (never minting a new
-one), so a link printed here and one printed at boot are identical. The link is
-assembled from this machine's own token store.
+With no `--host`, or one naming this machine, `pair` runs locally: it prints the same
+pairing block a daemon prints once at startup, reusing the existing shared token (never
+minting a new one), so a link printed here and one printed at boot are identical. The
+link is assembled from this machine's own token store.
 
-**Remote** — `--host` naming a different machine: ask THAT daemon to mint a brand-new
-per-device pairing token over `pairing.handoff.create` and print the pairing block for
-it. Minting is a different act than reprinting: it is a fresh token, and every token
-that daemon already issued — its shared token included — is left untouched. Because it
-changes state on a daemon that may not be this process's own, it states the plan and
-asks for confirmation before acting; `-y`/`--yes` answers non-interactively, the same
-convention `migrate-service` uses. Without `-y` nothing is called and nothing changes.
+With `--host` naming a different machine, `pair` runs remotely: it asks that daemon to
+mint a brand-new per-device pairing token over `pairing.handoff.create` and prints the
+pairing block for it. Minting is a different act than reprinting: it is a fresh token,
+and every token that daemon already issued, its shared token included, is left
+untouched. Because it changes state on a daemon that may not be this process's own, it
+states the plan and asks for confirmation before acting; `-y`/`--yes` answers
+non-interactively, the same convention `migrate-service` uses. Without `-y` nothing is
+called and nothing changes.
 
 An unreachable daemon, a rejected token, and a daemon too old to serve the mint verb are
 each refused by name, never a stack trace. A target daemon with no web origin
-configured still gets its token and pairing fragment printed honestly — there is
+configured still gets its token and pairing fragment printed honestly. There is
 nothing to build a scannable link or QR from in that case, so none is fabricated.
 
 ### `sessions`
@@ -188,7 +189,7 @@ goodvibes-daemon sessions list|kill <id> [--json] [--all] [--host <name>] [--por
 
 `--all` includes sessions that have already ended; they are kept, with the reason they
 ended, until the retention window retires them. These are the daemon's own hosted
-sessions — see [hosted-sessions.md](hosted-sessions.md) — not sessions a terminal runs
+sessions (see [hosted-sessions.md](hosted-sessions.md)), not sessions a terminal runs
 locally on this machine. `kill` with no id is a usage refusal (exit 2), never "kill
 everything."
 
@@ -208,7 +209,7 @@ goodvibes-daemon config list|get <key>|set <key> <value>|unset <key> [--json]
 Values are read and written on this machine's settings files directly, so every verb
 works whether or not a daemon is running. A running daemon picks up most changes live;
 ones that only apply at bind time say so in the receipt. Anything that reads like a
-credential — a token, a password, an API key — prints as `<redacted>` in every read
+credential (a token, a password, an API key) prints as `<redacted>` in every read
 path; `config set` still writes the real value, only the *output* is cleaned. See
 [configuration.md](configuration.md) for the settings themselves.
 
@@ -222,7 +223,7 @@ Report the running version, the receipts the daemon has written about its own up
 and restarts, the version an automatic rollback rejected (if any), and whether a
 rollback is currently in force. `--check` is honest about a gap: the control plane
 publishes no verb to trigger an update check early, so `--check` states that plainly
-and names the two things that do work — waiting for the hourly check, or restarting
+and names the two things that do work: waiting for the hourly check, or restarting
 the service (which checks on the way up). See
 [updates-and-rollback.md](updates-and-rollback.md).
 
@@ -245,9 +246,9 @@ argument or stdin, so it composes with other tooling.
 
 A channel that is switched off is refused rather than silently redirected to the
 default, and a failed send exits non-zero carrying the provider's own error. It works
-with no daemon running — most of the point of a self-notification command is that
+with no daemon running: most of the point of a self-notification command is that
 something has already stopped. This command's own flags follow the command word
-(`send` is a passthrough command — see below).
+(`send` is a passthrough command, see below).
 
 ### `cluster`
 
@@ -278,7 +279,7 @@ goodvibes-daemon webui enable|disable|status [--bundle-dir <dir>] [--lan|--loopb
 ```
 
 The web UI is a built bundle of static files served by the daemon's own control-plane
-listener, on the same origin as the API — the URL to open is the control-plane
+listener, on the same origin as the API. The URL to open is the control-plane
 origin, not the declared `web.port`.
 
 | Subcommand | Effect |
@@ -287,7 +288,7 @@ origin, not the declared `web.port`.
 | `disable` | stop serving it; the bundle stays on disk |
 | `status` | what is served, from where, and who can reach it |
 
-`enable` changes no network exposure on its own — a daemon bound to loopback keeps
+`enable` changes no network exposure on its own. A daemon bound to loopback keeps
 serving to this machine only. `--lan` binds every interface, `--loopback` takes it
 back, and both are stated in the receipt.
 
@@ -300,7 +301,7 @@ goodvibes-daemon provision-wake-model
 Fetch the wake-word model files that are missing from the managed voice tree. The
 installer runs this on a binary it has just placed, and a daemon start retries it, so
 an install that happened offline heals on its own. A download that fails is reported
-and exits 0 by default — a machine with no wake word still has a perfectly good
+and exits 0 by default. A machine with no wake word still has a perfectly good
 daemon; pass `--strict` to have a degraded outcome exit 1 instead.
 
 ### `completion`
@@ -340,7 +341,7 @@ Print the binary name and its version, and exit 0. Same as `--version`/`-v`.
 ## Passthrough commands
 
 `send`, `cluster`, `webui`, and `provision-wake-model` are dispatched **before** this
-binary's own flag parser runs and **before** any runtime is composed — every token
+binary's own flag parser runs and **before** any runtime is composed. Every token
 after the command word belongs to that command's own vocabulary rather than to the
 daemon parser (a `send` message may itself start with a dash, or contain `--port`).
 This means each of them only works as the first argument: `goodvibes-daemon --json

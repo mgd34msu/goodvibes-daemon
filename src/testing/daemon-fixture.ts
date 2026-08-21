@@ -1,5 +1,5 @@
 /**
- * daemon-fixture.ts — a real, running daemon, composed the way this product
+ * daemon-fixture.ts, a real, running daemon, composed the way this product
  * composes one, for a test to drive.
  *
  * ── Why this is a shipped module and not a test helper ────────────────────
@@ -8,7 +8,7 @@
  * and each of them hand-builds a composition to test against: a stub session
  * broker here, a fake approval broker there, a catalog with the handlers
  * somebody remembered to attach. They are large (several hundred lines each),
- * they duplicate each other, and — the part that matters — they are each a
+ * they duplicate each other, and, the part that matters, they are each a
  * SECOND idea of what a daemon is. A client contract test passing against a
  * hand-rolled stand-in tells you the stand-in agrees with the client, which is
  * the one agreement that was never in doubt.
@@ -43,19 +43,19 @@
  * can do for itself:
  *
  *   1. A NAMED ENTRY POINT. `goodvibes-daemon/testing` instead of the deep
- *      path. That means adding an `exports` map to package.json — and adding
+ *      path. That means adding an `exports` map to package.json, and adding
  *      one is not additive: an `exports` map REPLACES path-based resolution, so
  *      every existing deep import into this package (its own `bin` shim
  *      included) stops resolving unless the map enumerates them. That is a
  *      packaging change with a blast radius, made once, deliberately, by
- *      whoever owns distribution — not a side effect of adding a test helper.
+ *      whoever owns distribution, not a side effect of adding a test helper.
  *
  *   2. THE CONSUMER DEPENDENCY. A consumer repo has to depend on
  *      `goodvibes-daemon` to import this at all. Today the agent does (it is
  *      what makes its own install fail against an unpublished version); the
  *      terminal app and the webui do not. For the terminal app that is a
  *      devDependency and a version pin. For the webui, whose suites run in a
- *      browser context, the fixture cannot run in-process at all — it needs a
+ *      browser context, the fixture cannot run in-process at all, it needs a
  *      launcher script that starts the fixture in a node process and hands the
  *      Playwright suite `baseUrl` and `token`. That launcher does not exist and
  *      should be written on the webui side, where its runner lives.
@@ -65,12 +65,12 @@
  *      per test file pays about a second each and must `stop()` every one; the
  *      three hand-built stand-ins it replaces cost nothing and leak nothing.
  *      The honest guidance is one fixture per FILE (`beforeAll`/`afterAll`),
- *      which is how this repository's own suites use it — not one per test.
+ *      which is how this repository's own suites use it, not one per test.
  *
  *   4. WHAT IT DOES NOT REPLACE. A stand-in is still the right tool for
  *      driving a client through a daemon state that is hard to reach for real:
  *      a wedged session, a specific 500, a torn connection. This fixture
- *      replaces the stand-ins that exist only to answer normally — which is
+ *      replaces the stand-ins that exist only to answer normally, which is
  *      most of the several hundred lines in each consumer, and all of the part
  *      that silently drifts. The refusal shapes it cannot easily produce live
  *      are exported separately and pinned against the real engine; see
@@ -145,7 +145,7 @@ export interface DaemonFixtureOptions {
 }
 
 export interface DaemonFixture {
-  /** The composed runtime graph — the same object `DaemonServer` was handed. */
+  /** The composed runtime graph, the same object `DaemonServer` was handed. */
   readonly services: RuntimeServices;
   /** The running server. */
   readonly daemon: DaemonServer;
@@ -159,7 +159,7 @@ export interface DaemonFixture {
   fetch(path: string, init?: RequestInit): Promise<Response>;
   /**
    * Fetch a path with NO credential. A route that exists answers 401; a path
-   * nothing serves answers 404 — which is what makes this the side-effect-free
+   * nothing serves answers 404, which is what makes this the side-effect-free
    * way to ask whether a route exists, even for a write verb.
    */
   fetchAnonymous(path: string, init?: RequestInit): Promise<Response>;
@@ -170,7 +170,7 @@ export interface DaemonFixture {
 }
 
 /**
- * Compose and start a daemon. Always `await fixture.stop()` — the runtime graph
+ * Compose and start a daemon. Always `await fixture.stop()`, the runtime graph
  * starts pollers while it builds, and abandoning it leaves every one of them
  * firing for the rest of the process.
  */
@@ -234,7 +234,7 @@ export async function startDaemonFixture(options: DaemonFixtureOptions = {}): Pr
     // What the real entrypoint states, for the same reason it states it: the
     // hosted-session verbs are registered by this composition and by nothing
     // else, so a fixture that leaves it out is a daemon a client cannot start a
-    // session on — and every contract test written against it would agree.
+    // session on, and every contract test written against it would agree.
     ...(options.hostSessions === false ? {} : { hostedSessions: createHostedSessionOptions(services) }),
   });
 

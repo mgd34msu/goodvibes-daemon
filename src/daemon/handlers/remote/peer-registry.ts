@@ -27,7 +27,7 @@ export interface SshBackendConfig {
   sshHost: string;
   sshPort?: number;
   sshUser: string;
-  /** goodvibes://secrets/ reference to the private key — never the raw key. */
+  /** goodvibes://secrets/ reference to the private key, never the raw key. */
   identityRef: string;
 }
 
@@ -71,7 +71,7 @@ export interface PeerRegistrationInput {
 }
 
 // ---------------------------------------------------------------------------
-// Validation helpers — backendConfig must hold ONLY secret refs for any
+// Validation helpers, backendConfig must hold ONLY secret refs for any
 // credential-bearing field. Raw secrets are rejected outright.
 // ---------------------------------------------------------------------------
 
@@ -111,9 +111,9 @@ function requireSecretRef(value: unknown, field: string): string {
 function assertDockerHostSafe(value: string | undefined, field: string): void {
   // A dockerHost is accepted in exactly two shapes, mirroring how docker.ts
   // resolves it (docker.ts: `startsWith('goodvibes://') ? resolveRef(...) : raw`):
-  //   1. A goodvibes://secrets/ reference — resolved from the credential store.
+  //   1. A goodvibes://secrets/ reference, resolved from the credential store.
   //   2. A credential-free local/plain address (unix:// socket, or a bare
-  //      tcp/host with no embedded userinfo) — used verbatim.
+  //      tcp/host with no embedded userinfo), used verbatim.
   // Enforcement here must match that resolution so no credential-bearing or
   // unresolvable value slips through to docker.ts.
   if (value === undefined) return;
@@ -123,7 +123,7 @@ function assertDockerHostSafe(value: string | undefined, field: string): void {
 
   // A `goodvibes://` value that is NOT a well-formed secret ref would be handed
   // to credentials.resolveRef() and fail opaquely (REMOTE_BACKEND_CREDENTIAL_MISSING)
-  // — or, worse, a near-miss could be treated as a literal host. Reject it at
+  //, or, worse, a near-miss could be treated as a literal host. Reject it at
   // registration so the misconfiguration surfaces immediately.
   if (isMalformedGoodVibesSecretReferenceValue(value)) {
     throw new PeerRegistryValidationError(
@@ -132,7 +132,7 @@ function assertDockerHostSafe(value: string | undefined, field: string): void {
   }
 
   // Embedded userinfo credentials (e.g. tcp://user:pass@host) must never be
-  // stored raw — docker.ts would pass them verbatim as DOCKER_HOST.
+  // stored raw, docker.ts would pass them verbatim as DOCKER_HOST.
   if (value.includes('@')) {
     throw new PeerRegistryValidationError(
       `Field '${field}' appears to embed credentials; pass a goodvibes://secrets/ reference instead.`,
@@ -226,7 +226,7 @@ export function normalizeBackendConfig(
 }
 
 // ---------------------------------------------------------------------------
-// Peer registry — persisted via HandlerSqliteStore (peer-registry.sqlite)
+// Peer registry, persisted via HandlerSqliteStore (peer-registry.sqlite)
 // ---------------------------------------------------------------------------
 
 const PEER_REGISTRY_FILE = 'peer-registry.sqlite';

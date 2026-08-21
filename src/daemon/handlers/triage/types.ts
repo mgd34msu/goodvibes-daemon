@@ -5,7 +5,7 @@
 // and the triage pipeline scores. It is NOT an SDK catalog contract: the
 // published `channels.inbox.list` output schema (CHANNEL_INBOX_ITEM_SCHEMA) is
 // owned by the SDK and never re-declared here. This is the internal poller
-// item per the handoff doc — it carries `fromDigest` (never a raw sender id),
+// item per the handoff doc, it carries `fromDigest` (never a raw sender id),
 // `subjectPreview`/`bodyPreview` (PII-stripped, length-bounded) and an opaque
 // `metadata` bag the tagger reads provider targeting from (imapUid, channelId,
 // Slack ts, Discord messageId/threadId).
@@ -31,7 +31,7 @@ export interface InboundChannelItem {
   /** Handoff-facing provider id ("slack" | "discord" | "email" | ...). */
   readonly provider?: string;
   readonly kind?: 'dm' | 'thread' | 'mention' | 'reaction';
-  /** SHA-256 first-N of sender external id — NEVER a raw identifier. */
+  /** SHA-256 first-N of sender external id, NEVER a raw identifier. */
   readonly fromDigest?: string;
   /** Conversation id (Slack/Discord channel, IMAP mailbox-scoped). */
   readonly conversationId?: string;

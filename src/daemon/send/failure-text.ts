@@ -1,5 +1,5 @@
 /**
- * failure-text.ts — what the operator is told when a send does not happen.
+ * failure-text.ts, what the operator is told when a send does not happen.
  *
  * ## Why this is not `summarizeError`
  *
@@ -10,10 +10,10 @@
  *
  *     Telegram delivery failed HTTP 401: {"ok":false,"description":"Unauthorized"}
  *
- * it returns `Telegram delivery failed HTTP 401` — its `stripJson` pass removes
+ * it returns `Telegram delivery failed HTTP 401`, its `stripJson` pass removes
  * the `{...}`, which is exactly the part naming what went wrong. Given
  * `connect ECONNREFUSED 149.154.167.220:443` it returns "Cannot connect to the
- * provider. Check whether the service is reachable." — advice in place of the
+ * provider. Check whether the service is reachable.", advice in place of the
  * address that was refused.
  *
  * A person debugging a message that did not arrive needs the provider's own
@@ -39,7 +39,7 @@ import { redactSensitiveData } from '@pellux/goodvibes-sdk/platform/utils';
 
 /**
  * A generous cap. The point of this text is diagnosis, so it is far larger than
- * the 240 characters `summarizeError` allows — but an HTML error page or a
+ * the 240 characters `summarizeError` allows, but an HTML error page or a
  * multi-megabyte body still must not flood the terminal.
  */
 const MAX_FAILURE_TEXT = 2_000;
@@ -47,10 +47,10 @@ const MAX_FAILURE_TEXT = 2_000;
 const URL_CREDENTIAL_PATTERNS: ReadonlyArray<{ readonly pattern: RegExp; readonly replacement: string }> = [
   // Telegram: the bot token IS the path segment.
   { pattern: /\/bot\d{5,}:[A-Za-z0-9_-]{10,}/g, replacement: '/bot[REDACTED_BOT_TOKEN]' },
-  // Any URL carrying `user:password@host` — BlueBubbles, Mattermost and Matrix
+  // Any URL carrying `user:password@host`, BlueBubbles, Mattermost and Matrix
   // base URLs are all operator-supplied and can be written this way.
   { pattern: /(\b[a-z][a-z0-9+.-]*:\/\/)[^/\s:@]+:[^/\s@]+@/gi, replacement: '$1[REDACTED_CREDENTIALS]@' },
-  // A credential passed as a query parameter — BlueBubbles sends `?password=`.
+  // A credential passed as a query parameter, BlueBubbles sends `?password=`.
   {
     pattern: /([?&](?:password|token|secret|access_token|api_?key|auth)=)[^&\s"']+/gi,
     replacement: '$1[REDACTED]',

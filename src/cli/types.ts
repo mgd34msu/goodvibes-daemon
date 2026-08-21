@@ -8,9 +8,9 @@ import type { DaemonCommand } from './command-catalog.ts';
  * the catalog is what decides which flags could have set them. A command's
  * dispatcher reads only the fields its own catalog entry declares.
  *
- * Fields describing starting or resuming a conversation — prompt, print,
+ * Fields describing starting or resuming a conversation, prompt, print,
  * outputFormat, noAltScreen, open, continueLast, resume, session, fork,
- * strict — are not here. This binary does not start or resume conversations,
+ * strict, are not here. This binary does not start or resume conversations,
  * so those flags are parsed, stored, and read by nothing. See
  * REJECTED_TERMINAL_FLAGS in ./command-catalog.ts for the refusal that
  * replaced them.

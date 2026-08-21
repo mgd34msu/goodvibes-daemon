@@ -1,5 +1,5 @@
 /**
- * provision-wake-model.test.ts — the command the curl installer runs.
+ * provision-wake-model.test.ts, the command the curl installer runs.
  *
  * The property under test is not "it downloads a model". It is that an installer
  * calling this CANNOT be made to fail by it: a machine with no network, a home
@@ -26,7 +26,7 @@ describe('goodvibes-daemon provision-wake-model', () => {
       const result = await runProvisionWakeModelCommand([], {
         homeDirectory: home,
         env: {},
-        // The REAL policy, with only the network replaced — the thing being trusted
+        // The REAL policy, with only the network replaced, the thing being trusted
         // is the policy's never-throw contract, so it is not stubbed out.
         provisionAtInstall: async (options) => {
           const { provisionWakeWordModelsAtInstall } = await import('@pellux/goodvibes-sdk/platform/voice');

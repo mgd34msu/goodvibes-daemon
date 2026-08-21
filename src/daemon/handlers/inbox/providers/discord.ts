@@ -5,10 +5,10 @@
 // Discord Gateway for DM polling. The Gateway is a persistent websocket push
 // transport and cannot be driven by the inbound poller, whose contract is a
 // stateless, cadence-driven adapter.poll() that MUST resolve each call (see
-// provider-adapter.ts) — a long-lived socket the poller neither owns nor
+// provider-adapter.ts), a long-lived socket the poller neither owns nor
 // supervises is out of scope for that contract. We therefore satisfy the
 // DM-polling goal over Discord's supported request/response surface, the REST
-// API — the same DM data the Gateway streams, fetched on the poll cadence and
+// API, the same DM data the Gateway streams, fetched on the poll cadence and
 // paged so a busy DM is never truncated:
 //   GET /users/@me/channels        -> list DM channels the bot participates in
 //   GET /channels/{id}/messages    -> recent messages per DM channel (paged via
@@ -66,7 +66,7 @@ interface DiscordMessage {
 
 /**
  * Classify a Discord message into the InboundChannelItem `kind`.
- *   - reaction: someone reacted to OUR OWN message — a genuine inbound reaction
+ *   - reaction: someone reacted to OUR OWN message, a genuine inbound reaction
  *               event. Requires the message to be authored by us (its author id
  *               is selfId) AND to carry a non-empty reactions[]. A message
  *               authored by someone else that merely carries reactions[] is a
@@ -244,7 +244,7 @@ function msToSnowflake(ms: number): string {
 }
 
 /**
- * The provider is wired up but this attempt failed — an outage, a refusal, a
+ * The provider is wired up but this attempt failed, an outage, a refusal, a
  * bad response. Items that exist are missing from the feed, which is what
  * `configured: true` here tells the aggregator to report as a partial answer
  * rather than as an empty one.
@@ -255,7 +255,7 @@ function failed(error: string): ProviderPollResult {
 
 /**
  * Nothing to poll with: no credential, or an unusable one. Normal on a fresh
- * install, and deliberately NOT a partial answer — nothing is missing from a
+ * install, and deliberately NOT a partial answer, nothing is missing from a
  * provider nobody asked us to read.
  */
 function notConfigured(error: string): ProviderPollResult {
@@ -264,7 +264,7 @@ function notConfigured(error: string): ProviderPollResult {
 
 /**
  * The credential store itself failed, so we do not know whether this provider
- * is configured. Neither claim is made — reporting a guess here is how a
+ * is configured. Neither claim is made, reporting a guess here is how a
  * transient store fault would get read as "you never set this up".
  */
 function unavailable(error: string): ProviderPollResult {

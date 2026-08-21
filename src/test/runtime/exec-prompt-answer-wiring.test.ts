@@ -8,7 +8,7 @@ import { join } from 'node:path';
  *
  * Both ride the approval broker, and both must be built ONCE and shared, because
  * every consumer that calls `setDependencies` replaces the dependency object
- * WHOLESALE — a caller that rebuilds either one installs a second handler whose
+ * WHOLESALE, a caller that rebuilds either one installs a second handler whose
  * asks land in a different place, and a caller that forgets to re-pass one drops
  * it entirely. That is not hypothetical: it is how an interactive command
  * stopped on a terminal prompt and hung to timeout with no ask and no card.
@@ -42,7 +42,7 @@ function objectLiteralAfter(source: string, marker: string): string {
 
 const REQUIRED_FIELDS = ['execPromptAnswerHandler', 'localhostFetchApproval'] as const;
 
-describe('exec prompt-answer and loopback-fetch wiring — one handler each, shared', () => {
+describe('exec prompt-answer and loopback-fetch wiring: one handler each, shared', () => {
   const services = readFileSync(join(ROOT, 'src/runtime/services.ts'), 'utf8');
   const orchestratorDeps = objectLiteralAfter(services, 'agentOrchestrator.setDependencies(');
   const returnedServices = objectLiteralAfter(services, 'const services: RuntimeServices =');

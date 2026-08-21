@@ -3,7 +3,7 @@
 //
 // Pure, dependency-free heuristic + naive-Bayes-style spam/priority scoring
 // over an InboundChannelItem's textual surface (subject + snippet). No I/O,
-// no credentials, no network — safe to run on every polled item.
+// no credentials, no network, safe to run on every polled item.
 //
 // The score is a normalized 0..1 confidence in the assigned label. The label
 // is one of 'spam' | 'priority' | 'normal'. Scoring is deterministic so the
@@ -247,7 +247,7 @@ export function scoreInboundItem(
   // A trailing question mark suggests an awaited answer.
   if (/\?\s*$/.test(raw)) priorityLL += 0.5;
 
-  // Spam strongly suppresses priority — promotional text is rarely urgent.
+  // Spam strongly suppresses priority, promotional text is rarely urgent.
   priorityLL -= spam * 2.5;
 
   const priority = clamp01(sigmoid(priorityLL));

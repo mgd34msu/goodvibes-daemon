@@ -31,7 +31,7 @@ function baseInput(overrides: Record<string, unknown> = {}) {
 
 /**
  * A WebSocket stand-in that plays the daemon's side of the frame exchange:
- * accept the auth frame, then answer the `call` frame with a canned body —
+ * accept the auth frame, then answer the `call` frame with a canned body,
  * the same double status-command.test.ts uses for its ws-only verbs.
  */
 function fakeSocketFactory(answer: { ok: boolean; body?: unknown; status?: number }): {
@@ -250,7 +250,7 @@ describe('pair --host <other machine> -y (remote form): mint and render', () => 
     // The origin recovered from the response's deepLink, fed back through the
     // SAME renderer the local `pair` block uses, must rebuild that deepLink
     // byte-for-byte (it is asserted directly, since the renderer only prints
-    // the origin as text — the deep link itself rides in the QR, not prose).
+    // the origin as text, the deep link itself rides in the QR, not prose).
     const expectedBanner = renderPairingBanner({
       version: 'remote build at http://10.0.0.7:3421',
       origin: 'http://10.0.0.7:3423',

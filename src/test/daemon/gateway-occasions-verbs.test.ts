@@ -22,13 +22,13 @@
  * interface needs only configManager and shellPaths (both required already)
  * plus optional channelDeliveryRouter/disposal. So installOccasions runs
  * unconditionally whenever composeOwnerProfile runs, which happens whenever
- * configManager.attachProfileFallback is defined — always true for the real
+ * configManager.attachProfileFallback is defined, always true for the real
  * ConfigManager this package vendors. No new required dep needed threading
  * here (contrast: fleet-needs-input-push.ts, which DOES need runtimeBus
  * threaded explicitly).
  *
  * The sweep ticker (occasions/ticker.ts, armed inside composeOccasions) is
- * armed unconditionally too — there is no separate gate on it — so proving
+ * armed unconditionally too, there is no separate gate on it, so proving
  * occasions.list/.state are descriptor-present and handler-attached on this
  * runtime is proof the same composeOccasions() call that arms the ticker
  * actually ran.
@@ -75,13 +75,13 @@ describe('occasions gateway verb family is live on the vendored runtime', () => 
     test(`${methodId} descriptor is registered in the composed daemon catalog`, () => {
       expect(
         services.gatewayMethods.get(methodId),
-        `${methodId} descriptor missing from the catalog — the verb family did not register`,
+        `${methodId} descriptor missing from the catalog; the verb family did not register`,
       ).toBeTruthy();
     });
   }
 
   // Handler-attachment drift gate: fails loudly (naming every offending id) if
-  // any of these descriptors is present but handler-absent — the 501 class
+  // any of these descriptors is present but handler-absent, the 501 class
   // documented above. Scoped to the occasions ids so builtin descriptors
   // whose handlers attach elsewhere do not trip it.
   test('every occasions descriptor has an attached handler', () => {

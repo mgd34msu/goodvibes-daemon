@@ -7,7 +7,7 @@
  * DESCRIPTORS were present but never called registerGatewayVerbGroups, so
  * fleet.* (including plain fleet.snapshot), checkpoints.*, and
  * sessions.search all answered 501 "Gateway method is not invokable" over
- * both websocket and HTTP invoke — on every daemon build ever shipped. The
+ * both websocket and HTTP invoke, on every daemon build ever shipped. The
  * contract gates never caught it because they validate descriptors, not
  * handler attachment.
  */
@@ -34,7 +34,7 @@ const WS_ONLY_METHOD_IDS = [
   'push.vapid.get',
   'push.subscriptions.list',
   // Durable remembered-approval rules (SDK round adopting the pricing
-  // resolver / approval-rule store): read/delete only by design — rules are
+  // resolver / approval-rule store): read/delete only by design, rules are
   // written by remembered approval decisions, never by a verb.
   'permissions.rules.list',
   'permissions.rules.delete',
@@ -55,7 +55,7 @@ describe('ws-only gateway verbs are invokable on the vendored runtime', () => {
 
   // Handler-attachment is the package-owned drift gate: assertEveryDescriptorHasHandler
   // fails loudly (naming every offending id) if any ws-only descriptor is
-  // descriptor-present but handler-absent — the 501 regression class. Scoped to
+  // descriptor-present but handler-absent, the 501 regression class. Scoped to
   // the ws-only ids so builtin descriptors whose handlers a host daemon attaches
   // elsewhere do not trip it.
   test('every ws-only descriptor has an attached handler (package conformance gate)', () => {

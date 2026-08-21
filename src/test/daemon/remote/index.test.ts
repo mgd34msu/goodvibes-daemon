@@ -136,7 +136,7 @@ describe('registerRemoteSurface', () => {
     expect(result.workId).toBe('work-1');
     expect(result.completed).toBe(false);
     // Narrow to a definite string now that the assertions above have proven
-    // it's present — the comparisons below need a `string`, not `string | undefined`.
+    // it's present, the comparisons below need a `string`, not `string | undefined`.
     expect(result.workId).toBeDefined();
     const workId = result.workId as string;
 

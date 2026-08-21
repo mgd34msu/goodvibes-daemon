@@ -1,5 +1,5 @@
 /**
- * boot-smoke — proves the COMPILED daemon binary boots, serves, and fails loudly.
+ * boot-smoke, proves the COMPILED daemon binary boots, serves, and fails loudly.
  *
  * The version smoke (`bun run smoke`) proves the binary starts and prints its
  * banner. This one proves the things that only a real boot can show, and that a
@@ -8,7 +8,7 @@
  *   1. It serves. An isolated home, a fixed port, and `/status` answering 200
  *      with `status: running`.
  *   2. It says who it is. The startup banner carries the resolved version and
- *      the host and port it actually bound — never a placeholder, and never a
+ *      the host and port it actually bound, never a placeholder, and never a
  *      value from a different resolver than the bind path uses.
  *   3. It fails LOUDLY. Given a `.goodvibes/daemon/settings.json` that cannot be
  *      parsed, it exits non-zero with the reason on the error stream. This is
@@ -19,7 +19,7 @@
  *      check has to run the compiled artifact.
  *   4. Its sqlite-vec addon actually loads and serves semantic search. Its sole
  *      job is proving the native `vec0` extension dlopen()s inside a shipped
- *      binary rather than just existing on disk — the compiled binary's own
+ *      binary rather than just existing on disk, the compiled binary's own
  *      module resolution (`$bunfs`-aware) is exactly what a source-level test
  *      cannot exercise. Runs against this repo's current wire surface
  *      (`/api/control-plane/methods/<id>/invoke`, the same one
@@ -69,7 +69,7 @@ const FATAL_TIMEOUT_MS = 30_000;
  * Resolves the sqlite-vec addon path the SAME way `resolveSqliteVecPath()`
  * (platform/state/sqlite-vec-loader.ts) resolves it inside a compiled
  * binary: relative to the binary's OWN directory, never a hardcoded `dist/`
- * — `--binary` can point at a vendored npm install (`vendor/`) just as well
+ *, `--binary` can point at a vendored npm install (`vendor/`) just as well
  * as a fresh build (`dist/`), and the addon must be found either way.
  */
 function resolveAddonPath(binaryPath: string): string {
@@ -191,11 +191,11 @@ function checkFailsLoudly(): void {
     });
     const stderr = result.stderr ?? '';
     if (result.status === 0) {
-      fail('the daemon exited 0 with an unparseable settings file — a broken config must not read as a clean start');
+      fail('the daemon exited 0 with an unparseable settings file; a broken config must not read as a clean start');
       return;
     }
     if (stderr.trim().length === 0) {
-      fail('the daemon died with zero bytes on the error stream — this is the silence that crash-looped 77 times');
+      fail('the daemon died with zero bytes on the error stream; this is the silence that crash-looped 77 times');
       return;
     }
     if (!stderr.includes('settings.json')) {
@@ -225,7 +225,7 @@ async function invokeMethod(port: number, methodId: string, body: Record<string,
   return { status: response.status, text };
 }
 
-/** True when a payload names sqlite-vec alongside an error/failure word — the exact shape a broken native addon reports. */
+/** True when a payload names sqlite-vec alongside an error/failure word, the exact shape a broken native addon reports. */
 function looksLikeSqliteVecError(text: string): boolean {
   const lower = text.toLowerCase();
   return lower.includes('sqlite-vec') && (lower.includes('error') || lower.includes('fail'));
@@ -233,7 +233,7 @@ function looksLikeSqliteVecError(text: string): boolean {
 
 /**
  * `/status` answering 200 does not mean the MemoryStore's own async init()
- * has finished — a call landing in that window gets a transient
+ * has finished, a call landing in that window gets a transient
  * "MemoryStore: not initialized" 400, not a real defect. Retries ONLY that
  * exact transient shape for a bounded window; any other failure (including a
  * real sqlite-vec error) returns immediately on the first attempt so a genuine
@@ -257,7 +257,7 @@ async function invokeMethodTolerantOfStoreInit(
 async function checkVectorSearch(): Promise<void> {
   const addonPath = resolveAddonPath(BINARY);
   if (!existsSync(addonPath)) {
-    fail(`sqlite-vec addon missing: ${addonPath} — regression: the binary build (goodvibes-build-binaries) did not stage it beside the binary`);
+    fail(`sqlite-vec addon missing: ${addonPath}; regression: the binary build (goodvibes-build-binaries) did not stage it beside the binary`);
     return;
   }
   pass(`sqlite-vec addon is staged at ${addonPath}`);

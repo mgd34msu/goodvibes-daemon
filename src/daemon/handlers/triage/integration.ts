@@ -12,12 +12,12 @@
 //      overlaid with the persisted triageScore/triageTags via
 //      enrichItemsWithTriage(). Every other registration passes straight
 //      through to the real catalog. The inbox descriptor/schema/id is never
-//      re-authored — only its handler is wrapped.
+//      re-authored, only its handler is wrapped.
 //   2. It exposes the triage pipeline + tagger (`runInboxTriage`, `tagger`) for
 //      the daemon-internal poller, which scores items and persists them to the
 //      co-located inbox-triage.sqlite store the decorator reads from.
 //   3. inbox.triage.* are intentionally NOT registered on the catalog (they are
-//      a daemon-internal pipeline, not published methods) — so this module
+//      a daemon-internal pipeline, not published methods), so this module
 //      makes ZERO catalog.register call for any triage id.
 //
 // Reads in the decorator are best-effort and degrade to the raw item when no
@@ -51,7 +51,7 @@ import { summarizeError } from '@pellux/goodvibes-sdk/platform/utils';
 
 /**
  * Canonical id of the inbox list method whose handler we decorate. This is the
- * SDK's published id — referenced as a plain string for matching during
+ * SDK's published id, referenced as a plain string for matching during
  * registration; no descriptor or schema is authored here.
  */
 export const INBOX_LIST_METHOD_ID = 'channels.inbox.list';

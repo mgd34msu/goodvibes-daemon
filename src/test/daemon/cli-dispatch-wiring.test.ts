@@ -6,7 +6,7 @@ import { DAEMON_COMMANDS } from '../../cli/command-catalog.ts';
 /**
  * The entry point's dispatch, asserted against its source.
  *
- * `src/daemon/cli.ts` composes a whole daemon on its serving path — it cannot
+ * `src/daemon/cli.ts` composes a whole daemon on its serving path, it cannot
  * be imported into a test process and driven. What CAN be held is the shape of
  * the dispatch: that the vocabulary is the parser's, that every command in the
  * catalog is reached by something, and that no path other than `serve` falls

@@ -8,7 +8,7 @@
  * principals.*, channels.profiles.*, and ci.* unconditionally, but the
  * check-in family (checkin.config.get/set, checkin.run, checkin.receipts.list)
  * ONLY when channelDeliveryRouter, providerRegistry, automationManager, and
- * sessionLister are ALL supplied — a graceful-degrade gate so the proactive
+ * sessionLister are ALL supplied, a graceful-degrade gate so the proactive
  * check-in loop is never a facade that pretends to deliver. A composition
  * root that calls the wrapper WITHOUT those four deps ships checkin.*
  * descriptors that answer 501 "Gateway method is not invokable" while the
@@ -17,8 +17,8 @@
  * The ws-only conformance gate (gateway-ws-only-invokable.test.ts) could not
  * catch this: it scopes assertEveryDescriptorHasHandler to the ws-only ids, so
  * a check-in descriptor left handler-less is silently skipped. This test pins
- * the four families explicitly — descriptor present, handler attached, and a
- * read-only invoke round-trip returning the honest empty/disabled default — so
+ * the four families explicitly, descriptor present, handler attached, and a
+ * read-only invoke round-trip returning the honest empty/disabled default, so
  * a future SDK verb-group addition (or a dep that silently drops out of this
  * composition) turns a test red instead of shipping a dead command.
  */
@@ -34,7 +34,7 @@ disposeTestRuntimeServicesAfterAll();
 // attachment is asserted for all of them; the read-only subset below is also
 // invoked end-to-end.
 const INITIATIVE_METHOD_IDS = [
-  // proactive check-in (conditional group — the one that regressed)
+  // proactive check-in (conditional group, the one that regressed)
   'checkin.config.get',
   'checkin.config.set',
   'checkin.receipts.list',
@@ -69,13 +69,13 @@ describe('initiative gateway verb families are live on the vendored runtime', ()
     test(`${methodId} descriptor is registered in the composed daemon catalog`, () => {
       expect(
         services.gatewayMethods.get(methodId),
-        `${methodId} descriptor missing from the catalog — the verb family did not register`,
+        `${methodId} descriptor missing from the catalog; the verb family did not register`,
       ).toBeTruthy();
     });
   }
 
   // Handler-attachment drift gate: fails loudly (naming every offending id) if
-  // any of these descriptors is present but handler-absent — the 501 class that
+  // any of these descriptors is present but handler-absent, the 501 class that
   // shipped checkin.* dead. Scoped to the initiative ids so builtin descriptors
   // whose handlers attach elsewhere do not trip it.
   test('every initiative descriptor has an attached handler (checkin.* is the one that regressed)', () => {
@@ -90,7 +90,7 @@ describe('initiative gateway verb families are live on the vendored runtime', ()
       body: {},
     } as never)) as { config: { enabled: boolean } };
     expect(result.config).toBeTruthy();
-    // Off by default — never a facade claiming the loop is running.
+    // Off by default, never a facade claiming the loop is running.
     expect(result.config.enabled).toBe(false);
   });
 
@@ -134,7 +134,7 @@ describe('initiative gateway verb families are live on the vendored runtime', ()
   // over the operator wire (the composed daemon's catalog is that wire's
   // in-process invocation surface). Before the deps were threaded this invoke
   // answered 501; now it returns real, honestly-disabled config. The client
-  // renders it — the daemon's job is to answer.
+  // renders it, the daemon's job is to answer.
   test('checkin.config.get answers with real config, not a 501', async () => {
     const { config } = (await services.gatewayMethods.invoke('checkin.config.get', {
       methodId: 'checkin.config.get',
@@ -147,7 +147,7 @@ describe('initiative gateway verb families are live on the vendored runtime', ()
   // The ci-watch recurring poll attaches to the composed daemon's watcher
   // registry when watchers are enabled (the default): red runs surface
   // fix-this offers without anyone running the manual verb. If this watcher
-  // stops attaching, CI watches silently degrade to manual-only — this test
+  // stops attaching, CI watches silently degrade to manual-only, this test
   // names that regression.
   test('the ci-watch recurring poller is registered on the composed watcher registry', () => {
     const watchers = services.watcherRegistry.list();

@@ -15,7 +15,7 @@
 // Type-only: the runtime namespace objects must never be READ at module scope.
 // An eager `export const X = ns.X` compiles to a top-level property read off a
 // lazy namespace object, and Bun's single-file compiler orders module bodies
-// nondeterministically — on some builds the read lands before the defining
+// nondeterministically, on some builds the read lands before the defining
 // module and the binary dies at load. Values below are grouped live re-exports
 // from the SDK's registered subpaths instead; the toolchain post-build-smoke
 // scans compiled artifacts for the eager pattern and fails the build if one

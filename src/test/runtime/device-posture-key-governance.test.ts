@@ -1,5 +1,5 @@
 /**
- * device-posture-key-governance.test.ts — the eleven `device.*` posture keys,
+ * device-posture-key-governance.test.ts, the eleven `device.*` posture keys,
  * as behaviour, in THIS composition.
  *
  * ── Why this test exists ──────────────────────────────────────────────────
@@ -12,12 +12,12 @@
  * SDK's own device-capabilities suite covers the KEY SEMANTICS: given a policy,
  * what the capability service does. This repository's
  * daemon/gateway-device-capability-verbs.test.ts covers the VERBS, the transport,
- * the approval seam and retention — and names no `device.*` key anywhere. So the
+ * the approval seam and retention, and names no `device.*` key anywhere. So the
  * property that died is the one in between: that THIS composition wires the
  * config keys to the service, so a value the owner sets actually governs.
  *
  * That gap is not hypothetical. Before the posture runtime was composed at all,
- * these keys were recorded, read back, and governed nothing — the service they
+ * these keys were recorded, read back, and governed nothing, the service they
  * describe was never built in the host, so there was nothing for them to govern,
  * and the settings description that said otherwise was aspirational. A test that
  * only round-trips a key through ConfigManager would have passed the whole time.
@@ -65,7 +65,7 @@ import { GOODVIBES_DAEMON_SURFACE_ROOT } from '../../config/surface.ts';
 import { makeProjectTempDir } from '../helpers/project-temp.ts';
 import { disposeTestRuntimeServicesAfterAll, getTestRuntimeServices } from '../helpers/runtime-services.ts';
 
-// Stop the shared test runtime graph when this file ends — see that helper's doc.
+// Stop the shared test runtime graph when this file ends, see that helper's doc.
 disposeTestRuntimeServicesAfterAll();
 
 const MINUTE = 60 * 1000;
@@ -85,7 +85,7 @@ const VIBRATE: DeviceCapabilityId = 'device.command.vibrate';
 
 /**
  * The posture keys this file governs, one describe block each. Pinned as a list
- * so the completeness check below can compare it against the schema — a new
+ * so the completeness check below can compare it against the schema, a new
  * `device.*` key that lands with no behaviour test is exactly how the previous
  * eleven ended up governing nothing.
  */
@@ -123,8 +123,8 @@ const UNGOVERNED_HERE: readonly { readonly key: string; readonly reason: string 
  * refused for the REASON being tested rather than for a missing field.
  *
  * The host-side input check (device-capability-service.ts) runs before the
- * confirmation prompt — deliberately, so nobody is asked to approve a request
- * that cannot run — and it postdates the suite this file was recovered from.
+ * confirmation prompt, deliberately, so nobody is asked to approve a request
+ * that cannot run, and it postdates the suite this file was recovered from.
  * A request missing `title` or `text` never reaches the posture gate at all,
  * which would make several tests below pass for the wrong reason and one of
  * them (mode: off) pass while checking nothing.
@@ -204,7 +204,7 @@ interface DispatchCall {
   readonly command: string;
   readonly waitMs: number | undefined;
   readonly timeoutMs: number | undefined;
-  /** `timeoutMs` inside the work payload — the deadline the device is told. */
+  /** `timeoutMs` inside the work payload, the deadline the device is told. */
   readonly payloadTimeoutMs: number | undefined;
 }
 
@@ -351,7 +351,7 @@ function captureIntervals(): IntervalCapture {
   };
 }
 
-describe('device.* posture — behaviour in this daemon', () => {
+describe('device.* posture: behaviour in this daemon', () => {
   // -------------------------------------------------------------------------
   // device.capabilities.mode
   // -------------------------------------------------------------------------
@@ -385,7 +385,7 @@ describe('device.* posture — behaviour in this daemon', () => {
     expect(label(await honor.run(SCREEN))).toBe('ok:existing-grant');
     expect(honor.approvals).toHaveLength(1);
 
-    // Same grant on disk, same capability, same node — only the setting differs.
+    // Same grant on disk, same capability, same node, only the setting differs.
     const askConfig = freshConfig();
     askConfig.set('device.capabilities.mode', 'ask-every-time');
     const ask = harness(askConfig, shared);
@@ -783,7 +783,7 @@ describe('device.* posture — behaviour in this daemon', () => {
   });
 });
 
-describe('device.* posture — the wiring that makes the keys reachable', () => {
+describe('device.* posture: the wiring that makes the keys reachable', () => {
   test('the phone tool registered on a tool registry reaches this daemon\'s capability service', async () => {
     const h = harness(freshConfig(), join(root, 'state-tool'));
     h.answer('once');
@@ -837,7 +837,7 @@ describe('device.* posture — the wiring that makes the keys reachable', () => 
 // feature nobody composed is exactly the defect that was found here.
 // ---------------------------------------------------------------------------
 
-describe('device.* posture — composed by the runtime this daemon boots', () => {
+describe('device.* posture: composed by the runtime this daemon boots', () => {
   const services = getTestRuntimeServices();
 
   test('createRuntimeServices exposes a device posture runtime reading its own config manager', () => {
@@ -877,7 +877,7 @@ describe('device.* posture — composed by the runtime this daemon boots', () =>
 // nothing; the way it stayed invisible was that nobody was counting.
 // ---------------------------------------------------------------------------
 
-describe('device.* posture — every key in the schema is accounted for', () => {
+describe('device.* posture: every key in the schema is accounted for', () => {
   test('the schema names no device.* key this file neither drives nor explains', () => {
     const schemaKeys = CONFIG_SCHEMA
       .map((setting) => setting.key as string)
@@ -889,7 +889,7 @@ describe('device.* posture — every key in the schema is accounted for', () => 
       unaccounted,
       'These device.* settings are in the shared schema and this file neither drives them against '
       + 'the composition nor states what does. A posture key with no behaviour behind it is the '
-      + 'defect this suite exists for — add a test, or add an UNGOVERNED_HERE entry saying what '
+      + 'defect this suite exists for; add a test, or add an UNGOVERNED_HERE entry saying what '
       + 'governs it and where that is checked.',
     ).toEqual([]);
     // And nothing in the pinned lists has left the schema behind.

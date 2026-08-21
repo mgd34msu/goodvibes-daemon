@@ -20,12 +20,20 @@ import { GOODVIBES_DAEMON_SURFACE_ROOT } from '../../../../config/surface.ts';
  * Cloud-terminal backend: executes a command in a managed cloud shell / VM via
  * the provider CLI (gcloud / aws / az). The provider credential is resolved from
  * the daemon credential store and supplied to the CLI via a 0600 credentials
- * file or a provider-specific env var — never as an argv token, never logged.
+ * file or a provider-specific env var, never as an argv token, never logged.
  */
 export function createCloudTerminalBackend(ctx: BackendContext): Backend {
   const credDir = join(ctx.homeDirectory, '.goodvibes', GOODVIBES_DAEMON_SURFACE_ROOT, 'operator', 'cloud-creds');
+  // Crash-window sweep: dispatch's finally block only removes a credential
+  // file on an orderly return; a hard crash mid-dispatch (SIGKILL, OOM-kill,
+  // power loss) skips both that and teardown(), leaving the file behind for
+  // every daemon restart until now. Sweep at construction, before any
+  // dispatch on this instance can have written anything, so a crash converges
+  // to the same clean state a graceful shutdown already produces.
+  const credDirSwept = rm(credDir, { recursive: true, force: true }).catch(() => {});
 
   async function writeCredentialFile(peerId: string, value: string): Promise<string> {
+    await credDirSwept;
     await mkdir(credDir, { recursive: true });
     await chmod(credDir, 0o700).catch(() => {});
     const suffix = randomBytes(4).toString('hex');

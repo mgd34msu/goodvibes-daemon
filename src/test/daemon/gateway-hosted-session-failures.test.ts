@@ -5,8 +5,8 @@
  *
  * `sessions.hosted.*` appeared in no `assertEveryDescriptorHasHandler` list in
  * any repository. It is registered by `composeHostedSessions`, which runs only
- * when the product STATES `hostedSessions` on DaemonServer — `cli.ts` does,
- * `createRuntimeServices` does not — so every existing conformance sweep, all
+ * when the product STATES `hostedSessions` on DaemonServer, `cli.ts` does,
+ * `createRuntimeServices` does not, so every existing conformance sweep, all
  * of which run over the runtime graph, was structurally unable to see it. Five
  * verbs, the only way a client with no terminal of its own starts a run, and
  * nothing anywhere asserted a handler was attached.
@@ -15,7 +15,7 @@
  * purpose (not found / unavailable / limit reached / bad argument) and maps each
  * to its own status, because a client reacts differently to each. The platform's
  * shared mock-daemon fixture set is generated from output schemas, so it carries
- * a schema-valid 200 for each verb and no refusal at all — a client mocked from
+ * a schema-valid 200 for each verb and no refusal at all, a client mocked from
  * it has never seen one. The fixtures live in ../../testing/hosted-session-failures.ts
  * so a consumer can import them; this file is what keeps them true, by driving
  * the real engine to produce each one.
@@ -125,7 +125,7 @@ describe('the three refusals a client has to handle', () => {
     // not be told to go look it up again.
     expect(refusal!.code).toBe(HOSTED_SESSION_UNAVAILABLE.code);
     expect(refusal!.status).toBe(HOSTED_SESSION_UNAVAILABLE.status);
-    // The reason travels with the refusal — that is what a client shows.
+    // The reason travels with the refusal, that is what a client shows.
     expect(refusal!.message.length).toBeGreaterThan(0);
   });
 
@@ -159,7 +159,7 @@ describe('the three refusals a client has to handle', () => {
   test('the shipped fixtures describe refusals this daemon actually raises', () => {
     // The fixtures are exported for consumers to mock against. If one names a
     // code or status the daemon has stopped producing, the tests above fail
-    // first — this pins the list itself so a fourth refusal cannot be added to
+    // first, this pins the list itself so a fourth refusal cannot be added to
     // the engine and left out of what consumers are handed.
     expect(HOSTED_SESSION_FAILURE_FIXTURES.map((entry) => entry.code).sort()).toEqual([
       'HOSTED_SESSION_LIMIT_REACHED',

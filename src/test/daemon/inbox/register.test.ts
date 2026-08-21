@@ -102,7 +102,7 @@ beforeEach(async () => {
     // signatures): the SDK's ConfigValue mapped type is a very large
     // discriminated union, and asking the compiler to structurally verify a
     // freshly-written generic signature against it here hits TS's "excessive
-    // stack depth" recursion limit (TS2321) — a compiler limitation, not a
+    // stack depth" recursion limit (TS2321), a compiler limitation, not a
     // real type mismatch.
     configManager: {
       get: ((_key: string) => undefined) as unknown as HandlerContext['configManager']['get'],

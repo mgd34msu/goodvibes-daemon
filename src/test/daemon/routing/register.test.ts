@@ -14,7 +14,7 @@ function confirmed(body: Record<string, unknown>) {
   return makeInvocation({ ...body, confirm: true });
 }
 
-describe('registerRoutingMethods — catalog attachment', () => {
+describe('registerRoutingMethods: catalog attachment', () => {
   let tmp: ReturnType<typeof makeTmpWorkingDir>;
   let ctx: HandlerContext;
   let catalog: GatewayMethodCatalog;
@@ -181,7 +181,7 @@ describe('registerRoutingMethods — catalog attachment', () => {
   });
 });
 
-describe('registerRoutingMethods — confirmation posture', () => {
+describe('registerRoutingMethods: confirmation posture', () => {
   let tmp: ReturnType<typeof makeTmpWorkingDir>;
   let catalog: GatewayMethodCatalog;
   let registration: ReturnType<typeof registerRoutingMethods>;

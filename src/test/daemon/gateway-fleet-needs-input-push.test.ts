@@ -1,5 +1,5 @@
 /**
- * Gate: the fleet "needs-input" push fan-out — a fleet node blocked on the
+ * Gate: the fleet "needs-input" push fan-out, a fleet node blocked on the
  * operator pushes an "Input needed" notification carrying the session/node
  * deep link to every registered device, suppressed while an operator surface
  * is already attached to that node's session (see the SDK's
@@ -9,18 +9,18 @@
  * providerRegistry / automationManager / sessionLister into its
  * attachWsOnlyGatewayVerbHandlers call site (services.ts) so the check-in
  * verb family registers live, while leaving `runtimeBus` and
- * `sessionPresence` unthreaded — the two deps registerGatewayVerbGroups gates
+ * `sessionPresence` unthreaded, the two deps registerGatewayVerbGroups gates
  * the needs-input push source on (see the SDK's
  * routes/register-gateway-verb-groups.js: "Second event source... Only when
  * the runtime bus is wired."). Absent those two deps, the source is simply
- * never constructed — a silent graceful-degrade, not a 501, so nothing short
+ * never constructed, a silent graceful-degrade, not a 501, so nothing short
  * of an end-to-end push test catches it.
  *
  * A second, independent gap sits upstream of that: fleet lifecycle deltas
  * (FLEET_NODE_BLOCKED_ON_USER etc.) only reach the runtime bus's 'fleet'
  * domain via attachFleetEmitBridge, diffing the process registry's own
  * snapshot tick. createArchivableFleetRegistry (terminal-shell) builds the
- * registry but never attaches that bridge — the composition root owns that.
+ * registry but never attaches that bridge, the composition root owns that.
  * Both gaps are closed together in src/runtime/fleet-needs-input-push.ts's
  * wireFleetNeedsInputPush, threaded into the same attachWsOnlyGatewayVerbHandlers
  * call site services.ts already had.
@@ -32,7 +32,7 @@
  *  - presence suppression is honored end to end: no push while an operator
  *    surface is attached to the session, a real push when none is;
  *  - wireFleetNeedsInputPush itself really calls attachFleetEmitBridge with
- *    the given registry/bus pair (unit-level, deterministic — no real fleet
+ *    the given registry/bus pair (unit-level, deterministic, no real fleet
  *    activity needed to prove the bridge attaches).
  */
 import { afterAll, describe, expect, test } from 'bun:test';
@@ -47,7 +47,7 @@ import { RuntimeEventBus } from '@/runtime/index.ts';
 disposeTestRuntimeServicesAfterAll();
 
 // ---------------------------------------------------------------------------
-// A local fake push sink standing in for a browser vendor's push service —
+// A local fake push sink standing in for a browser vendor's push service,
 // never the real network. Mirrors the SDK's own web-push-daemon-wire.test.ts.
 // ---------------------------------------------------------------------------
 interface CapturedPush {
@@ -158,7 +158,7 @@ describe('fleet needs-input push fan-out (composed daemon)', () => {
       context: { principalId: 'test-operator' },
     } as never);
 
-    // An operator surface heartbeats onto this session — sessionPresence.isAttached
+    // An operator surface heartbeats onto this session, sessionPresence.isAttached
     // must read this back true (see fleet-needs-input-push.ts's freshness window).
     await services.sessionBroker.register({
       sessionId: 'session-with-presence',
@@ -167,7 +167,7 @@ describe('fleet needs-input push fan-out (composed daemon)', () => {
 
     const before = captured.filter((p) => p.path === devicePath).length;
     emitBlockedOnUser(services.runtimeBus, 'node-with-presence', 'session-with-presence');
-    // Grace period: no positive event to await, so poll a short fixed window —
+    // Grace period: no positive event to await, so poll a short fixed window,
     // the sibling assertion below proves the pipeline is alive, ruling out a
     // false pass from a dead pipe rather than genuine suppression.
     await new Promise((resolve) => setTimeout(resolve, 400));

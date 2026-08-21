@@ -1,5 +1,5 @@
 /**
- * Remote handler surface — the host backend for `remote.peers.*`.
+ * Remote handler surface, the host backend for `remote.peers.*`.
  *
  * `remote.peers.invoke` is NOT a catalog method: the SDK publishes it as an HTTP
  * route and injects a `DistributedRuntimeRouteService` (the host's

@@ -14,8 +14,8 @@
  *
  * The sqlite-vec native addon gets the same self-heal: `resolveSqliteVecPath()`
  * (platform/state/sqlite-vec-loader.ts, reached from a compiled binary) expects
- * it at `<execDir>/lib/sqlite-vec-<platform>-<arch>/vec0.<suffix>` —
- * `vendor/lib/...` once the binary above is placed there — and a blocked
+ * it at `<execDir>/lib/sqlite-vec-<platform>-<arch>/vec0.<suffix>`,
+ * `vendor/lib/...` once the binary above is placed there, and a blocked
  * postinstall never staged it either. Without this, a self-healed install
  * would get the daemon binary back but stay on lexical-only search forever.
  */
@@ -26,7 +26,7 @@ import { join } from 'node:path';
 
 const SUPPORTED_TARGETS = ['linux-x64', 'linux-arm64', 'darwin-x64', 'darwin-arm64'];
 
-/** Names the sqlite-vec addon for a platform/arch — mirrors resolveSqliteVecAsset
+/** Names the sqlite-vec addon for a platform/arch, mirrors resolveSqliteVecAsset
  * in the SDK's platform/runtime/self-update module. Reimplemented (rather than
  * imported) so this launcher never depends on that package resolving: it must
  * keep working from the packaged bin/ directory alone, with no bundler step
@@ -120,11 +120,11 @@ export async function ensureVendoredBinary({ packageRoot, artifactName }) {
  * Self-heal counterpart to `ensureVendoredBinary` for the sqlite-vec native
  * addon. Same shape, same verification posture (a missing manifest entry does
  * not block the install, matching `ensureVendoredBinary` above), same
- * vendor/ destination — placed at `vendor/lib/sqlite-vec-<platform>-<arch>/
+ * vendor/ destination, placed at `vendor/lib/sqlite-vec-<platform>-<arch>/
  * vec0.<suffix>`, which is exactly where `resolveSqliteVecPath()` looks
  * relative to the vendored binary this module also places. A platform/arch
  * with no addon (`resolveSqliteVecAddonName` returns null) is a no-op, not an
- * error — same as an unsupported binary target.
+ * error, same as an unsupported binary target.
  */
 export async function ensureVendoredSqliteVecAddon({ packageRoot, platform, arch }) {
   const asset = resolveSqliteVecAddonName(platform, arch);

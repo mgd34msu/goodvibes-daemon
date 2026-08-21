@@ -1,6 +1,6 @@
 /// <reference types="@pellux/goodvibes-sdk/sql-js" />
 // `sql.js` ships no types. The declaration is SDK-owned and reaches here
-// through that reference — there is no local copy to keep in step.
+// through that reference, there is no local copy to keep in step.
 
 import { mkdir, rename, writeFile } from 'node:fs/promises';
 import { readFileSync, readdirSync, renameSync, rmSync, statSync } from 'node:fs';
@@ -23,7 +23,7 @@ export interface SqliteStoreOptions {
 
 /**
  * The 16 bytes every SQLite file begins with ("SQLite format 3" + NUL). A file
- * that does not start with these is not a database, whatever its extension —
+ * that does not start with these is not a database, whatever its extension,
  * which is exactly what a crash mid-create, a zero-fill, or a partially
  * restored backup leaves behind.
  */
@@ -93,7 +93,7 @@ export class HandlerSqliteStore {
   /**
    * Move a database file that cannot be opened aside instead of deleting it, so
    * an operator still has something to salvage, and return the quarantine path.
-   * Returns null when the move itself failed — in which case the caller starts
+   * Returns null when the move itself failed, in which case the caller starts
    * fresh in memory and the bad file is left exactly where it was rather than
    * being overwritten on the next save.
    */
@@ -110,8 +110,8 @@ export class HandlerSqliteStore {
   /**
    * Bound the quarantine directory: drop `.corrupt-*` copies of THIS store that
    * are past the TTL or beyond the keep-newest count. Best-effort and
-   * idempotent — a file another process already removed is success, not an
-   * error — so two daemons opening the same store at once cannot fight.
+   * idempotent, a file another process already removed is success, not an
+   * error, so two daemons opening the same store at once cannot fight.
    * Returns how many were reclaimed.
    */
   private reapCorruptQuarantines(nowMs: number): number {
@@ -158,7 +158,7 @@ export class HandlerSqliteStore {
 
     // Validate the file by its CONTENT, not by existsSync. `save()` writes
     // through a pid-and-timestamp temp file and an atomic rename, so it cannot
-    // itself leave a half-written database — but a zero-filled file recovered
+    // itself leave a half-written database, but a zero-filled file recovered
     // by a filesystem, a truncated restore, or a copy interrupted by something
     // outside this process all produce a path that exists and holds no usable
     // database. Handing those bytes to `new SQL.Database(...)` throws out of
@@ -200,7 +200,7 @@ export class HandlerSqliteStore {
         }
       } catch (error) {
         // Header present but the body does not hold up: a truncated or damaged
-        // database. Same treatment — set aside, disclose, start clean.
+        // database. Same treatment, set aside, disclose, start clean.
         quarantineReason = `database would not open: ${error instanceof Error ? error.message : String(error)}`;
         this.db = null;
         quarantined = this.quarantineUnreadable();
@@ -215,7 +215,7 @@ export class HandlerSqliteStore {
     // Disclosure: starting a store from scratch is data loss from the user's
     // point of view, so it is never allowed to happen quietly.
     if (quarantineReason) {
-      logger.warn('daemon store could not be opened — starting a fresh one', {
+      logger.warn('daemon store could not be opened; starting a fresh one', {
         store: this.options.fileName,
         path: this.resolvedPath,
         reason: quarantineReason,
@@ -266,7 +266,7 @@ export class HandlerSqliteStore {
    * saves of the same store in the SAME millisecond produced the same temp path
    * before it did: both wrote it, the first rename moved it away, and the
    * second failed with ENOENT on a file it had just written. That is not a
-   * hypothetical race — the inbox poller flushes once per provider and polls
+   * hypothetical race, the inbox poller flushes once per provider and polls
    * every provider concurrently, so it hit on an ordinary two-provider startup,
    * and the failure surfaced as a provider reporting a filesystem error for its
    * feed. Every store on this base shares the hazard, so the counter lives here.

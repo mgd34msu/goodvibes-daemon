@@ -1,16 +1,16 @@
 /**
- * pairing-banner.ts — the pairing block, in one place.
+ * pairing-banner.ts, the pairing block, in one place.
  *
  * A daemon prints this once, as it finishes starting. That was the ONLY way to
  * see it: scroll it off the screen, start the daemon as a service where nothing
  * reads stdout, or come back to the box tomorrow, and there was no way to get
  * the link back short of restarting the daemon. `goodvibes-daemon pair` prints
- * it again — and prints exactly THIS, because both callers render from here.
+ * it again, and prints exactly THIS, because both callers render from here.
  *
  * It reprints the daemon's existing shared token rather than minting a new one.
  * Minting is a different act with a different consequence (a per-device token,
  * one more record in the token store, a link the boot banner's QR no longer
- * matches), and `pair` is not the command for it — `pairing.handoff.create` is.
+ * matches), and `pair` is not the command for it, `pairing.handoff.create` is.
  */
 import {
   buildPairingHandoffLink,
@@ -28,7 +28,7 @@ export interface PairingBannerInput {
   readonly version: string;
   /** The web-app origin the deep link opens. */
   readonly origin: string;
-  /** The token the link carries — the daemon's existing shared companion token. */
+  /** The token the link carries, the daemon's existing shared companion token. */
   readonly token: string;
   readonly offers: readonly PairingHandoffOfferKind[];
   /** False to print the link and the offers without the QR block. */
@@ -69,7 +69,7 @@ export function renderPairingBanner(input: PairingBannerInput): PairingBanner {
     capabilities,
     notice,
     lines: [
-      `GoodVibes daemon ${input.version} — scan to pair a device (opens the web app signed in):`,
+      `GoodVibes daemon ${input.version}: scan to pair a device (opens the web app signed in):`,
       '',
       `  ${input.origin}`,
       '',

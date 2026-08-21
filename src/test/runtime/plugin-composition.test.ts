@@ -4,16 +4,16 @@
  * The graph constructed a PluginManager and never called init on it, so this
  * host could list a plugin directory and load nothing out of it: `enable`
  * persisted a flag that turned nothing on, and a plugin's channel adapter,
- * delivery strategy or gateway verb — the three kinds only this process can
- * serve — reached nothing no matter where it was installed.
+ * delivery strategy or gateway verb, the three kinds only this process can
+ * serve, reached nothing no matter where it was installed.
  *
  * This drives the real loader against a real fixture on disk, because until now
  * no test in any repository had executed the init path at all: every plugin
  * test in the platform exercised the branch where deps are unset.
  *
  * The fixture registers all four kinds deliberately. The SDK's loader has no
- * per-kind degrade — a missing registry throws inside the plugin's own init and
- * the whole plugin is dropped, halves this host could serve included — so the
+ * per-kind degrade, a missing registry throws inside the plugin's own init and
+ * the whole plugin is dropped, halves this host could serve included, so the
  * test that matters is that a plugin declaring BOTH halves still lands its
  * daemon half here.
  */
@@ -41,7 +41,7 @@ disposeTestRuntimeServicesAfterAll();
 
 let root: string;
 
-/** A plugin that declares both halves — the daemon's three and a surface's two. */
+/** A plugin that declares both halves, the daemon's three and a surface's two. */
 const BOTH_HALVES_PLUGIN = `
 export function init(api) {
   api.registerDeliveryStrategy({
@@ -118,7 +118,7 @@ describe('a plugin in the daemon\'s plugin directory actually loads', () => {
   test('its delivery strategy and gateway verb land, and its slash command does not sink the load', async () => {
     writePlugin('both-halves', BOTH_HALVES_PLUGIN);
     const deps = daemonShapedDeps();
-    // The state a previous `enable` left behind — which is exactly what init is
+    // The state a previous `enable` left behind, which is exactly what init is
     // for, and exactly what did nothing while init was never called.
     writeFileSync(join(root, 'plugins.json'), JSON.stringify({ enabled: { 'both-halves': true } }));
     const manager = new PluginManager({
@@ -164,7 +164,7 @@ describe('the composition wires the registries this host can serve', () => {
     expect(deps.channelRegistry).toBe(services.channelPlugins);
   });
 
-  test('boot calls init — a manager that is never initialised loads nothing', () => {
+  test('boot calls init; a manager that is never initialised loads nothing', () => {
     const bootTasks = readFileSync(join(import.meta.dir, '..', '..', 'runtime', 'boot-tasks.ts'), 'utf8');
     expect(bootTasks).toContain('services.pluginManager.init(createDaemonPluginLoaderDeps(services))');
   });

@@ -6,7 +6,7 @@ import { fakeContext, fakeCredentials, item } from './helpers.ts';
 
 const WD = '/tmp/gv-triage-tagger-unused';
 
-// Obvious word-style fakes — NOT real token formats.
+// Obvious word-style fakes, NOT real token formats.
 const SLACK_TOKEN = 'xoxb-EXAMPLE-faketoken';
 const DISCORD_TOKEN = 'discord-EXAMPLE-faketoken';
 const IMAP_PASSWORD = 'imap-EXAMPLE-fakepass';

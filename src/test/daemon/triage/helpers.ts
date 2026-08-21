@@ -1,5 +1,5 @@
 // Shared test helpers for the daemon-internal triage handler surface.
-// No secret-shaped strings here — only obvious word-style fakes.
+// No secret-shaped strings here, only obvious word-style fakes.
 
 import { rm } from 'node:fs/promises';
 import { makeProjectTempDir } from '../../helpers/project-temp.ts';

@@ -1,9 +1,9 @@
 /**
- * plugin-composition.ts — what a plugin dropped into the plugin directory gets
+ * plugin-composition.ts, what a plugin dropped into the plugin directory gets
  * to register when the host loading it is the daemon.
  *
  * A plugin registers into whatever registries the host hands its loader. Two
- * hosts load a plugin today — the terminal app and this daemon — and neither
+ * hosts load a plugin today, the terminal app and this daemon, and neither
  * holds every registry a plugin might want. The design (see
  * goodvibes-tui/docs/decisions/2026-07-30-plugin-registrations-split-verb-side-and-surface-side.md)
  * is: one plugin package, loaded by both hosts, each loading the registrations
@@ -22,7 +22,7 @@
  *
  * The two surface-side kinds are the ones this host cannot serve. The SDK's
  * PluginLoaderDeps has no optional members and its API guards nothing, so a
- * host that passes nothing for a registry does not decline that kind — it
+ * host that passes nothing for a registry does not decline that kind, it
  * throws a TypeError inside the plugin's own init, which the loader catches by
  * dropping THE WHOLE PLUGIN, including the halves this host could have run.
  * "Ignores the rest" therefore has to be a real registry that accepts the
@@ -67,8 +67,8 @@ export function createUnservedCommandRegistry(): CommandRegistryLike {
  *
  * The runs this daemon hosts build their tools through the agent orchestrator's
  * own registry, not this one, so a plugin tool registered here is cataloged and
- * unhandled. That is the recorded classification — `registerTool` is on the
- * surface-side list — and it was written when the daemon hosted no runs of its
+ * unhandled. That is the recorded classification, `registerTool` is on the
+ * surface-side list, and it was written when the daemon hosted no runs of its
  * own; the round that moves session hosting daemon-side is the one that
  * re-examines it. Until then, a registration here is honest rather than quiet.
  */
@@ -84,8 +84,8 @@ export class UnservedToolRegistry extends ToolRegistry {
 /**
  * Build the loader dependencies for this host.
  *
- * The delivery router is deliberately the manager's own — the one replies leave
- * through — so a registered strategy is a strategy that sends. Handing over a
+ * The delivery router is deliberately the manager's own, the one replies leave
+ * through, so a registered strategy is a strategy that sends. Handing over a
  * second router built from the same arguments is how a registration succeeds
  * and reaches nothing, which is the shape this whole seam is about.
  */

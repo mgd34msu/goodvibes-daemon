@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// conversation-rewind-port.ts — the daemon's RewindConversationPort for the
+// conversation-rewind-port.ts, the daemon's RewindConversationPort for the
 // SDK's unified rewind service.
 //
 // The SDK's UnifiedRewindService (platform/rewind) joins files rewind (workspace
@@ -9,7 +9,7 @@
 // truncation and captures the pre-/post-truncation snapshots so the reversal can
 // be undone and re-applied. The truncation boundary is the message count recorded
 // for the anchor's turnId at TURN_COMPLETED (the SDK's platform/rewind turn
-// anchors) — the same
+// anchors), the same
 // join key files rewind uses against the workspace checkpoint.
 //
 // This module is the daemon's implementation of that port, for sessions THIS
@@ -17,7 +17,7 @@
 // anchor.sessionId from the registry below.
 //
 // While conversation loops run in the surfaces, that registry is empty here, and
-// it used to answer an empty resolution with "0 messages to drop" — the same
+// it used to answer an empty resolution with "0 messages to drop", the same
 // answer a conversation already at the anchor gives, which is a confident wrong
 // answer rather than a missing one. It now reports the anchor as UNAVAILABLE
 // with the reason, which the SDK's rewind service turns into a plan warning.
@@ -25,7 +25,7 @@
 // The surfaces reach conversation rewind a different way now: they offer their
 // live conversation over the control plane (rewind.conversation.*), and the
 // SDK's host broker asks them directly. This port is the fallback the broker
-// falls through to for sessions no surface has offered — which is exactly the
+// falls through to for sessions no surface has offered, which is exactly the
 // case where the daemon hosts the conversation itself. Files-scope rewind,
 // entirely daemon-owned, was never affected either way.
 //
@@ -65,7 +65,7 @@ export interface ConversationRewindPort extends RewindConversationPort {
   restoreAfter(undoSnapshotId: string): boolean;
 }
 
-/** One truncation's captured state — the target conversation and its snapshots. */
+/** One truncation's captured state, the target conversation and its snapshots. */
 interface SnapshotPair {
   readonly conv: RewindableConversation;
   readonly before: ConversationJson;
@@ -80,7 +80,7 @@ const NO_LIVE_CONVERSATION =
  * Build a conversation rewind port. `resolveConversation` maps an anchor's
  * sessionId to the live conversation: the daemon looks the session up in the
  * registry below. A null resolution is reported as unavailable with the reason
- * — never as a count, because "nobody here is holding those messages" and
+ *, never as a count, because "nobody here is holding those messages" and
  * "there are no messages to drop" are different facts and only one of them is
  * true.
  */
@@ -139,7 +139,7 @@ export function createConversationRewindPort(
 }
 
 // ---------------------------------------------------------------------------
-// Live per-session conversation registry — the daemon-hosted mutable store the
+// Live per-session conversation registry, the daemon-hosted mutable store the
 // composed daemon's rewind.plan/apply verbs fall back to. A process INSIDE this
 // daemon that runs a conversation registers it here; a surface in another
 // process offers its conversation over the control plane instead
@@ -162,7 +162,7 @@ export function unregisterSessionConversation(sessionId: string): void {
 
 /**
  * The conversation rewind port the composed daemon threads into
- * registerGatewayVerbGroups — it resolves each anchor's live conversation from
+ * registerGatewayVerbGroups, it resolves each anchor's live conversation from
  * the registry above, so the daemon's own rewind verbs serve conversation scope
  * live in this process.
  */

@@ -1,10 +1,10 @@
 /**
- * raw-reply-route.ts — invoking a route that answers with its payload itself.
+ * raw-reply-route.ts, invoking a route that answers with its payload itself.
  *
  * `callDaemonVerb` in @pellux/goodvibes-terminal-shell reads the wrapped
  * convention every `/api/cluster/*` route follows: `{ ok: true, data }` on
  * success, `{ ok: false, error, fix }` on a refusal. Three routes this daemon
- * serves do not — `/status`, `/api/health` and `/api/channels/status` answer
+ * serves do not, `/status`, `/api/health` and `/api/channels/status` answer
  * with the payload ITSELF and put the verdict in the HTTP status. Reading one
  * as the other is not a subtle failure: a raw payload has no `ok` field, so the
  * wrapped reader called a perfectly healthy 200 "the daemon refused the
@@ -13,7 +13,7 @@
  * So this is the second half of the SAME convention, next to daemon-ws-call.ts:
  * the target is resolved by `resolveRemoteDaemonTarget`, the credential is the
  * same operator token, the reachability / stale-credential / unreadable-reply
- * refusals are the shared reader's — only the shape of a successful body
+ * refusals are the shared reader's, only the shape of a successful body
  * differs. `rawReplyReader` restates a raw reply in the wrapped convention
  * before the shared reader sees it, so there is one request path rather than
  * two.
@@ -29,8 +29,8 @@ export type DaemonReplyEnvelope = 'wrapped' | 'raw';
 /**
  * The status a restated reply carries.
  *
- * The shared reader looks at the status for exactly three verdicts — 401, 403
- * and 404 — and those are passed through untouched below, before any body is
+ * The shared reader looks at the status for exactly three verdicts, 401, 403
+ * and 404, and those are passed through untouched below, before any body is
  * read. Everything else it decides from the body, so a restated reply names a
  * status that is legal to attach a body to (a 204 or a 304 is not) rather than
  * echoing one that would make `new Response` throw.

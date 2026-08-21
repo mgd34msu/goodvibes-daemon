@@ -1,5 +1,5 @@
 /**
- * hosted-exec-posture.test.ts — what THIS daemon states about a hosted turn's
+ * hosted-exec-posture.test.ts, what THIS daemon states about a hosted turn's
  * exec.
  *
  * The engine's behaviour (a required boundary refuses an uncontained command,
@@ -8,8 +8,8 @@
  * and what its operator prompt tells a hosted turn it owes.
  *
  * That statement is the thing that went wrong. Every piece of the boundary was
- * wired and the daemon still hosted a turn that reached the whole host — the
- * process table, the owner's /proc, and his tmux session, where it typed —
+ * wired and the daemon still hosted a turn that reached the whole host, the
+ * process table, the owner's /proc, and his tmux session, where it typed,
  * because nothing in this composition ever said the boundary was required.
  */
 import { afterAll, beforeAll, describe, it, expect } from 'bun:test';
@@ -36,7 +36,7 @@ async function floorFor(workspaceRoot: string) {
 }
 
 describe('the exec posture this daemon states', () => {
-  it('states one at all — the engine is never left to a default here', async () => {
+  it('states one at all; the engine is never left to a default here', async () => {
     const floor = await floorFor(root);
     try {
       expect(typeof floor.execPosture).toBe('function');

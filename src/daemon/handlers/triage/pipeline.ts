@@ -57,7 +57,7 @@ export interface RunInboxTriageOptions {
   scorer?: TriageScorerOptions;
   /** Inject a store (tests). When omitted, a triage store is opened/closed. */
   store?: HandlerSqliteStore;
-  /** When true, do not persist — only compute (used by inbox.triage.list). */
+  /** When true, do not persist, only compute (used by inbox.triage.list). */
   dryRun?: boolean;
   /** Clock injection for deterministic updatedAt in tests. */
   now?: () => Date;
@@ -254,7 +254,7 @@ export function enrichItemsWithTriage<T extends { id: string }>(
   items: readonly T[],
 ): Array<T & TriageOverlay> {
   if (items.length === 0) return [];
-  // Single batched read (`WHERE id IN (...)`) instead of one SELECT per item —
+  // Single batched read (`WHERE id IN (...)`) instead of one SELECT per item,
   // this is a hot read path (every channels.inbox.list call), so the N+1 is
   // collapsed to one query keyed by id.
   const byId = readTriageMetadataBatch(

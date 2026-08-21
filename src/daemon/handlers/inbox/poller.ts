@@ -68,7 +68,7 @@ export class InboundPoller {
   private readonly inFlight = new Set<string>();
   private started = false;
   /**
-   * Set by stop(), which the surface teardown calls and nothing else — unlike
+   * Set by stop(), which the surface teardown calls and nothing else, unlike
    * stopProvider(), which a leadership handover uses and which must stay
    * resumable. Once the surface is released no interval may be armed again,
    * including by work that was already in flight: registerInboxMethods() starts
@@ -85,7 +85,7 @@ export class InboundPoller {
     this.setIntervalImpl = options.setIntervalImpl ?? setInterval;
     this.clearIntervalImpl = options.clearIntervalImpl ?? clearInterval;
     for (const id of this.adapters.keys()) {
-      // `polled: false` until a poll actually completes — see ProviderStatus.
+      // `polled: false` until a poll actually completes, see ProviderStatus.
       this.statuses.set(id, { id, state: 'empty', itemCount: 0, polled: false });
     }
   }
@@ -121,8 +121,8 @@ export class InboundPoller {
   /**
    * Stop ONE provider's interval loop. Idempotent.
    *
-   * Synchronous underneath — clearing the interval means no further tick can
-   * be scheduled — which is what lets the RESIGN that follows a handoff be an
+   * Synchronous underneath, clearing the interval means no further tick can
+   * be scheduled, which is what lets the RESIGN that follows a handoff be an
    * honest claim that this node has stopped reading that account.
    */
   stopProvider(id: string): void {
@@ -195,7 +195,7 @@ export class InboundPoller {
       const message = summarizeError(error);
       this.logger.warn('inbound poll failed', { provider: id, error: message });
       // A THROW rather than an honest 'unavailable' result. The adapter got far
-      // enough to run, so the credentials are not the thing that failed —
+      // enough to run, so the credentials are not the thing that failed,
       // reporting it as configured is what keeps this out of the
       // "you never set this up" bucket.
       this.setStatus(id, {

@@ -6,7 +6,7 @@ import { configGetStub, configSetProjectValueStub } from '../helpers/config-mana
  * Locks the loopback-fetch approval contract the TUI wires into registerAllTools
  * and both agentOrchestrator.setDependencies call sites: the ask rides the
  * approval broker and persists through configManager, so a project is asked once
- * and never again — including across restart (a fresh manager whose project
+ * and never again, including across restart (a fresh manager whose project
  * value is already set never asks).
  */
 
@@ -21,7 +21,7 @@ function fakeConfigManager(initial: Record<string, unknown> = {}) {
   };
 }
 
-describe('localhost fetch approval — TUI wiring contract', () => {
+describe('localhost fetch approval: TUI wiring contract', () => {
   test('first loopback fetch asks once through the broker and persists the allow', async () => {
     const asks: Array<{ host: string; url: string }> = [];
     const configManager = fakeConfigManager();
@@ -36,7 +36,7 @@ describe('localhost fetch approval — TUI wiring contract', () => {
     const first = await approval({ url: 'http://127.0.0.1:5173/api', host: '127.0.0.1' });
     expect(first).toBe(true);
     expect(asks).toHaveLength(1);
-    // Approving IS "allow for this project" — persisted in the project tier.
+    // Approving IS "allow for this project", persisted in the project tier.
     expect(configManager.store['fetch.allowLocalhost']).toBe(true);
 
     // A second fetch in the same session never asks again.
@@ -45,7 +45,7 @@ describe('localhost fetch approval — TUI wiring contract', () => {
     expect(asks).toHaveLength(1);
   });
 
-  test('approval persists across restart — a fresh manager with the stored value never asks', async () => {
+  test('approval persists across restart; a fresh manager with the stored value never asks', async () => {
     let askCount = 0;
     // Simulates a new process whose project settings already carry the allow.
     const configManager = fakeConfigManager({ 'fetch.allowLocalhost': true });

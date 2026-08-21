@@ -1,9 +1,9 @@
 /**
- * daemon-handler-composition.ts — the daemon's HOST-side handler surfaces.
+ * daemon-handler-composition.ts, the daemon's HOST-side handler surfaces.
  *
  * Attaches this repository's handlers to the SDK-auto-registered builtin
  * gateway descriptors (channels.* / email.* / calendar.*) via
- * catalog.register(descriptor, handler, { replace: true }) — the SDK owns
+ * catalog.register(descriptor, handler, { replace: true }), the SDK owns
  * every id, descriptor and schema; only the behaviour is ours. The remote
  * surface reuses the SAME DistributedRuntimeManager the SDK facade injects.
  *
@@ -12,7 +12,7 @@
  *
  * The one behavioural decision that lives here: the inbox poller is handed to
  * the cluster coordinator instead of being started eagerly. It is this
- * product's own inbound consumer — the SDK facade does not know it exists —
+ * product's own inbound consumer, the SDK facade does not know it exists,
  * so if it is not gated here it is not gated anywhere, and two goodvibes nodes
  * on one network each read the shared inbox and answer the same message twice.
  */
@@ -65,7 +65,7 @@ export function createDaemonHandlerComposition(
     registerInbox: (ctx, routing) =>
       registerTriagedInbox(ctx, (inboxCtx) => registerInboxMethods(inboxCtx, routing, {
         // Hands polling to leadership. The `channels.inbox.list` read stays
-        // available on every node — a standby still SERVES the persisted feed,
+        // available on every node, a standby still SERVES the persisted feed,
         // it just does not FETCH into it.
         gatePolling: (providerId, control) =>
           options.clusterCoordinator.register(inboxPollerGate(providerId, control)),

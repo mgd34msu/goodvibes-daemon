@@ -1,12 +1,12 @@
 /**
- * runtime-services-types.ts — the public contract createRuntimeServices() takes
+ * runtime-services-types.ts, the public contract createRuntimeServices() takes
  * and returns.
  *
  * Split out of services.ts (the composition root that builds every one of
  * these fields) so the construction logic can stay under the repo's
  * architecture line-count gate without trimming 35 arbitrary lines to clear
  * the number. This module owns ONLY the shape of the input options and the
- * output surface — no runtime code, no wiring order, nothing that constructs
+ * output surface, no runtime code, no wiring order, nothing that constructs
  * anything. services.ts re-exports both types from here, so no import site
  * anywhere else in the app had to change.
  */
@@ -76,7 +76,7 @@ export interface RuntimeServicesOptions {
    * Threaded into `SecretsManager` so the override MOVES the daemon-scoped
    * credential store; without it a daemon told to run out of a temp tree still
    * read the real home's daemon secrets, so an "isolated" test daemon held the
-   * owner's live credentials. One name for one thing — `resolveGoodVibesHomeOwnership`
+   * owner's live credentials. One name for one thing, `resolveGoodVibesHomeOwnership`
    * is the single reader that produces it.
    */
   readonly daemonHomeDirectory?: string | undefined;
@@ -104,7 +104,7 @@ export interface RuntimeServices {
   readonly homeDirectory: string;
   /**
    * The `.goodvibes/<surface root>/` segment this daemon's own state lives
-   * under — always GOODVIBES_DAEMON_SURFACE_ROOT here (config/surface.ts).
+   * under, always GOODVIBES_DAEMON_SURFACE_ROOT here (config/surface.ts).
    * Declared so a consumer ASKS for it instead of deriving a second one; the
    * unscoped pre-split control-plane store is what deriving it twice produced.
    */
@@ -162,7 +162,7 @@ export interface RuntimeServices {
   readonly hookWorkbench: HookWorkbench;
   readonly pluginManager: PluginManager;
   readonly workflow: WorkflowServices;
-  /** Stream watchers, on-exit process triggers and condition checks, supervised as one — see trigger-services.ts. */
+  /** Stream watchers, on-exit process triggers and condition checks, supervised as one, see trigger-services.ts. */
   readonly triggerManager: TriggerManager;
   readonly voiceProviders: VoiceProviderRegistry;
   readonly voiceService: VoiceService;
@@ -219,13 +219,13 @@ export interface RuntimeServices {
   readonly contextAccountingHolder: ContextAccountingHolder; // bound at bootstrap.ts; see context-accounting-source.ts
   readonly wrfcController: WrfcController;
   readonly processManager: ProcessManager;
-  /** The phase/work-item orchestration engine — the SDK's platform/orchestration. */
+  /** The phase/work-item orchestration engine, the SDK's platform/orchestration. */
   readonly orchestrationEngine: OrchestrationEngine;
   readonly workstreamCommands: WorkstreamCommandService;
   /** The repo source-tree code index. */
   readonly codeIndexStore: CodeIndexStore;
   readonly codeIndexReindexScheduler: CodeIndexReindexScheduler; // tool-site reindex
-  /** Daily snapshots of every SQLite store this runtime writes, with bounded retention; unref'd timers (mirrors the SDK composition — hosts that tear down a runtime stop() it themselves). */
+  /** Daily snapshots of every SQLite store this runtime writes, with bounded retention; unref'd timers (mirrors the SDK composition, hosts that tear down a runtime stop() it themselves). */
   readonly storeSnapshotScheduler: StoreSnapshotScheduler;
   readonly appendOnlyRetentionScheduler: operations.DurabilityServices['appendOnlyRetentionScheduler']; // periodic append-only sweep; unref'd timers, stop() on teardown
   /** Stops the recurring crash-residue sweep; idempotent, unref'd timer (hosts that tear a runtime down call it). */
@@ -241,7 +241,7 @@ export interface RuntimeServices {
   /** Controller the governor uses to pause/resume the deferrable background jobs under pressure. */
   readonly pauseController: PauseController;
   readonly sessionLiveTurnControls: SessionLiveTurnControlsHolder;
-  /** Unified live process registry (agents, WRFC chains, workflows, watchers, background processes) backing the Fleet panel; archive-aware — finished subtrees can be moved to the session archive view. */
+  /** Unified live process registry (agents, WRFC chains, workflows, watchers, background processes) backing the Fleet panel; archive-aware, finished subtrees can be moved to the session archive view. */
   readonly processRegistry: ArchivableProcessRegistry;
   readonly modeManager: ModeManager;
   readonly fileUndoManager: FileUndoManager;
@@ -250,7 +250,7 @@ export interface RuntimeServices {
   readonly checkpointsCurrentlyAllowed: () => boolean;
   /** Surface-scoped continuity reads (recovery-file presence, last-session pointer). */
   readonly integrationHelpers: IntegrationHelperService;
-  /** Per-workspace trust gate — restricts write/execute/delegate tools until the workspace is trusted. */
+  /** Per-workspace trust gate, restricts write/execute/delegate tools until the workspace is trusted. */
   readonly workspaceTrustManager: operations.WorkspaceTrustManager;
   /**
    * The permission manager the runs this daemon hosts ask through. Its ask seam

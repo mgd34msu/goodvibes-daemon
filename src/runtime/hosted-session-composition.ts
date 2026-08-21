@@ -1,11 +1,11 @@
 /**
- * hosted-session-composition.ts — what this daemon states so it may host
+ * hosted-session-composition.ts, what this daemon states so it may host
  * conversation loops.
  *
  * The engine is the SDK's (`@pellux/goodvibes-sdk/platform/hosted-sessions`):
  * lifecycle, the detach policy, the bounded disk state, the verbs, the
  * lifecycle channel. It is off until a product says how a workspace FLOOR is
- * built, and that is deliberate — the floor's `requestApproval` seam is where a
+ * built, and that is deliberate, the floor's `requestApproval` seam is where a
  * product's trust posture lives, and no default can stand in for a decision
  * about who may write files and run commands in a directory a client named over
  * the wire.
@@ -20,8 +20,8 @@
  * session hosted in another directory has to be gated by that directory's
  * decision, not by the daemon's.
  *
- * Everything else in a floor comes from `createClientRuntimeServices` — the
- * same composition a terminal runs — so a hosted turn's tools, hooks, plugins
+ * Everything else in a floor comes from `createClientRuntimeServices`, the
+ * same composition a terminal runs, so a hosted turn's tools, hooks, plugins
  * and model stack are the ones the platform already has, not a second set.
  *
  * ── The exec posture a hosted turn runs under ──────────────────────────────
@@ -29,15 +29,15 @@
  * "The same composition a terminal runs" is what BUILDS the exec tool, and it
  * builds it the same way here: the `sandbox.*` config and the `exec-sandbox`
  * gate this daemon already reads produce the same bubblewrap boundary a local
- * exec gets — network, PID, UTS and IPC namespaced, the system read-only, /tmp
+ * exec gets, network, PID, UTS and IPC namespaced, the system read-only, /tmp
  * and $HOME masked, the workspace writable, and `sandbox.egressAllowlist` the
- * one way network comes back — with the self-labelling note on every result.
+ * one way network comes back, with the self-labelling note on every result.
  *
  * What was NOT the same was the fallback. When no boundary could be applied,
  * the exec tool ran the command on the host and said so, which is right for a
  * terminal (a person asked, a person is reading) and wrong for a turn nobody is
  * watching. A hosted conversational turn reached the whole host that way: the
- * full process table, the owner's /proc, and his tmux session — where it typed.
+ * full process table, the owner's /proc, and his tmux session, where it typed.
  *
  * So this daemon states the posture rather than inheriting a default:
  *
@@ -46,8 +46,8 @@
  *    REQUIRED: a command that cannot be contained is refused, naming why, and
  *    running on the host is not a fallback available to it. The owner's
  *    terminal is denied outright, at the exec guard, regardless of boundary.
- *  - WORKSTREAM — a real work chain the owner authorized, which may genuinely
- *    need the machine itself — is a per-spawn grant this composition makes
+ *  - WORKSTREAM, a real work chain the owner authorized, which may genuinely
+ *    need the machine itself, is a per-spawn grant this composition makes
  *    explicitly. There is no such spawn today, so the function below never
  *    returns it; when there is one, the grant is written HERE, in the daemon's
  *    own composition, where a reader can see which spawns hold it. Nothing on
@@ -75,13 +75,13 @@ function hostedSystemPrompt(input: { readonly workspaceRoot: string }): string {
     [
       'You are a GoodVibes session hosted by the daemon rather than by a terminal.',
       `Your working directory is ${input.workspaceRoot}.`,
-      'Someone may be attached and watching this turn, or may have detached and read it later —',
+      'Someone may be attached and watching this turn, or may have detached and read it later;',
       'write for both. Say what you did and why; never report work you did not do.',
       'Tool permissions are decided by whoever is attached: an ask you raise may take a while to be',
       'answered, and an unanswered one is a refusal, not a reason to find another way round.',
     ].join(' '),
     // The same contract every other conversational turn is held to, from the
-    // SDK rather than restated here — a second copy is a copy that drifts.
+    // SDK rather than restated here, a second copy is a copy that drifts.
     CONVERSATIONAL_DIAGNOSIS_SECTION,
   ].join('\n\n');
 }
@@ -92,7 +92,7 @@ function hostedSystemPrompt(input: { readonly workspaceRoot: string }): string {
  * Every session this daemon hosts is a conversation, so every one of them is
  * contained (see the module header). Stated on the floor rather than left to
  * the engine's default so that the day a workstream spawn exists, the grant is
- * a visible change to THIS function and not an option someone set elsewhere —
+ * a visible change to THIS function and not an option someone set elsewhere,
  * and it sits beside the trust gate, which is the other statement this daemon
  * makes about how much authority a hosted run carries.
  */
@@ -162,7 +162,7 @@ export function createHostedSessionOptions(services: RuntimeServices): DaemonHos
       // boot (the persisted discovery cache) and from the LAN scan; a floor
       // builds its own registry and would otherwise be the only place on this
       // box where they are not routable. Servers found by a scan that finishes
-      // AFTER a floor is built reach the next floor, not this one — stated
+      // AFTER a floor is built reach the next floor, not this one, stated
       // rather than hidden, because a wrong claim here would look like a model
       // that exists everywhere except in hosted sessions.
       const discovered = services.providerRegistry.listDiscoveredServers();

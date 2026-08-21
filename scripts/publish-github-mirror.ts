@@ -1,18 +1,18 @@
 #!/usr/bin/env bun
 /**
- * publish-github-mirror.ts — publishes a GitHub Packages mirror of this
+ * publish-github-mirror.ts, publishes a GitHub Packages mirror of this
  * package so the repository's Packages sidebar shows a published artifact.
  *
  * npmjs stays the canonical registry consumers pin against
  * (@pellux/goodvibes-daemon, unchanged). GitHub Packages has a hard rule the
  * npmjs name cannot satisfy here: a package's scope must equal the repository
  * owner's login, and `pellux` is a different GitHub account than this repo's
- * owner (mgd34msu) — so the mirror publishes under a different name,
+ * owner (mgd34msu), so the mirror publishes under a different name,
  * @mgd34msu/goodvibes-daemon, to the registry npm.pkg.github.com. Nothing
  * about the npmjs publish changes; this is an additional, secondary artifact.
  *
  * What it does:
- *   1. Obtains a tarball of this package — either a prebuilt one passed via
+ *   1. Obtains a tarball of this package, either a prebuilt one passed via
  *      --tarball, or a fresh `npm pack` of the current tree.
  *   2. Extracts it to a scratch directory and rewrites its package.json:
  *      name -> @mgd34msu/goodvibes-daemon, publishConfig.registry -> the
@@ -30,7 +30,7 @@
  * Neither set -> exit 1. The token is never written to disk: this script
  * writes a scratch .npmrc containing the literal reference
  * `${NODE_AUTH_TOKEN}` and points NPM_CONFIG_USERCONFIG at it, so npm
- * resolves the real value from the environment at invocation time — the same
+ * resolves the real value from the environment at invocation time, the same
  * mechanism actions/setup-node's `registry-url` option wires up in CI, kept
  * here too so this script is self-sufficient outside that CI step (e.g. a
  * local one-shot run).
@@ -56,7 +56,7 @@ function flagValue(flag: string): string | undefined {
 type NpmPackEntry = { filename: string };
 
 /**
- * `npm pack --json`'s top-level shape has changed across npm versions — some
+ * `npm pack --json`'s top-level shape has changed across npm versions, some
  * ship an array of entries, this repo's npm (12.x) ships an object keyed by
  * package id/name. Accept either rather than pinning to one.
  */
@@ -93,7 +93,7 @@ if (typeof version !== 'string' || version.trim().length === 0) {
 
 const token = process.env.NODE_AUTH_TOKEN?.trim() || process.env.GITHUB_TOKEN?.trim();
 if (!token) {
-  consoleLogger.error('publish-github-mirror: no publish token found — set NODE_AUTH_TOKEN or GITHUB_TOKEN');
+  consoleLogger.error('publish-github-mirror: no publish token found; set NODE_AUTH_TOKEN or GITHUB_TOKEN');
   process.exit(1);
 }
 // Ensure the env var name the scratch .npmrc references below actually
@@ -116,7 +116,7 @@ function fail(message: string): never {
 
 try {
   // Scratch .npmrc: the literal string `${NODE_AUTH_TOKEN}` is written, never
-  // the token value itself — npm substitutes it from the environment when it
+  // the token value itself, npm substitutes it from the environment when it
   // reads the file at publish time.
   const npmrcPath = join(scratchRoot, '.npmrc');
   writeFileSync(npmrcPath, `//npm.pkg.github.com/:_authToken=\${NODE_AUTH_TOKEN}\n`);
@@ -144,7 +144,7 @@ try {
   const staged = JSON.parse(readFileSync(pkgJsonPath, 'utf8')) as Record<string, unknown>;
   if (staged.version !== version) {
     fail(
-      `tarball version (${String(staged.version)}) does not match this tree's package.json version (${version}) — ` +
+      `tarball version (${String(staged.version)}) does not match this tree's package.json version (${version}); ` +
         'pass a --tarball that matches, or omit it to pack the current tree fresh',
     );
   }
@@ -162,7 +162,7 @@ try {
   const mirrorTarball = runNpmPack(packageDir, scratchRoot);
   consoleLogger.info(`publish-github-mirror: repacked ${mirrorTarball}`);
 
-  // 4) Publish (idempotent — skips if the registry already serves this version).
+  // 4) Publish (idempotent, skips if the registry already serves this version).
   const result = runPublishPackage({
     cwd: root,
     name: MIRROR_NAME,

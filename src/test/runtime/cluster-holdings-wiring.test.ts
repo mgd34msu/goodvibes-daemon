@@ -5,13 +5,13 @@
  * answer. The group layer defines `surfaceHoldings` and renders it, but holds
  * no elections. The per-surface election decides who reads which inbox, but has
  * no group to report to. Unwired, `cluster status` prints "surfaces: not
- * reported by this daemon" on a perfectly healthy machine — which is the worst
+ * reported by this daemon" on a perfectly healthy machine, which is the worst
  * possible output for the question an operator opens `cluster status` to answer:
  * my inbox is quiet, is THIS the machine that is supposed to be reading it?
  *
  * These tests hold the wiring in place at the composition root, which is the
  * only place both halves exist. They run a REAL election to completion rather
- * than reading the reader back immediately — an assertion taken before the boot
+ * than reading the reader back immediately, an assertion taken before the boot
  * probe closes would pass against a list that is empty for timing reasons and
  * would keep passing if the wiring were removed.
  */
@@ -78,7 +78,7 @@ describe('the group layer reports the elections actually running', () => {
   test('a machine holding nothing yet reports an empty list, not "unavailable"', () => {
     const { clusterGroup } = services();
     // Composing must not have joined a network or held an election, so there is
-    // genuinely nothing held — and that is a different statement from "this
+    // genuinely nothing held, and that is a different statement from "this
     // daemon cannot tell you", which is what an unwired reader would produce.
     expect(clusterGroup.runtime.surfaceHoldings()).toEqual([]);
   });
@@ -101,7 +101,7 @@ describe('the group layer reports the elections actually running', () => {
       const holdings = clusterGroup.runtime.surfaceHoldings();
       expect(holdings).toHaveLength(1);
       // The exact surface that was elected, named by the digest the election
-      // itself derived — not a placeholder and not a second tally.
+      // itself derived, not a placeholder and not a second tally.
       expect(holdings![0]!.surfaceId).toBe(surfaceIdFor(inboxSurface('work-slack')));
       expect(holdings![0]!.reason).toContain('elected');
       expect(clusterCoordinator.isMaster).toBe(true);
@@ -128,7 +128,7 @@ describe('the group layer reports the elections actually running', () => {
       const holdings = clusterGroup.runtime.surfaceHoldings()!;
       expect(holdings).toHaveLength(1);
       // `cluster status` output gets pasted into issues, so the account is
-      // named by digest everywhere — in the id and in the human reason alike.
+      // named by digest everywhere, in the id and in the human reason alike.
       expect(JSON.stringify(holdings)).not.toContain('mikes-private-mailbox');
       expect(holdings[0]!.surfaceId).toBe(surfaceIdFor(inboxSurface('mikes-private-mailbox')));
       expect(holdings[0]!.surfaceId).toMatch(/^[0-9a-f]{32}$/);

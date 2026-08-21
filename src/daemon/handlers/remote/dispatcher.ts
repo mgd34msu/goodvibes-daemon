@@ -17,7 +17,7 @@ function sha256First(input: string, hexChars: number): string {
 }
 
 // ---------------------------------------------------------------------------
-// Work-item hook — long-running invocations are enqueued as work items visible
+// Work-item hook, long-running invocations are enqueued as work items visible
 // in remote.work.list. The dispatcher does not own the distributed runtime; the
 // integrator wires this hook to the DistributedRuntimeManager work queue.
 // ---------------------------------------------------------------------------
@@ -36,7 +36,7 @@ export interface RemoteWorkEnqueuer {
 }
 
 // ---------------------------------------------------------------------------
-// Invoke result — returned to the agent through remote.peers.invoke. Includes
+// Invoke result, returned to the agent through remote.peers.invoke. Includes
 // stdoutDigest (sha256 of FULL stdout, 64 hex chars) per the receipt contract.
 // The agent may receive only a truncated stdout preview.
 // ---------------------------------------------------------------------------
@@ -168,7 +168,7 @@ export class RemoteDispatcher {
   /**
    * Best-effort teardown: invoke every backend's optional teardown so ephemeral
    * key/credential material (ssh-keys/, cloud-creds/) is swept from disk and
-   * does not outlive the daemon. Failures are swallowed — teardown must never
+   * does not outlive the daemon. Failures are swallowed, teardown must never
    * throw during surface shutdown.
    */
   async teardown(): Promise<void> {

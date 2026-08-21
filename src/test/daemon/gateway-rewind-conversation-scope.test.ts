@@ -1,6 +1,6 @@
 /**
  * Gate: the composed daemon's unified-rewind verbs (rewind.plan / rewind.apply)
- * serve CONVERSATION scope live in this process — not just files.
+ * serve CONVERSATION scope live in this process, not just files.
  *
  * The SDK's registerGatewayVerbGroups constructs the UnifiedRewindService with
  * `conversation: deps.conversationRewindPort ?? null`; absent that port,
@@ -14,14 +14,14 @@
  * the initiative families: compose the real vendored runtime, register a live
  * conversation + turn boundary for a session, then invoke rewind.plan over the
  * composed catalog and assert the conversation half comes back AVAILABLE with
- * the truncation counts — proving the port is threaded, not a 501/absent facade.
+ * the truncation counts, proving the port is threaded, not a 501/absent facade.
  *
  * It now also pins the two cases that used to be indistinguishable from each
  * other and from success. A session this daemon holds no conversation for is
  * reported UNAVAILABLE with the reason rather than as "0 messages to drop",
  * which is the answer a conversation already at the anchor gives. And a surface
  * running the loop in another process offers its conversation over the control
- * plane (rewind.conversation.*), which the composed catalog serves — the path
+ * plane (rewind.conversation.*), which the composed catalog serves, the path
  * every client surface actually takes now that the loops left this process.
  */
 import { describe, expect, test, afterAll } from 'bun:test';

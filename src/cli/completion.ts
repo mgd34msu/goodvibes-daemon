@@ -1,5 +1,5 @@
 /**
- * completion.ts — shell completion generated from the command catalog.
+ * completion.ts, shell completion generated from the command catalog.
  *
  * The scripts are DERIVED, never hand-maintained: a command added to
  * `./command-catalog.ts` is completable the moment it exists, and one removed
@@ -63,7 +63,7 @@ function bashScript(binary: string): string {
   }).join('\n');
 
   return [
-    `# bash completion for ${binary} — generated from its command catalog.`,
+    `# bash completion for ${binary}, generated from its command catalog.`,
     `# Install: ${binary} completion bash > ~/.local/share/bash-completion/completions/${binary}`,
     '',
     `${fn}() {`,
@@ -144,7 +144,7 @@ function zshScript(binary: string): string {
   const fn = `_${shellIdent(binary)}`;
   return [
     `#compdef ${binary}`,
-    `# zsh completion for ${binary} — generated from its command catalog.`,
+    `# zsh completion for ${binary}, generated from its command catalog.`,
     `# Install: ${binary} completion zsh > ~/.zfunc/_${binary}   (with ~/.zfunc on $fpath)`,
     '',
     `${fn}() {`,
@@ -189,7 +189,7 @@ function fishEscape(value: string): string {
 function fishScript(binary: string): string {
   const guard = `__${shellIdent(binary)}_no_command`;
   const lines: string[] = [
-    `# fish completion for ${binary} — generated from its command catalog.`,
+    `# fish completion for ${binary}, generated from its command catalog.`,
     `# Install: ${binary} completion fish > ~/.config/fish/completions/${binary}.fish`,
     '',
     `function ${guard}`,

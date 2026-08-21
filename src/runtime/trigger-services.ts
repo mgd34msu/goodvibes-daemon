@@ -11,7 +11,7 @@ import type { ShellPathService } from '@/runtime/index.ts';
  *
  * This daemon composes the full family and feeds the manager to the fleet as
  * its trigger supervisor, so a trigger defined against the daemon fires
- * reliably. The daemon is the right process to own it — it is the one that
+ * reliably. The daemon is the right process to own it, it is the one that
  * stays running.
  *
  * Two things about the shape are load-bearing:

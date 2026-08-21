@@ -101,7 +101,7 @@ describe('config get', () => {
     expect(result.lines).toEqual([REDACTED_VALUE]);
   });
 
-  test('a goodvibes:// secrets reference stays visible — it is a pointer, not a secret', () => {
+  test('a goodvibes:// secrets reference stays visible; it is a pointer, not a secret', () => {
     const secret = aSecretKey();
     const { manager } = fakeManager({ [secret]: 'goodvibes://secrets/telegram-bot' });
     expect(runConfigCommand(['get', secret], deps(manager)).lines)
@@ -186,7 +186,7 @@ describe('config with no or a wrong subcommand', () => {
   });
 });
 
-describe('renderConfigValue — the redaction rule, stated directly', () => {
+describe('renderConfigValue: the redaction rule, stated directly', () => {
   test('a non-credential key prints its value', () => {
     expect(renderConfigValue('controlPlane.port', 3421)).toBe('3421');
     expect(renderConfigValue('controlPlane.host', '127.0.0.1')).toBe('127.0.0.1');

@@ -4,7 +4,7 @@ import type { ConfigKey } from '@pellux/goodvibes-sdk/platform/config';
  * The channel surfaces the platform can speak on, with the settings keys each
  * one needs configured.
  *
- * The daemon reads this to answer "which channels are actually usable" — the
+ * The daemon reads this to answer "which channels are actually usable", the
  * `send` subcommand lists them and refuses a channel whose keys are unset,
  * rather than accepting the message and dropping it. A surface added here
  * becomes visible to `send` with no further wiring.

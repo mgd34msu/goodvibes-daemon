@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Triage tagger — Slack provider.
+// Triage tagger, Slack provider.
 //
 // Applies a triage label as a Slack message reaction (reactions.add). The bot
 // token is resolved per-apply from the daemon credential store and is never

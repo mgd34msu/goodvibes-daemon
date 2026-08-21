@@ -17,7 +17,7 @@
  *     cloud-terminal) the positional `payload.args` are joined onto the command
  *     with single spaces and handed, unescaped, to a remote shell. We spy on
  *     `Bun.spawn` (the real boundary `runProcess` shells out through) and assert
- *     the constructed argv carries the args verbatim — confirming the
+ *     the constructed argv carries the args verbatim, confirming the
  *     documented asymmetry vs. the tokenized local-process backend.
  */
 import { describe, expect, it, spyOn, afterEach } from 'bun:test';

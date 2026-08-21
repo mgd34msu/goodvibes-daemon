@@ -1,5 +1,5 @@
 /**
- * send-command.test.ts — `goodvibes-daemon send`, driven through
+ * send-command.test.ts, `goodvibes-daemon send`, driven through
  * `runSendCommand` with the delivery call stubbed.
  *
  * The stub is the point of these tests: it captures the exact
@@ -26,7 +26,7 @@ afterEach(() => {
 
 /**
  * A config rooted in a throwaway tree, with `settings` written into the DAEMON
- * tier — `<home>/.goodvibes/daemon/settings.json` — because that is where every
+ * tier, `<home>/.goodvibes/daemon/settings.json`, because that is where every
  * `surfaces.*` key actually lives. Writing them into the surface silo instead
  * would reproduce the state that made the agent report "Missing Telegram bot
  * token" while the token was present, so these tests would pass against a
@@ -41,7 +41,7 @@ function configWithDaemonTier(settings: Record<string, unknown>): ConfigManager 
   return new ConfigManager({ workingDir: join(root, 'work'), homeDir: root, surfaceRoot: 'tui' });
 }
 
-/** One switched-on channel with a destination — the shape a default resolves in. */
+/** One switched-on channel with a destination, the shape a default resolves in. */
 function telegramOnly(): Record<string, unknown> {
   return { surfaces: { telegram: { enabled: true, botToken: 'test-token', defaultChatId: '99001' } } };
 }
@@ -73,7 +73,7 @@ function harness(
   };
 }
 
-describe('goodvibes-daemon send — reaching the delivery router', () => {
+describe('goodvibes-daemon send: reaching the delivery router', () => {
   test('a send to a named channel reaches the router with the right payload', async () => {
     const { deps, sent } = harness(telegramOnly());
     const result = await runSendCommand(['--channel', 'telegram', 'release', 'train', 'is', 'blocked'], deps);
@@ -147,7 +147,7 @@ describe('goodvibes-daemon send — reaching the delivery router', () => {
   });
 });
 
-describe('goodvibes-daemon send — the default channel', () => {
+describe('goodvibes-daemon send: the default channel', () => {
   test('a send with no channel named uses the configured default and reports which it used', async () => {
     const { deps, sent } = harness(telegramOnly());
     const result = await runSendCommand(['the train is blocked'], deps);
@@ -214,7 +214,7 @@ describe('goodvibes-daemon send — the default channel', () => {
   });
 });
 
-describe('goodvibes-daemon send — a failed send is never reported as success', () => {
+describe('goodvibes-daemon send: a failed send is never reported as success', () => {
   test('a failed send exits non-zero and prints the provider\'s own error', async () => {
     const providerError = 'Telegram delivery failed: HTTP 401 {"ok":false,"description":"Unauthorized"}';
     const { deps } = harness(telegramOnly(), {
@@ -275,7 +275,7 @@ describe('goodvibes-daemon send — a failed send is never reported as success',
   });
 });
 
-describe('goodvibes-daemon send — channel markup arrives inert', () => {
+describe('goodvibes-daemon send: channel markup arrives inert', () => {
   test('a Discord masked link arrives as visible text, not as a clickable link', async () => {
     const { deps, sent } = harness({ surfaces: { discord: { enabled: true, botToken: 'b', defaultChannelId: '42' } } });
     const result = await runSendCommand(['--channel', 'discord', '[Approved](https://evil.example)'], deps);
@@ -331,7 +331,7 @@ describe('goodvibes-daemon send — channel markup arrives inert', () => {
 
   test('Telegram text is NOT escaped, because the strategy sends it in plain-text mode', async () => {
     const { deps, sent } = harness(telegramOnly());
-    const message = 'build 1.25.0 failed — see step 3 (retry now!) [not a link](x)';
+    const message = 'build 1.25.0 failed; see step 3 (retry now!) [not a link](x)';
     await runSendCommand(['--channel', 'telegram', message], deps);
 
     // Running a MarkdownV2 escaper here would not protect anything the
@@ -354,7 +354,7 @@ describe('goodvibes-daemon send — channel markup arrives inert', () => {
 
   test('a surface with no verified transform throws instead of sending an untransformed body', () => {
     // Both have a delivery strategy but are deliberately not offered as send
-    // channels — telephony would place a carrier call, and web needs a live
+    // channels, telephony would place a carrier call, and web needs a live
     // gateway in-process. Neither may acquire a body by default.
     for (const surface of ['telephony', 'web'] as const) {
       expect(() => inertBodyFor(surface, 'probe')).toThrow(/No verified inert-text transform/);
@@ -400,7 +400,7 @@ describe('goodvibes-daemon send — channel markup arrives inert', () => {
   });
 });
 
-describe('goodvibes-daemon send — targeting a channel explicitly', () => {
+describe('goodvibes-daemon send: targeting a channel explicitly', () => {
   test('naming a switched-off channel refuses it AND names what is configured, never falling back', async () => {
     // The owner's concern: a caller that would flood ntfy must be routable
     // somewhere else, and a caller that named a channel must never be silently

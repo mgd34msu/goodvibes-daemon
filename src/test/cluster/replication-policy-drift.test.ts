@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// replication-policy-drift.test.ts — the two halves of one derivation.
+// replication-policy-drift.test.ts, the two halves of one derivation.
 //
 // Cluster config replication decides WHICH credential belongs to a replicated
 // setting by deriving the secret-store name from the config path. The SDK has
@@ -7,8 +7,8 @@
 // repository has another (`buildGoodVibesSecretKey` in src/config/secret-config.ts).
 //
 // Two copies of a rule is a rule that drifts. If they ever disagree, a
-// credential either fails to replicate — a machine wins a surface it cannot
-// serve — or a secret nobody intended to share is selected by a name the SDK
+// credential either fails to replicate, a machine wins a surface it cannot
+// serve, or a secret nobody intended to share is selected by a name the SDK
 // derived and this repository did not. This pins them together.
 //
 // ── Why this test exists ──────────────────────────────────────────────────
