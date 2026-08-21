@@ -4,6 +4,27 @@ All notable changes to the GoodVibes daemon.
 
 ---
 
+## [1.28.20] - 2026-08-21
+
+### Changes
+
+- **The payments surface answers on the standalone daemon** (platform runtime
+  2.0.18): cards list/create/delete, budget status, and the purchase ledger
+  serve external clients (webui, the desktop app) instead of answering 501.
+  Card metadata lives beside the daemon's other control-plane stores and card
+  material sits per field in the daemon secure secret tier; a corrupt card
+  file refuses writes rather than orphaning stored material, a CVV is never
+  supplied while cvvHandling is prompt, and the two checkout verbs keep an
+  honest 501 until the browser-driver seam exists.
+- **Stored remote-peer rows are validated when read**: a corrupt or
+  hand-edited row raises a typed error instead of flowing downstream
+  malformed, and removing such a row still works.
+- **Remote backends sweep their credential directories at construction**, so
+  a crashed daemon no longer leaves plaintext keys on disk across restarts.
+- Config keys are narrowed by a shared type guard instead of casts, and the
+  daemon's CI now gates coverage, architecture, and the sdk pin before any
+  tag exists.
+
 ## [1.28.19] - 2026-08-15
 
 ### Changes
