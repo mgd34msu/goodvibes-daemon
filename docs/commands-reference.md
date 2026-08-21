@@ -14,7 +14,7 @@ Accepted before or after any command:
 
 | Flag | Takes | Meaning |
 | --- | --- | --- |
-| `--daemon-home <dir>` | value | The daemon's own identity directory (operator tokens, auth users, daemon settings) |
+| `--daemon-home <dir>` | value | The daemon's own identity directory (operator tokens, daemon settings) |
 | `-C`, `--cd`, `--working-dir <dir>` | value | The directory the daemon treats as its workspace |
 | `-h`, `--help` | none | Print help and exit 0 |
 | `-v`, `--version` | none | Print the version and exit 0 |

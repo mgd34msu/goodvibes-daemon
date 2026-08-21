@@ -74,7 +74,7 @@ type DaemonCliOwnership = {
   readonly workingDirectory: string;
   /** The GoodVibes tree root, settings, workspace, and discovery all hang off this. */
   readonly homeDirectory: string;
-  /** The daemon's OWN identity home (auth users, operator tokens, daemon settings). */
+  /** The daemon's OWN identity home (operator tokens, daemon settings). */
   readonly daemonHomeDirectory: string;
   /** True when GOODVIBES_HOME or GOODVIBES_DAEMON_HOME named an override, see goodvibes-home.ts. */
   readonly isOverridden: boolean;
@@ -91,7 +91,7 @@ type DaemonCliTokens = {
  * Two different directories that used to be one.
  *
  * `GOODVIBES_DAEMON_HOME` names the DAEMON's home, the identity directory
- * holding auth-users.json, operator-tokens.json, and daemon-settings.json. That
+ * holding operator-tokens.json and the daemon tier's settings.json. That
  * is what the name says and what the SDK's `resolveDaemonHomeDir()` has always
  * meant by it. This function used to read it as the GoodVibes tree ROOT, so
  * setting it relocated settings, workspace, and every discovery root as well,
@@ -372,7 +372,7 @@ async function main(): Promise<void> {
   // derivation: `daemonHomeDirectory` is this process's own resolution of
   // `--daemon-home`/`GOODVIBES_DAEMON_HOME`, and the two must agree so the
   // daemon's config reads and writes the same file its identity state
-  // (operator-tokens.json, auth-users.json) already lives beside.
+  // (operator-tokens.json) already lives beside.
   const config = new ConfigManager({
     workingDir,
     homeDir: homeDirectory,
