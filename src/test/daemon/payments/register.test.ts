@@ -1,0 +1,397 @@
+/**
+ * The `payments.*` handlers, over a real GatewayMethodCatalog and real stores.
+ *
+ * The catalog here is the SDK's own, constructed empty, so every descriptor
+ * these handlers attach to is the shipped one. Nothing below authors a
+ * descriptor, which is the property `registerCatalogHandler` exists to keep.
+ *
+ * What this layer tests that the live-route file cannot easily reach: the
+ * settings the verbs report are read at the moment of the call, path parameters
+ * and query strings are read the same way a body is, and the projection into
+ * each response is an allowlist rather than a spread.
+ */
+import { writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { beforeEach, describe, expect, test } from 'bun:test';
+import { GatewayMethodCatalog } from '@pellux/goodvibes-sdk/platform/control-plane';
+import { BudgetLedger } from '@pellux/goodvibes-sdk/platform/payments';
+import type { PaymentsConfigReader, PurchaseRecord } from '@pellux/goodvibes-sdk/platform/payments';
+import { DaemonCardStore, type PaymentsSecretStore } from '../../../daemon/handlers/payments/card-store.ts';
+import { DaemonPurchaseLedger } from '../../../daemon/handlers/payments/purchase-ledger.ts';
+import {
+  ATTACHED_PAYMENTS_METHOD_IDS,
+  UNATTACHED_PAYMENTS_METHOD_IDS,
+  registerPaymentsMethods,
+} from '../../../daemon/handlers/payments/register.ts';
+import { makeProjectTempDir } from '../../helpers/project-temp.ts';
+
+function memorySecrets(): PaymentsSecretStore {
+  const values = new Map<string, string>();
+  return {
+    async get(key) {
+      return values.get(key) ?? null;
+    },
+    async set(key, value) {
+      values.set(key, value);
+    },
+    async delete(key) {
+      values.delete(key);
+    },
+  };
+}
+
+function purchase(overrides: Partial<PurchaseRecord> = {}): PurchaseRecord {
+  return {
+    purchaseId: 'pur-1',
+    atUtc: '2026-08-19T10:00:00.000Z',
+    dayKey: '2026-08-19',
+    timezone: 'UTC',
+    merchantDomain: 'example.invalid',
+    item: 'a replacement kettle' as PurchaseRecord['item'],
+    currency: 'USD' as PurchaseRecord['currency'],
+    itemMinorUnits: 4599,
+    taxMinorUnits: 380,
+    feesMinorUnits: 0,
+    shippingMinorUnits: 599,
+    totalMinorUnits: 5578,
+    shippingTierRequested: 'normal',
+    shippingTierUsed: 'normal',
+    steppedDown: false,
+    itemPoolDraw: 4599,
+    overagePoolDraw: 979,
+    tolerancePoolDraw: 0,
+    cardLast4: '1111',
+    windowKind: 'veto',
+    windowOutcome: 'proceeded',
+    answeredBy: null,
+    outcome: 'purchased',
+    refusalReason: null,
+    merchantOrderId: 'ORD-9',
+    refundedAt: null,
+    merchantRecognised: true,
+    merchantQualifier: 'major-retailer',
+    ...overrides,
+  };
+}
+
+let catalog: GatewayMethodCatalog;
+let cardsPath = '';
+let cards: DaemonCardStore;
+let purchases: DaemonPurchaseLedger;
+let budget: BudgetLedger;
+let settings: Map<string, unknown>;
+let leader = true;
+let unregister: () => void;
+
+const config: PaymentsConfigReader = { get: (key: string) => settings.get(key) };
+
+async function invoke(id: string, invocation: Record<string, unknown> = {}): Promise<Record<string, unknown>> {
+  return await catalog.invoke(id, {
+    context: { principalId: 'test-operator' },
+    ...invocation,
+  } as never) as Record<string, unknown>;
+}
+
+async function refusalOf(id: string, invocation: Record<string, unknown>): Promise<{ code: string; status: number; message: string }> {
+  try {
+    await invoke(id, invocation);
+    return { code: '', status: 0, message: '' };
+  } catch (error) {
+    const record = error as { code?: unknown; status?: unknown; message?: unknown };
+    return {
+      code: typeof record.code === 'string' ? record.code : '',
+      status: typeof record.status === 'number' ? record.status : 0,
+      message: typeof record.message === 'string' ? record.message : '',
+    };
+  }
+}
+
+beforeEach(() => {
+  const dir = makeProjectTempDir('gv-payments-register');
+  catalog = new GatewayMethodCatalog();
+  cardsPath = join(dir, 'payments-cards.json');
+  cards = new DaemonCardStore({
+    filePath: cardsPath,
+    secrets: memorySecrets(),
+    cvvHandling: () => 'stored',
+  });
+  purchases = new DaemonPurchaseLedger({ filePath: join(dir, 'payments-purchases.json') });
+  budget = new BudgetLedger();
+  settings = new Map<string, unknown>();
+  leader = true;
+  unregister = registerPaymentsMethods(catalog, {
+    cards,
+    purchases,
+    budget,
+    config,
+    isPaymentsLeader: () => leader,
+  });
+});
+
+describe('registerPaymentsMethods: what it attaches', () => {
+  test('the five answerable verbs gain a handler and the checkout pair does not', () => {
+    for (const id of ATTACHED_PAYMENTS_METHOD_IDS) {
+      expect(catalog.hasHandler(id), `${id} was not attached`).toBe(true);
+    }
+    for (const { id } of UNATTACHED_PAYMENTS_METHOD_IDS) {
+      expect(catalog.hasHandler(id), `${id} was attached and should not be`).toBe(false);
+    }
+  });
+
+  test('teardown detaches every handler it attached', () => {
+    unregister();
+    for (const id of ATTACHED_PAYMENTS_METHOD_IDS) {
+      expect(catalog.hasHandler(id), `${id} survived teardown`).toBe(false);
+    }
+  });
+
+  test('the descriptors are the SDK\'s own, untouched', () => {
+    const descriptor = catalog.get('payments.cards.create');
+    expect(descriptor).toBeTruthy();
+    expect(descriptor!.access).toBe('admin');
+    expect(descriptor!.scopes).toContain('write:payments');
+    expect(descriptor!.http).toEqual({ method: 'POST', path: '/api/payments/cards' });
+  });
+});
+
+describe('payments.budget.status', () => {
+  test('reports the settings as they are at the moment of the call', async () => {
+    settings.set('payments.enabled', true);
+    settings.set('payments.currency', 'GBP');
+    settings.set('payments.budget.dailyItem', 40);
+    settings.set('daemon.timezone', 'Europe/London');
+    const first = await invoke('payments.budget.status');
+    expect(first['enabled']).toBe(true);
+    expect(first['currency']).toBe('GBP');
+    expect(first['timezone']).toBe('Europe/London');
+    expect(first['item']).toEqual({ limit: 4000, spent: 0, reserved: 0, remaining: 4000 });
+
+    // Raised between two calls; the second must see it. That is the whole reason
+    // the config is a function and not a captured object.
+    settings.set('payments.budget.dailyItem', 90);
+    const second = await invoke('payments.budget.status');
+    expect(second['item']).toEqual({ limit: 9000, spent: 0, reserved: 0, remaining: 9000 });
+  });
+
+  test('an unconfigured daemon reports disabled with zero pools, not a default budget', async () => {
+    const result = await invoke('payments.budget.status');
+    expect(result['enabled']).toBe(false);
+    expect(result['currency']).toBe('USD');
+    expect(result['timezone']).toBe('UTC');
+    expect(result['item']).toEqual({ limit: 0, spent: 0, reserved: 0, remaining: 0 });
+    expect(result['tolerance']).toEqual({ limit: 0, spent: 0, reserved: 0, remaining: 0 });
+  });
+
+  test('leadership is reported from the injected answer, never assumed', async () => {
+    leader = false;
+    expect((await invoke('payments.budget.status'))['isPaymentsLeader']).toBe(false);
+    leader = true;
+    expect((await invoke('payments.budget.status'))['isPaymentsLeader']).toBe(true);
+  });
+
+  test('reservationCount counts only reservations that have not expired', async () => {
+    settings.set('payments.budget.dailyItem', 100);
+    settings.set('payments.budget.perPurchaseCeilingEnabled', false);
+    const reserved = budget.reserve({
+      id: 'pur-live',
+      itemMinorUnits: 100,
+      overageMinorUnits: 0,
+      toleranceMinorUnits: 0,
+      limits: { dailyItemMinorUnits: 10000, dailyOverageMinorUnits: 0, perPurchaseCeiling: { enabled: false, minorUnits: 0 }, overageTolerance: { enabled: false, dailyAllowanceMinorUnits: 0 } },
+      nowMs: Date.now(),
+      timezone: 'UTC',
+    });
+    expect(reserved).not.toBeNull();
+    expect((await invoke('payments.budget.status'))['reservationCount']).toBe(1);
+    budget.release(reserved!.id);
+    expect((await invoke('payments.budget.status'))['reservationCount']).toBe(0);
+  });
+});
+
+describe('payments.cards.*', () => {
+  test('the list reports the configured default card id', async () => {
+    settings.set('payments.defaultCardId', 'card-preferred');
+    const result = await invoke('payments.cards.list');
+    expect(result['cards']).toEqual([]);
+    expect(result['defaultCardId']).toBe('card-preferred');
+  });
+
+  test('a created card is projected through an allowlist, with nothing else on it', async () => {
+    const created = await invoke('payments.cards.create', {
+      body: {
+        label: 'one', kind: 'virtual', number: '4111111111111111',
+        expiryMonth: 7, expiryYear: 2029, cvv: '907', cardholderName: 'A Person',
+        issuerCapMinorUnits: 5000,
+      },
+    });
+    const card = created['card'] as Record<string, unknown>;
+    expect(Object.keys(card).sort()).toEqual([
+      'addedAt', 'brand', 'expiryMonth', 'expiryYear', 'id', 'issuerCapMinorUnits',
+      'kind', 'label', 'last4', 'materialComplete',
+    ]);
+  });
+
+  test.each([
+    [{ kind: 'debit' }, 'kind'],
+    [{ label: '' }, 'label'],
+    [{ number: '4111' }, 'number'],
+    [{ expiryMonth: 13 }, 'expiryMonth'],
+    [{ expiryMonth: 7.5 }, 'expiryMonth'],
+    [{ expiryYear: 29 }, 'expiryYear'],
+    [{ cvv: '12' }, 'cvv'],
+    [{ cvv: 'abcd' }, 'cvv'],
+    [{ cardholderName: '   ' }, 'cardholderName'],
+  ])('a bad %o is refused by naming %s and nothing else', async (override, field) => {
+    const refusal = await refusalOf('payments.cards.create', {
+      body: {
+        label: 'one', kind: 'virtual', number: '4111111111111111',
+        expiryMonth: 7, expiryYear: 2029, cvv: '907', cardholderName: 'A Person',
+        ...override,
+      },
+    });
+    expect(refusal.code).toBe('INVALID_ARGUMENT');
+    expect(refusal.status).toBe(400);
+    expect(refusal.message).toContain(field);
+    // The submitted card is never part of the diagnostic.
+    expect(refusal.message).not.toContain('4111111111111111');
+    expect(refusal.message).not.toContain('907');
+  });
+
+  test('a non-integer issuer cap is stored as null rather than coerced', async () => {
+    const created = await invoke('payments.cards.create', {
+      body: {
+        label: 'one', kind: 'real', number: '4111111111111111',
+        expiryMonth: 7, expiryYear: 2029, cvv: '907', cardholderName: 'A Person',
+        issuerCapMinorUnits: 'lots',
+      },
+    });
+    expect((created['card'] as Record<string, unknown>)['issuerCapMinorUnits']).toBeNull();
+  });
+
+  test('delete reads the id from the REST path parameter, not only from a body', async () => {
+    const created = await invoke('payments.cards.create', {
+      body: {
+        label: 'one', kind: 'virtual', number: '4111111111111111',
+        expiryMonth: 7, expiryYear: 2029, cvv: '907', cardholderName: 'A Person',
+      },
+    });
+    const id = String((created['card'] as Record<string, unknown>)['id']);
+    // What the REST route supplies: the path parameter, folded into the query.
+    const removed = await invoke('payments.cards.delete', { query: { id } });
+    expect(removed).toEqual({ id, deleted: true, secretsCleared: 5 });
+  });
+
+  test('delete with no id refuses by naming the field', async () => {
+    const refusal = await refusalOf('payments.cards.delete', { body: {} });
+    expect(refusal.code).toBe('INVALID_ARGUMENT');
+    expect(refusal.message).toContain('id');
+  });
+});
+
+describe('a store failure never hands a caller the store internals', () => {
+  /**
+   * Rebuild the surface over a card store whose secret tier always fails.
+   *
+   * A fresh catalog rather than a re-registration: `registerCatalogHandlers`'
+   * teardown removes the DESCRIPTOR, not just the handler slot, so the second
+   * registration would answer METHOD_NOT_FOUND.
+   */
+  function overFailingSecrets(): void {
+    catalog = new GatewayMethodCatalog();
+    const failing: PaymentsSecretStore = {
+      get: async () => {
+        throw new Error('EACCES: permission denied, open /home/someone/.goodvibes/tui/secrets.enc');
+      },
+      set: async () => {
+        throw new Error('EACCES: permission denied, open /home/someone/.goodvibes/tui/secrets.enc');
+      },
+      delete: async () => {
+        throw new Error('EACCES: permission denied, open /home/someone/.goodvibes/tui/secrets.enc');
+      },
+    };
+    cards = new DaemonCardStore({ filePath: cardsPath, secrets: failing, cvvHandling: () => 'stored' });
+    unregister = registerPaymentsMethods(catalog, {
+      cards, purchases, budget, config, isPaymentsLeader: () => leader,
+    });
+  }
+
+  test('cards.list replaces the secret-store message instead of forwarding it', async () => {
+    // A row has to exist, or the list never reaches the secret store at all.
+    await invoke('payments.cards.create', {
+      body: {
+        label: 'one', kind: 'virtual', number: '4111111111111111',
+        expiryMonth: 7, expiryYear: 2029, cvv: '907', cardholderName: 'A Person',
+      },
+    });
+    overFailingSecrets();
+    const refusal = await refusalOf('payments.cards.list', {});
+    expect(refusal.status).toBe(500);
+    expect(refusal.code).toBe('INTERNAL_ERROR');
+    // The path the secret store was working on is not a read:payments caller's business.
+    expect(refusal.message).not.toContain('/home/someone');
+    expect(refusal.message).not.toContain('secrets.enc');
+    expect(refusal.message).toBe('Listing the stored cards failed.');
+  });
+
+  test('cards.delete replaces it too', async () => {
+    overFailingSecrets();
+    const refusal = await refusalOf('payments.cards.delete', { body: { id: 'card-anything' } });
+    expect(refusal.status).toBe(500);
+    expect(refusal.message).not.toContain('secrets.enc');
+    expect(refusal.message).toBe('Deleting the card failed.');
+  });
+
+  test('a damaged card file is forwarded verbatim, because the operator has to fix it', async () => {
+    writeFileSync(cardsPath, '{"version":1,"cards":[{');
+    for (const id of ['payments.cards.list', 'payments.cards.delete', 'payments.cards.create']) {
+      const refusal = await refusalOf(id, {
+        body: {
+          id: 'card-anything',
+          label: 'one', kind: 'virtual', number: '4111111111111111',
+          expiryMonth: 7, expiryYear: 2029, cvv: '907', cardholderName: 'A Person',
+        },
+      });
+      // 409, not 500: nothing is wrong with the request, the store is not in a
+      // state that can serve it, and that distinction is what tells an operator
+      // to go look at the file rather than to retry.
+      expect(refusal.status, `${id} answered ${String(refusal.status)}`).toBe(409);
+      expect(refusal.code).toBe('FAILED_PRECONDITION');
+      expect(refusal.message).toContain(cardsPath);
+      expect(refusal.message).toContain('Repair the file');
+    }
+  });
+});
+
+describe('payments.purchases.list', () => {
+  test('a row is projected through an allowlist, so an extra stored field cannot escape', async () => {
+    await purchases.record({ ...purchase(), secretNote: 'must not ship' } as PurchaseRecord);
+    const result = await invoke('payments.purchases.list');
+    const rows = result['purchases'] as Record<string, unknown>[];
+    expect(rows).toHaveLength(1);
+    expect(rows[0]!['secretNote']).toBeUndefined();
+    expect(rows[0]!['merchantDiscovered']).toBe(false);
+    expect(rows[0]!['cardLast4']).toBe('1111');
+    expect(rows[0]!['totalMinorUnits']).toBe(5578);
+  });
+
+  test('limit and dayKey arrive as query strings on a GET and are read the same way', async () => {
+    await purchases.record(purchase({ purchaseId: 'pur-a', dayKey: '2026-08-18' }));
+    await purchases.record(purchase({ purchaseId: 'pur-b', dayKey: '2026-08-19' }));
+    await purchases.record(purchase({ purchaseId: 'pur-c', dayKey: '2026-08-19' }));
+
+    const filtered = await invoke('payments.purchases.list', { query: { dayKey: '2026-08-19' } });
+    expect(filtered['total']).toBe(2);
+
+    const limited = await invoke('payments.purchases.list', { query: { limit: '1' } });
+    expect((limited['purchases'] as unknown[]).length).toBe(1);
+    expect(limited['total']).toBe(3);
+  });
+
+  test('an unusable limit falls back to the default rather than refusing', async () => {
+    await purchases.record(purchase());
+    for (const limit of ['not-a-number', '0', '-4', ''] as const) {
+      const result = await invoke('payments.purchases.list', { query: { limit } });
+      expect((result['purchases'] as unknown[]).length).toBe(1);
+    }
+  });
+});

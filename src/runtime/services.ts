@@ -388,13 +388,15 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     configManager, shellPaths, secretsManager,
   });
   // Daemon handler surfaces (see daemon-handler-composition.ts); the inbox
-  // poller registers itself with the coordinator rather than starting eagerly.
+  // poller registers itself with the coordinator rather than starting eagerly,
+  // and the payments family stops being a cataloged 501 facade there.
   const daemonHandlers = createDaemonHandlerComposition({
     gatewayMethods,
     secretsManager,
     configManager,
     workingDirectory,
     homeDirectory,
+    shellPaths,
     distributedRuntime,
     clusterCoordinator,
   });

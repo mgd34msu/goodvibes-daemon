@@ -348,6 +348,23 @@ const VERB_FAMILIES: readonly VerbFamily[] = [
     reason: "This repo's own draft store (daemon/handlers/drafts), server-side so a draft survives the surface that wrote it.",
     methodIds: ['channels.drafts.list', 'channels.drafts.get', 'channels.drafts.save', 'channels.drafts.delete'],
   },
+  {
+    family: 'payments.* (budget / cards / purchases)',
+    reason:
+      "This repo's own payments surface (daemon/handlers/payments), composed by runtime/payments-composition.ts. "
+      + 'The SDK has handlers for these ids in control-plane/routes/payments.ts and publishes no import path to them '
+      + "(the module is absent from control-plane/index.ts and the package's exports map stops at the barrel), and "
+      + 'registerGatewayVerbGroups takes no payments dependency, so there is nothing this composition could pass to '
+      + 'make the SDK attach them. All seven answered 501 NOT_INVOKABLE before this surface existed. '
+      + 'payments.checkout.begin and payments.checkout.fillCard are deliberately NOT here: they need a '
+      + 'CheckoutPageDriver over an open browser page, which this composition cannot obtain, see '
+      + 'gateway-payments-verbs.test.ts, which pins that refusal so it cannot rot into silence.',
+    methodIds: [
+      'payments.budget.status',
+      'payments.cards.list', 'payments.cards.create', 'payments.cards.delete',
+      'payments.purchases.list',
+    ],
+  },
 ];
 
 const ALL_METHOD_IDS: readonly string[] = VERB_FAMILIES.flatMap((entry) => entry.methodIds);

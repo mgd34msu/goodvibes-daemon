@@ -28,7 +28,9 @@ import { registerInboxMethods } from '../daemon/handlers/inbox/index.ts';
 import { registerTriagedInbox } from '../daemon/handlers/triage/index.ts';
 import { registerDraftMethods } from '../daemon/handlers/drafts/index.ts';
 import { registerRemoteSurface } from '../daemon/handlers/remote/index.ts';
+import { createPaymentsServices } from './payments-composition.ts';
 import { inboxPollerGate } from './cluster-composition.ts';
+import type { ShellPathService } from '@/runtime/index.ts';
 
 export interface DaemonHandlerCompositionOptions {
   readonly gatewayMethods: GatewayMethodCatalog;
@@ -36,6 +38,8 @@ export interface DaemonHandlerCompositionOptions {
   readonly configManager: ConfigManager;
   readonly workingDirectory: string;
   readonly homeDirectory: string;
+  /** Resolves the surface-scoped control-plane paths the payment stores live at. */
+  readonly shellPaths: ShellPathService;
   readonly distributedRuntime: NonNullable<Parameters<typeof registerRemoteSurface>[1]>['manager'];
   /**
    * Decides whether THIS node polls the shared inbox. Always supplied by the
@@ -71,6 +75,42 @@ export function createDaemonHandlerComposition(
           options.clusterCoordinator.register(inboxPollerGate(providerId, control)),
       })).unregister,
     registerDrafts: (ctx) => registerDraftMethods(ctx),
+    // The payment stores need a path resolver and a daemon-scoped secret writer,
+    // neither of which is on HandlerContext, so they are built here and the
+    // provider only carries the teardown. See payments-composition.ts for which
+    // verbs this attaches and which two it deliberately leaves refusing.
+    registerPayments: () => createPaymentsServices({
+      gatewayMethods: options.gatewayMethods,
+      configManager: options.configManager,
+      secretsManager: options.secretsManager,
+      shellPaths: options.shellPaths,
+      // True only on a machine that is not clustered at all, and false on every
+      // node of a cluster.
+      //
+      // `isMaster` was the obvious answer and it is the wrong one: it means
+      // "this node holds at least one inbound surface", which two nodes sharing
+      // a mailbox and a Slack workspace both satisfy, so a two-node cluster
+      // would have answered true twice. The SDK's gates.ts is explicit that
+      // exactly one node may act and that the wrong answer here is a
+      // double-spend.
+      //
+      // The alternative was to register a payments surface with the coordinator
+      // and read holdsSurface(), which is this repo's per-surface idiom
+      // (inboxPollerGate). It is the right answer once there is something to
+      // elect over, and today there is not: ClusterConsumerGate.start() is
+      // specified to not resolve until consumption has actually begun, and this
+      // composition has no payments consumer to start, checkout is unattached.
+      // Registering a gate whose start() does nothing would put a fake consumer
+      // in the election and in `cluster status`.
+      //
+      // So the honest reading of the topology: clustering off means this is the
+      // only node, and it is trivially the one that would spend; clustering on
+      // means no payments election has been held and this node cannot claim to
+      // have won it. False on every node is also the safe direction, checkPaymentGates
+      // refuses on false. Wiring payments.checkout.* is what should replace this
+      // with a real gate and holdsSurface().
+      isPaymentsLeader: () => !options.clusterCoordinator.enabled,
+    }).unregister,
     registerRemote: (ctx) => registerRemoteSurface(ctx, { manager: options.distributedRuntime }),
   });
 }

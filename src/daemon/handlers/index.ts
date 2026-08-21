@@ -1,7 +1,7 @@
 /**
  * Composition root for the daemon handler layer, the only module that
  * `src/runtime/services.ts` imports. It assembles every surface (routing,
- * inbox+triage, drafts, calendar, email, remote) onto the SDK gateway catalog
+ * inbox+triage, drafts, payments, remote) onto the SDK gateway catalog
  * and returns a single teardown plus the cross-surface handles the runtime
  * needs (routing resolver, the remote `DistributedRuntimeRouteService` the SDK
  * facade injects, and the `remote.peers.invoke` dispatch adapter).
@@ -46,8 +46,8 @@ export interface DaemonHandlerSurfaces {
  * attaches handlers to the SDK catalog via `registerCatalogHandler(s)`.
  *
  * Order of composition (and reverse teardown) is enforced by
- * `registerDaemonHandlers`: routing → inbox(+triage) → drafts → calendar →
- * email → remote.
+ * `registerDaemonHandlers`: routing → inbox(+triage) → drafts → payments →
+ * remote.
  */
 export interface DaemonHandlerSurfaceProviders {
   /** channels.routing.*, returns the resolver consumed by the inbox surface. */
@@ -56,6 +56,15 @@ export interface DaemonHandlerSurfaceProviders {
   readonly registerInbox: (ctx: HandlerContext, routing: RoutingRegistration) => Unregister;
   /** channels.drafts.* */
   readonly registerDrafts: SurfaceRegister;
+  /**
+   * payments.budget.status / cards.* / purchases.list.
+   *
+   * Its stores need a shell-path resolver and a scoped secret writer, neither of
+   * which is on `HandlerContext`, so the composition root builds them and hands
+   * this provider the closed-over registration; the provider signature is the
+   * ordinary one so teardown ordering stays uniform across every surface.
+   */
+  readonly registerPayments: SurfaceRegister;
   /** remote.peers.*, supplies the host DistributedRuntimeRouteService + dispatch adapter. */
   readonly registerRemote: (ctx: HandlerContext) => RemoteSurfaceRegistration;
 }
@@ -78,6 +87,7 @@ export function registerDaemonHandlers(
 
   teardowns.push(providers.registerInbox(ctx, routing));
   teardowns.push(providers.registerDrafts(ctx));
+  teardowns.push(providers.registerPayments(ctx));
   // calendar.* and email.* are NOT registered here any more. Both are served
   // by the SDK (control-plane/routes/{calendar,email}.ts over the platform
   // CalDAV/Google and IMAP/SMTP implementations), registered through
