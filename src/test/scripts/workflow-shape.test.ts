@@ -6,7 +6,7 @@
  * hand-authored workflow YAML is well-formed: the job graphs, needs edges, no
  * continue-on-error on any job, timeout caps, pinned action SHAs, and the
  * by-reference release wiring, including that release.yml consumes the SDK's
- * reusable workflows at mgd34msu/goodvibes-sdk@main. This repo ships a single
+ * reusable workflows pinned to a goodvibes-sdk commit SHA. This repo ships a single
  * npm package (goodvibes-daemon), no platform-specific sub-packages, no
  * GitHub Packages mirror, so its job graph is smaller than the TUI's.
  */
@@ -231,6 +231,15 @@ describe("ci.yml: zero-touch auto-release", () => {
 describe("release.yml: by-reference release on the reusable workflows", () => {
   const rel = load("release.yml");
   const REUSABLE = "mgd34msu/goodvibes-sdk/.github/workflows";
+  // One pin for all four call sites: any commit to sdk main previously changed
+  // what ran with this repo's npm token; the pin makes a bump a deliberate,
+  // reviewed one-line change. The tests assert the FORM (same 40-hex SHA
+  // everywhere) rather than a literal, so a pin bump edits release.yml only.
+  const reusableRef = (uses: unknown): { file: string; ref: string } => {
+    const m = /^mgd34msu\/goodvibes-sdk\/\.github\/workflows\/(reusable-[a-z-]+\.yml)@(.+?)(?:\s|$)/.exec(String(uses));
+    expect(m, `not a reusable sdk workflow ref: ${String(uses)}`).toBeTruthy();
+    return { file: m![1]!, ref: m![2]! };
+  };
 
   test("verify-tag-version runs before release-verify and gates on push/release-mode dispatch", () => {
     const verify = rel.jobs!["verify-tag-version"]!;
@@ -241,10 +250,20 @@ describe("release.yml: by-reference release on the reusable workflows", () => {
     expect(needsOf(rv)).toContain("verify-tag-version");
   });
 
-  test("release-verify calls the reusable by-reference workflow at @main", () => {
+  test("release-verify calls the reusable by-reference workflow at a SHA pin", () => {
     const rv = rel.jobs!["release-verify"]!;
-    expect(rv.uses).toBe(`${REUSABLE}/reusable-release-verify.yml@main`);
+    const { file, ref } = reusableRef(rv.uses);
+    expect(file).toBe("reusable-release-verify.yml");
+    expect(ref).toMatch(/^[0-9a-f]{40}$/);
     expect(String(rv.if)).toContain("github.event_name == 'push'");
+  });
+
+  test("all four reusable call sites share one sdk pin", () => {
+    const refs = ["release-verify", "binaries", "gh-release", "publish-npm"].map(
+      (name) => reusableRef((rel.jobs![name]! as Job).uses).ref,
+    );
+    for (const ref of refs) expect(ref).toMatch(/^[0-9a-f]{40}$/);
+    expect(new Set(refs).size, "the four reusable refs must pin the same sdk commit").toBe(1);
   });
 
   test("caller jobs grant the permissions the called reusable workflows request", () => {
@@ -268,8 +287,8 @@ describe("release.yml: by-reference release on the reusable workflows", () => {
     }
   });
 
-  test("the binary matrix calls the reusable workflow at @main", () => {
-    expect(rel.jobs!["binaries"]!.uses).toBe(`${REUSABLE}/reusable-binary-matrix.yml@main`);
+  test("the binary matrix calls the reusable workflow at the SHA pin", () => {
+    expect(reusableRef(rel.jobs!["binaries"]!.uses).file).toBe("reusable-binary-matrix.yml");
   });
 
   test("every smoke:true matrix leg carries its own binary path matching the config's appArtifact", () => {
@@ -301,15 +320,15 @@ describe("release.yml: by-reference release on the reusable workflows", () => {
     expect(smokeLegs).toBeGreaterThan(0);
   });
 
-  test("gh-release calls the reusable workflow at @main and gates on staged assets", () => {
+  test("gh-release calls the reusable workflow at the SHA pin and gates on staged assets", () => {
     const gh = rel.jobs!["gh-release"]!;
-    expect(gh.uses).toBe(`${REUSABLE}/reusable-gh-release.yml@main`);
+    expect(reusableRef(gh.uses).file).toBe("reusable-gh-release.yml");
     expect(needsOf(gh)).toContain("stage-release-assets");
   });
 
-  test("publish-npm calls the reusable npm-publish at @main and needs gh-release", () => {
+  test("publish-npm calls the reusable npm-publish at the SHA pin and needs gh-release", () => {
     const pub = rel.jobs!["publish-npm"]!;
-    expect(pub.uses).toBe(`${REUSABLE}/reusable-npm-publish.yml@main`);
+    expect(reusableRef(pub.uses).file).toBe("reusable-npm-publish.yml");
     expect(needsOf(pub)).toContain("gh-release");
     expect(pub.uses).toBeTruthy();
   });
