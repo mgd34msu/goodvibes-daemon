@@ -2,6 +2,40 @@
 
 All notable changes to the GoodVibes daemon.
 
+## [1.28.21] - 2026-08-21
+
+### Changes
+
+- **The checkout verbs answer.** `payments.checkout.begin` and
+  `payments.checkout.fillCard` attach through sdk 2.0.19's browser-checkout
+  seam: one payments service per registration holds the in-flight checkout
+  registry across both verbs, a second begin on a busy page refuses, and the
+  card-material guard is the engine's own instance end to end. Without a
+  merchant-response reader wired, purchase outcomes record honestly as
+  `submitted-unverified` and the owner report says so. `explicitUserRequest`
+  gates entry to `begin` and is documented as what it is: a caller assertion,
+  no stronger than a confirm flag; the money controls are the budget ledger,
+  the purchase notices and decision windows, and the card-material guard.
+- **The daily budget survives restarts.** Reservations and commits persist
+  atomically to `payments-budget.json` and reload at boot; corrupt or
+  malformed entries (including non-finite or out-of-range amounts and
+  timestamps) are dropped with a warning instead of poisoning the pools; a
+  commit whose disk write fails keeps the in-memory spend, logs the exposure
+  plainly, and retries on the next mutation, so a full disk cannot erase a
+  spend that already happened at the merchant; a failed reserve rolls back
+  rather than holding budget; old spend records prune at boot; loaded
+  reservations are disclosed at startup for reconciliation.
+- **Five payments verbs ride the sdk registrar.** `budget.status`,
+  `cards.list` and `cards.delete` attach through sdk 2.0.19's
+  `registerPaymentsGatewayMethods`; `cards.create` and `purchases.list` keep
+  thin local wrappers over the same service for stricter field-named
+  validation and query-string limits. Wire behavior for all five is pinned
+  byte-identical by the contract suites. Teardown restores all seven
+  descriptors to their pristine builtin state.
+- Platform runtime 2.0.19: the pin rides the checkout-seam and wake-fix
+  cycle; this daemon serves the repaired `voice.wake.model.get`, which fixes
+  wake-word model delivery for every surface that fetches models from it.
+
 ---
 
 ## [1.28.20] - 2026-08-21
