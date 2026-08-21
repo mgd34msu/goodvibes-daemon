@@ -45,6 +45,59 @@ jobs:
       - name: Run tests
         run: bun run test
 
+  # ── Aggregate coverage ratchet. `bun run test` above spawns one process PER
+  #    FILE for TMPDIR isolation, so it can never produce an aggregate number;
+  #    this runs the whole suite in a single process and compares the "All
+  #    files" row against the floors in toolchain.config.json. Its own job so a
+  #    coverage regression reads as a coverage regression, not a test failure. ─
+  coverage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+      - name: Setup
+        uses: ./.github/actions/setup
+      - name: Configure git for tests
+        run: |
+          git config --global user.name "CI"
+          git config --global user.email "ci@test.com"
+      - name: Coverage gate (ratchet)
+        run: bun run test:coverage
+
+  architecture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+      - name: Setup
+        uses: ./.github/actions/setup
+      - name: Architecture check
+        run: bun run architecture:check
+
+  # ── The SDK-pin gate, run PRE-TAG. publish:check also runs inside
+  #    release.yml's publish-command, but that is after the GitHub Release
+  #    already exists and only when vars.PUBLISH_NPM is true, so a pin or
+  #    lockfile drift discovered there has already burned the tag. Running it
+  #    here makes it a gate on the commit instead of an epitaph for the tag.
+  #    GOODVIBES_SKIP_NPM_AUTH_CHECK=1 skips only the `npm whoami` registry
+  #    probe (CI has no publish token); every other gate, the SDK-pin
+  #    tri-agreement, the npm-specifier import sweep, the publish-metadata
+  #    fields and the tarball path/size policy, runs in full. ────────────────
+  publish-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+      - name: Setup
+        uses: ./.github/actions/setup
+      - name: Publish package check (SDK pin + tarball policy)
+        env:
+          GOODVIBES_SKIP_NPM_AUTH_CHECK: "1"
+        run: bun run publish:check
+
   workflow-check:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -133,6 +186,9 @@ jobs:
     needs:
       - typecheck
       - test
+      - coverage
+      - architecture
+      - publish-check
       - workflow-check
       - build
       - boot-smoke
@@ -153,12 +209,51 @@ jobs:
         run: |
           set -euo pipefail
           TAG="v${VERSION}"
-          # Idempotent no-op if the tag already exists on the remote (a re-run,
-          # or a manual tag already pushed): do not re-tag or re-dispatch.
+
+          # Dispatch release.yml at the tag ref. workflow_dispatch via the API
+          # under GITHUB_TOKEN DOES create a run (the documented exception to
+          # token-triggered workflows).
+          dispatch_release() {
+            for attempt in 1 2 3 4 5 6 7 8; do
+              if gh workflow run release.yml --ref "refs/tags/${TAG}" -f mode=release; then
+                echo "Dispatched release.yml for ${TAG} (mode=release)."
+                return 0
+              fi
+              echo "gh workflow run failed (attempt ${attempt}/8); retrying in 7s..." >&2
+              sleep 7
+            done
+            echo "ERROR: failed to dispatch release.yml for ${TAG} after 8 attempts." >&2
+            return 1
+          }
+
           if git ls-remote --tags origin "refs/tags/${TAG}" | grep -q "refs/tags/${TAG}"; then
-            echo "Tag ${TAG} already exists on origin — nothing to do."
+            # The tag exists, but that alone does not mean the release ran. The
+            # tag is pushed BEFORE the dispatch below, so a run where every
+            # dispatch attempt failed leaves exactly this state: tag present,
+            # no release run, job red. Exiting 0 here unconditionally made every
+            # re-run a green no-op at this branch, and because per-job-green
+            # reads this job's conclusion, the failed original also blocked a
+            # manual release dispatch. So ask whether a release run exists for
+            # the tag and re-dispatch when it does not, which makes the re-run
+            # path recover the never-dispatched case. A run that exists but
+            # FAILED still counts as "already run" on purpose: re-dispatching a
+            # genuinely broken release on every push would be worse, and a
+            # failed run is visible and re-runnable from the Actions UI.
+            RUNS="$(gh run list --workflow=release.yml --branch "${TAG}" --limit 1 --json databaseId --jq 'length' || echo "unknown")"
+            case "${RUNS}" in ''|*[!0-9]*) RUNS="unknown" ;; esac
+            if [ "${RUNS}" = "unknown" ]; then
+              echo "ERROR: could not determine whether release.yml has run for ${TAG}." >&2
+              exit 1
+            fi
+            if [ "${RUNS}" -gt 0 ]; then
+              echo "Tag ${TAG} exists and release.yml has already run for it. Nothing to do."
+              exit 0
+            fi
+            echo "Tag ${TAG} exists but no release.yml run was found for it; re-dispatching."
+            dispatch_release
             exit 0
           fi
+
           git config user.name "GoodVibes CI"
           git config user.email "ci@goodvibes.local"
           git tag -a "${TAG}" -m "release ${VERSION}" "${SHA}"
@@ -166,15 +261,4 @@ jobs:
           # pushes never trigger workflows), which is why we dispatch below.
           git push origin "refs/tags/${TAG}"
           echo "Created and pushed ${TAG} at ${SHA}."
-          # Dispatch release.yml at the tag ref. workflow_dispatch via the API
-          # under GITHUB_TOKEN DOES create a run (the documented exception).
-          for attempt in 1 2 3 4 5 6 7 8; do
-            if gh workflow run release.yml --ref "refs/tags/${TAG}" -f mode=release; then
-              echo "Dispatched release.yml for ${TAG} (mode=release)."
-              exit 0
-            fi
-            echo "gh workflow run failed (attempt ${attempt}/8); retrying in 7s…" >&2
-            sleep 7
-          done
-          echo "ERROR: failed to dispatch release.yml for ${TAG} after 8 attempts." >&2
-          exit 1
+          dispatch_release

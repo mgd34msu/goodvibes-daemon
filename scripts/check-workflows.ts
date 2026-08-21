@@ -9,6 +9,8 @@
  *   - every workflow file parses as YAML;
  *   - every workflow declares `name`, `on`, and a non-empty `jobs` map;
  *   - every job declares `runs-on` and either `steps` or `uses` (reusable call);
+ *   - no job carries `continue-on-error: true` (banned across the ecosystem, a
+ *     run that reports success over a failing job is a false green);
  *   - the release workflow carries the publish job we expect (this repo ships a
  *     single npm package, no platform-specific sub-packages. It does carry a
  *     secondary GitHub Packages mirror job, published under the repo-owner
@@ -46,8 +48,22 @@ if (files.length === 0) {
   process.exit(1);
 }
 
-/** Jobs the release workflow must define. This repo ships one npm package. */
-const RELEASE_REQUIRED_JOBS: readonly string[] = ['publish-npm'];
+/**
+ * Jobs the release workflow must define. This repo ships one npm package, so
+ * the list is shorter than the Agent's; `verify-tag-version` is the gate that
+ * refuses to release when the pushed tag and package.json version disagree,
+ * and it is asserted here so it cannot be dropped without this check going red.
+ */
+const RELEASE_REQUIRED_JOBS: readonly string[] = ['verify-tag-version', 'publish-npm'];
+
+/**
+ * A step-level `continue-on-error` is an informational annotation and never
+ * reds a check-run; only the JOB-level form hides a failing job behind a green
+ * run, so only that form is banned here.
+ */
+function jobContinuesOnError(job: Json): boolean {
+  return job['continue-on-error'] === true;
+}
 
 for (const file of files) {
   const raw = readFileSync(join(workflowsDir, file), 'utf8');
@@ -89,6 +105,9 @@ for (const file of files) {
       if (!Array.isArray(job.steps) || job.steps.length === 0) {
         fail(file, `job "${jobName}" has no steps`);
       }
+    }
+    if (jobContinuesOnError(job)) {
+      fail(file, `job "${jobName}" declares job-level continue-on-error: true (banned: it hides a failing job behind a green run)`);
     }
   }
 

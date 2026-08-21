@@ -13,17 +13,21 @@
  * because nothing in this composition ever said the boundary was required.
  */
 import { afterAll, beforeAll, describe, it, expect } from 'bun:test';
-import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { rmSync } from 'node:fs';
 import { CONVERSATIONAL_DIAGNOSIS_SECTION } from '@pellux/goodvibes-sdk/platform/agents';
 import { createHostedSessionOptions } from '../../runtime/hosted-session-composition.ts';
+import { makeProjectTempDir } from '../helpers/project-temp.ts';
 import { disposeTestRuntimeServicesAfterAll, getTestRuntimeServices } from '../helpers/runtime-services.ts';
 
 disposeTestRuntimeServicesAfterAll();
 
 let root: string;
-beforeAll(() => { root = mkdtempSync(join(tmpdir(), 'gv-hosted-posture-')); });
+// Rooted under .test-tmp rather than the real OS temp dir: the whole-suite
+// coverage run (scripts/coverage-gate.ts) spawns `bun test` WITHOUT the preload
+// that redirects TMPDIR, so creating scratch straight under the real temp root
+// here leaked a `gv-hosted-posture-` directory that no prefix in
+// scripts/stale-tmp-sweep.ts was registered to reclaim.
+beforeAll(() => { root = makeProjectTempDir('gv-hosted-posture'); });
 afterAll(() => { rmSync(root, { recursive: true, force: true }); });
 
 /**

@@ -45,9 +45,10 @@
       }
     ]
   },
+  "//coverage": "Ratchet floors, set about a point below the measured whole-suite baseline so ordinary feature work does not block releases (funcs 81.47%, lines 86.49% on the 2026-08-20 tree, 1181 tests, 0 fail). Raise as coverage improves; never lower without an explicit decision.",
   "coverage": {
-    "funcsFloor": 0,
-    "linesFloor": 0,
+    "funcsFloor": 80,
+    "linesFloor": 85,
     "command": ["bun", "test", "--coverage", "src"]
   },
   "smoke": {

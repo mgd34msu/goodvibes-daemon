@@ -93,7 +93,16 @@ describe("all workflows: baseline hygiene", () => {
 
 describe("ci.yml: the gate graph", () => {
   const ci = load("ci.yml");
-  const gatingJobs = ["typecheck", "test", "workflow-check", "build", "boot-smoke"];
+  const gatingJobs = [
+    "typecheck",
+    "test",
+    "coverage",
+    "architecture",
+    "publish-check",
+    "workflow-check",
+    "build",
+    "boot-smoke",
+  ];
 
   test("has the expected job set", () => {
     const names = jobs(ci).map(([n]) => n);
@@ -116,11 +125,39 @@ describe("ci.yml: the gate graph", () => {
   test("cancel-in-progress is scoped to pull requests only", () => {
     expect(String(ci.concurrency?.["cancel-in-progress"])).toContain("pull_request");
   });
+
+  test("the SDK-pin gate runs pre-tag, gating auto-release", () => {
+    // publish:check also runs inside release.yml's publish-command, but that is
+    // after the GitHub Release exists and only when vars.PUBLISH_NPM is true,
+    // so a pin/lockfile drift caught there has already burned the tag.
+    const job = ci.jobs!["publish-check"]!;
+    expect(stepText(job)).toContain("bun run publish:check");
+    expect(needsOf(ci.jobs!["auto-release"]!)).toContain("publish-check");
+  });
+
+  test("the coverage ratchet runs as its own gating job", () => {
+    expect(stepText(ci.jobs!["coverage"]!)).toContain("bun run test:coverage");
+    expect(needsOf(ci.jobs!["auto-release"]!)).toContain("coverage");
+  });
+
+  test("the architecture check runs as its own gating job", () => {
+    expect(stepText(ci.jobs!["architecture"]!)).toContain("bun run architecture:check");
+    expect(needsOf(ci.jobs!["auto-release"]!)).toContain("architecture");
+  });
 });
 
 describe("ci.yml: zero-touch auto-release", () => {
   const ci = load("ci.yml");
-  const gatingJobs = ["typecheck", "test", "workflow-check", "build", "boot-smoke"];
+  const gatingJobs = [
+    "typecheck",
+    "test",
+    "coverage",
+    "architecture",
+    "publish-check",
+    "workflow-check",
+    "build",
+    "boot-smoke",
+  ];
 
   test("auto-release needs EVERY other ci.yml job (only runs when all are green)", () => {
     const auto = ci.jobs!["auto-release"]!;
@@ -170,6 +207,24 @@ describe("ci.yml: zero-touch auto-release", () => {
     const text = stepText(ci.jobs!["auto-release"]!);
     expect(text).toContain("attempt");
     expect(text).toMatch(/sleep 7/);
+  });
+
+  test("the tag-exists path re-dispatches when no release run exists for the tag", () => {
+    // The tag is pushed BEFORE the dispatch, so a run whose dispatch attempts
+    // all failed leaves tag-present + no-release-run + job-red. If this branch
+    // exited 0 unconditionally, every re-run would be a green no-op here and
+    // per-job-green would keep refusing a manual release dispatch, because the
+    // original job's conclusion stays failure. The branch must therefore ask
+    // whether a release run exists and re-dispatch when it does not.
+    const text = stepText(ci.jobs!["auto-release"]!);
+    expect(text).toContain("gh run list");
+    expect(text).toContain("--workflow=release.yml");
+    const existenceCheck = text.indexOf("gh run list");
+    const noOpExit = text.indexOf("Nothing to do.");
+    expect(existenceCheck).toBeGreaterThanOrEqual(0);
+    // The "already released, nothing to do" exit is reached only AFTER the
+    // release-run lookup, never before it.
+    expect(existenceCheck).toBeLessThan(noOpExit);
   });
 });
 
@@ -298,15 +353,39 @@ describe("release.yml: by-reference release on the reusable workflows", () => {
     }
   });
 
-  test("checkouts that could default to the ref input's \"main\" instead resolve the tag ref in release mode", () => {
-    // daemon-smoke checks out `github.event.inputs.ref || github.ref`, which
-    // would silently resolve to the ref input's "main" default on a
-    // release-mode dispatch (inputs.ref is never set by the auto-release job's
-    // dispatch call) unless a release-mode branch takes priority.
-    const job = rel.jobs!["daemon-smoke"]!;
-    const checkout = steps(job).find((s) => String(s.uses ?? "").startsWith("actions/checkout@"));
-    const ref = String((checkout?.with as { ref?: string } | undefined)?.ref ?? "");
-    expect(ref, "daemon-smoke checkout ref must special-case a release-mode dispatch").toContain("inputs.mode == 'release'");
+  test("every checkout resolves github.ref, the one ref the binary matrix also builds", () => {
+    // reusable-binary-matrix.yml accepts no ref/sha input (targets,
+    // artifact-glob, artifact-prefix, bun-version, toolchain-spec), so it
+    // always builds github.ref. A per-job `ref` input could therefore only be
+    // honored by SOME jobs, and a dry run of a tag smoked one ref's binaries
+    // against another ref's source. github.ref is the only ref both sides agree
+    // on, so no job may resolve its checkout from a dispatch input.
+    for (const [name, job] of jobs(rel)) {
+      for (const step of steps(job)) {
+        if (!String(step.uses ?? "").startsWith("actions/checkout@")) continue;
+        const ref = String((step.with as { ref?: string } | undefined)?.ref ?? "");
+        expect(ref, `${name} checkout must not resolve its ref from a dispatch input`).not.toContain("inputs.ref");
+      }
+    }
+  });
+
+  test("no run: block interpolates a dispatch input into shell", () => {
+    // A dispatch input expanded into a run: body is substituted as raw text
+    // before the shell ever parses the line. Values reach the shell through
+    // env: instead, or through a context the runner owns like GITHUB_REF_NAME.
+    const raw = readFileSync(resolve(WF_DIR, "release.yml"), "utf8");
+    for (const [name, job] of jobs(rel)) {
+      for (const step of steps(job)) {
+        const run = String(step.run ?? "");
+        expect(run, `${name} interpolates github.event.inputs into a run: block`).not.toContain("github.event.inputs");
+      }
+    }
+    expect(raw).not.toContain("github.event.inputs.ref");
+  });
+
+  test("workflow_dispatch declares no ref input", () => {
+    const inputs = (rel.on as { workflow_dispatch?: { inputs?: Record<string, unknown> } }).workflow_dispatch?.inputs ?? {};
+    expect(Object.keys(inputs)).not.toContain("ref");
   });
 
   test("artifact-glob and assets-glob inputs are newline-separated multi-line blocks", () => {
