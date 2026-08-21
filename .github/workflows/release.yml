@@ -3,7 +3,7 @@ name: Release
 # By-reference release (see goodvibes-cicd-design). The tagged commit's push-CI
 # run is verified per-job green (reusable-release-verify) instead of re-running
 # gates; then the binary matrix, GH release, and the npm publish (GH Release
-# BEFORE the registry) run in order. Single npm package — this repo has no
+# BEFORE the registry) run in order. Single npm package, this repo has no
 # platform-specific sub-packages.
 
 # There is deliberately no `ref` input. The dispatched ref IS the ref: every job
@@ -33,7 +33,7 @@ on:
 
 concurrency:
   group: daemon-release-${{ github.ref_name || github.run_id }}
-  # Never cancel an in-progress release — a half-published release is worse than
+  # Never cancel an in-progress release, a half-published release is worse than
   # a duplicate run (publishes are idempotent).
   cancel-in-progress: false
 
@@ -73,7 +73,7 @@ jobs:
       contents: read
       actions: read
       checks: read
-    uses: mgd34msu/goodvibes-sdk/.github/workflows/reusable-release-verify.yml@main
+    uses: mgd34msu/goodvibes-sdk/.github/workflows/reusable-release-verify.yml@ae53b1bb6d584dee66e6934c35591a4ef8317379 # 2026-08-20 hardened reusables
     with:
       sha: ${{ github.sha }}
       workflow: ci.yml
@@ -85,7 +85,7 @@ jobs:
 
   # ── 4-target binary matrix (necessary builds only). On a tag push it gates on
   #    release-verify; on a manual dispatch it builds for dry validation. Only
-  #    the linux-x64 leg runs the toolchain's banner smoke — the other three
+  #    the linux-x64 leg runs the toolchain's banner smoke, the other three
   #    targets cannot execute on a linux runner. ─────────────────────────────
   binaries:
     needs: [release-verify]
@@ -98,10 +98,10 @@ jobs:
         (github.event_name == 'workflow_dispatch' && github.event.inputs.mode != 'release') ||
         needs.release-verify.result == 'success'
       )
-    uses: mgd34msu/goodvibes-sdk/.github/workflows/reusable-binary-matrix.yml@main
+    uses: mgd34msu/goodvibes-sdk/.github/workflows/reusable-binary-matrix.yml@ae53b1bb6d584dee66e6934c35591a4ef8317379 # 2026-08-20 hardened reusables
     with:
       # Smoke legs must name their own built artifact (binary is required when
-      # smoke is true — each leg only builds its own suffixed artifact, so the
+      # smoke is true, each leg only builds its own suffixed artifact, so the
       # config's smoke.binaryDefault can never serve the matrix path).
       targets: >-
         [{"key":"linux-x64","runner":"ubuntu-latest","smoke":true,"binary":"dist/goodvibes-daemon-linux-x64"},
@@ -150,7 +150,7 @@ jobs:
   # ── Native-arm64 smoke on macos-14 (mirrors the pre-split TUI release's
   #    smoke-macos job): the darwin-arm64 binary is cross-built on ubuntu
   #    above and otherwise never actually RUNS anywhere. This is the one place
-  #    that boots it for real, on real Apple silicon — including the boot
+  #    that boots it for real, on real Apple silicon, including the boot
   #    smoke's sqlite-vec check, since a macOS system SQLite refusing
   #    extension loading (SqliteVecPlatformUnsupportedError) is a real,
   #    platform-specific failure mode that never surfaces from a Linux runner. ─
@@ -240,7 +240,7 @@ jobs:
   #    flatten each platform's sqlite-vec addon to an installer-parseable name,
   #    and hand the 4 binaries + 4 addons to the reusable GH-release as one
   #    artifact. A missing addon is fatal. The suite installer is NOT staged
-  #    here — it ships from the terminal app's repository (goodvibes-tui,
+  #    here, it ships from the terminal app's repository (goodvibes-tui,
   #    scripts/install.sh) now. ──────────────────────────────────────────────
   stage-release-assets:
     needs: [binaries, install-smoke, daemon-smoke, smoke-macos]
@@ -266,7 +266,7 @@ jobs:
           merge-multiple: true
       # The packed npm tarball rides the SAME release-asset upload path as the
       # binaries, so it lands in SHA256SUMS.txt and on the release page like
-      # everything else — the release then carries both the binary and the
+      # everything else, the release then carries both the binary and the
       # package, not just the binary. No dependency install is needed: `npm
       # pack` only archives the files package.json's `files` list points at,
       # read straight from the checked-out tree.
@@ -319,7 +319,7 @@ jobs:
     # The called workflow's job requests contents:write (release creation).
     permissions:
       contents: write
-    uses: mgd34msu/goodvibes-sdk/.github/workflows/reusable-gh-release.yml@main
+    uses: mgd34msu/goodvibes-sdk/.github/workflows/reusable-gh-release.yml@ae53b1bb6d584dee66e6934c35591a4ef8317379 # 2026-08-20 hardened reusables
     with:
       tag: ${{ github.ref_name }}
       artifact-name: release-assets
@@ -329,7 +329,7 @@ jobs:
         dist/pellux-goodvibes-daemon-*.tgz
       bun-version: "1.3.14"
 
-  # ── Publish to npmjs (AFTER the GH release — pinned publish topology). ─────
+  # ── Publish to npmjs (AFTER the GH release, pinned publish topology). ─────
   publish-npm:
     name: Publish to npm
     needs: [gh-release]
@@ -342,7 +342,7 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    uses: mgd34msu/goodvibes-sdk/.github/workflows/reusable-npm-publish.yml@main
+    uses: mgd34msu/goodvibes-sdk/.github/workflows/reusable-npm-publish.yml@ae53b1bb6d584dee66e6934c35591a4ef8317379 # 2026-08-20 hardened reusables
     with:
       package-name: "@pellux/goodvibes-daemon"
       environment: production
@@ -352,14 +352,14 @@ jobs:
     secrets:
       npm-token: ${{ secrets.NPM_TOKEN }}
 
-  # ── GitHub Packages mirror (AFTER the npmjs publish — never blocks it, but
+  # ── GitHub Packages mirror (AFTER the npmjs publish, never blocks it, but
   #    a real gate: no continue-on-error). npmjs stays the registry every
   #    consumer pins (@pellux/goodvibes-daemon, unchanged); GitHub Packages
   #    requires a package's scope to equal the repository owner's login, and
   #    `pellux` is a different account than this repo's owner (mgd34msu), so
   #    the mirror publishes under a different name, @mgd34msu/goodvibes-daemon.
   #    This exists so the repository's Packages sidebar shows a published
-  #    artifact — it is a secondary mirror, not a second source of truth. It
+  #    artifact, it is a secondary mirror, not a second source of truth. It
   #    republishes the SAME tarball staged for the GitHub release (downloaded
   #    from the release-assets artifact) rather than packing a second time, so
   #    the bytes on both registries and the release page are identical. ──────
