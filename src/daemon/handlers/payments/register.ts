@@ -433,10 +433,27 @@ function buildPaymentsGatewayService(deps: PaymentsHandlerDeps): PaymentsGateway
 // ---------------------------------------------------------------------------
 
 /**
+ * What `registerPaymentsMethods` returns now that attachment has an async
+ * phase. `unregister` is valid immediately, including before `ready` settles.
+ * `ready` resolves once every handler is attached and REJECTS if attaching the
+ * local handlers failed, so the caller that drops it must handle the
+ * rejection (daemon-handler-composition.ts logs it; tests await it).
+ */
+export interface PaymentsRegistration {
+  readonly ready: Promise<void>;
+  readonly unregister: Unregister;
+}
+
+/**
  * Attach the eight `payments.*` handlers: seven to the descriptors the SDK
  * catalog already holds, and `payments.checkout.approve` to the one
  * descriptor this product authors (see `CHECKOUT_APPROVE_DESCRIPTOR` above).
- * Returns the teardown.
+ *
+ * The SDK's `registerPaymentsGatewayMethods` runs its boot recovery sweep
+ * before attaching, so it returns a promise and attaches a beat after this
+ * function returns. This module's five local handlers MUST attach after that,
+ * or the SDK's deferred attach would replace them, so they are chained on the
+ * SDK's promise and `ready` is how a caller observes the whole sequence.
  *
  * NOT gated on `payments.enabled`. That key defaults to false, and
  * `payments.cards.*` is how a surface CONFIGURES the capability, so gating
@@ -449,7 +466,7 @@ function buildPaymentsGatewayService(deps: PaymentsHandlerDeps): PaymentsGateway
 export function registerPaymentsMethods(
   catalog: GatewayMethodCatalog,
   deps: PaymentsHandlerDeps,
-): Unregister {
+): PaymentsRegistration {
   // Every descriptor this module attaches to, captured BEFORE any
   // registration runs. `registerCatalogHandlers`' own teardown (used below for
   // four of these) removes the DESCRIPTOR from the catalog entirely rather
@@ -467,12 +484,20 @@ export function registerPaymentsMethods(
 
   const service = buildPaymentsGatewayService(deps);
 
-  // Attaches all seven `payments.*` descriptors. budget/list/delete stay
-  // attached through this; create/purchases-list/checkout-begin/checkout-
-  // fillCard are all transiently attached here and immediately replaced below
-  // with this daemon's own local handlers. See the header comment for why
-  // each group needs its own wrapper.
-  registerPaymentsGatewayMethods(catalog, service);
+  // Attaches all seven `payments.*` descriptors once its boot recovery sweep
+  // finishes. budget/list/delete stay attached through this; create/purchases-
+  // list/checkout-begin/checkout-fillCard are transiently attached and then
+  // replaced with this daemon's own local handlers in the chain below. The
+  // hook payloads are the SDK's designed audit records: the failure callback
+  // never carries a notice body and the sweep envelope exists to be logged.
+  const sdkAttach = registerPaymentsGatewayMethods(catalog, service, {
+    onRecoveryFailure: (error) => {
+      console.error('payments boot recovery failed', { error });
+    },
+    onRecoverySettled: (sweep) => {
+      console.info('payments boot recovery settled', { sweep });
+    },
+  });
 
   // The journal backing this registration's checkout pair's in-flight
   // registry (the SDK's own `CheckoutRegistry`, built inside
@@ -546,40 +571,61 @@ export function registerPaymentsMethods(
     });
   };
 
-  // The approve descriptor is product-authored (see its declaration above),
-  // so it is placed on the catalog here, handler-less, exactly where the
-  // SDK's own descriptors already sit, and then attached through the same
-  // `registerCatalogHandlers` path as the other local wrappers. `replace:
-  // true` so a registration over a catalog that already carries it (a
-  // recompose that skipped teardown) replaces rather than throws.
-  catalog.register(CHECKOUT_APPROVE_DESCRIPTOR, undefined, { replace: true });
-
-  const localTeardown = registerCatalogHandlers(catalog, [
-    { id: 'payments.cards.create', handler: cardsCreate as TypedHandler<unknown, unknown> },
-    { id: 'payments.purchases.list', handler: purchasesList as TypedHandler<unknown, unknown> },
-    // The confirmation gate (`confirm: true` AND the explicit-user-request
-    // context) is what makes this verb owner-direct: the handler then passes
-    // `surface: 'owner-direct'` from its own code path. See
-    // checkout-handlers.ts's `checkoutApproveHandler`.
-    { id: 'payments.checkout.approve', handler: checkoutApproveHandler(deps) as TypedHandler<unknown, unknown>, options: { confirm: true } },
-    { id: 'payments.checkout.begin', handler: checkoutBeginHandler(deps, checkoutServiceHolder) as TypedHandler<unknown, unknown> },
-    { id: 'payments.checkout.fillCard', handler: checkoutFillCardHandler(deps, checkoutServiceHolder) as TypedHandler<unknown, unknown> },
-  ]);
-
-  return () => {
-    localTeardown();
-    // Restores EVERY descriptor this module attached to, handler-less, not
-    // only the three `registerPaymentsGatewayMethods` still holds a live
-    // handler on. The other four had their descriptor removed outright by
-    // `localTeardown()` above (see the `descriptors` capture at the top of
-    // this function for why), so without this a re-registration on the SAME
-    // catalog (a second `registerPaymentsMethods` call, as a restart-without-
-    // recompose test does) would find those four ids gone from the catalog
-    // and throw `METHOD_NOT_FOUND` trying to attach to them, rather than
-    // finding the SDK's own builtin descriptor there to replace, exactly as
-    // it would on a catalog this module had never touched.
+  // Restores EVERY descriptor this module attached to, handler-less, not
+  // only the three `registerPaymentsGatewayMethods` still holds a live
+  // handler on. The other four have their descriptor removed outright by
+  // `localTeardown()` (see the `descriptors` capture at the top of this
+  // function for why), so without this a re-registration on the SAME catalog
+  // (a second `registerPaymentsMethods` call, as a restart-without-recompose
+  // test does) would find those four ids gone from the catalog and throw
+  // `METHOD_NOT_FOUND` trying to attach to them, rather than finding the
+  // SDK's own builtin descriptor there to replace, exactly as it would on a
+  // catalog this module had never touched.
+  const restoreDescriptors = (): void => {
     for (const [, descriptor] of descriptors) {
       catalog.register(descriptor, undefined, { replace: true });
     }
+  };
+
+  let torn = false;
+  let localTeardown: Unregister | undefined;
+
+  const ready = sdkAttach.then(() => {
+    // Teardown already ran: the SDK's attach (which resolved just before this
+    // callback) put live handlers back on descriptors the teardown had
+    // restored handler-less, so restore them again instead of attaching the
+    // local handlers to a surface that was already released.
+    if (torn) {
+      restoreDescriptors();
+      return;
+    }
+    // The approve descriptor is product-authored (see its declaration above),
+    // so it is placed on the catalog here, handler-less, exactly where the
+    // SDK's own descriptors already sit, and then attached through the same
+    // `registerCatalogHandlers` path as the other local wrappers. `replace:
+    // true` so a registration over a catalog that already carries it (a
+    // recompose that skipped teardown) replaces rather than throws.
+    catalog.register(CHECKOUT_APPROVE_DESCRIPTOR, undefined, { replace: true });
+
+    localTeardown = registerCatalogHandlers(catalog, [
+      { id: 'payments.cards.create', handler: cardsCreate as TypedHandler<unknown, unknown> },
+      { id: 'payments.purchases.list', handler: purchasesList as TypedHandler<unknown, unknown> },
+      // The confirmation gate (`confirm: true` AND the explicit-user-request
+      // context) is what makes this verb owner-direct: the handler then passes
+      // `surface: 'owner-direct'` from its own code path. See
+      // checkout-handlers.ts's `checkoutApproveHandler`.
+      { id: 'payments.checkout.approve', handler: checkoutApproveHandler(deps) as TypedHandler<unknown, unknown>, options: { confirm: true } },
+      { id: 'payments.checkout.begin', handler: checkoutBeginHandler(deps, checkoutServiceHolder) as TypedHandler<unknown, unknown> },
+      { id: 'payments.checkout.fillCard', handler: checkoutFillCardHandler(deps, checkoutServiceHolder) as TypedHandler<unknown, unknown> },
+    ]);
+  });
+
+  return {
+    ready,
+    unregister: () => {
+      torn = true;
+      localTeardown?.();
+      restoreDescriptors();
+    },
   };
 }

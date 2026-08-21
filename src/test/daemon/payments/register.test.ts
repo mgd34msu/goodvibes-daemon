@@ -171,7 +171,7 @@ async function refusalOf(id: string, invocation: Record<string, unknown>): Promi
   }
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   const dir = makeProjectTempDir('gv-payments-register');
   catalog = new GatewayMethodCatalog();
   cardsPath = join(dir, 'payments-cards.json');
@@ -184,7 +184,7 @@ beforeEach(() => {
   budget = new BudgetLedger();
   settings = new Map<string, unknown>();
   leader = true;
-  unregister = registerPaymentsMethods(catalog, {
+  const registration = registerPaymentsMethods(catalog, {
     cards,
     purchases,
     budget,
@@ -192,6 +192,8 @@ beforeEach(() => {
     isPaymentsLeader: () => leader,
     checkout: fakeCheckout(),
   });
+  await registration.ready;
+  unregister = registration.unregister;
 });
 
 describe('registerPaymentsMethods: what it attaches', () => {
@@ -219,7 +221,7 @@ describe('registerPaymentsMethods: what it attaches', () => {
     expect(descriptor!.http).toEqual({ method: 'POST', path: '/api/payments/cards' });
   });
 
-  test('a second registration on the same catalog, after teardown, does not throw', () => {
+  test('a second registration on the same catalog, after teardown, attaches cleanly', async () => {
     // The defect this pins: `registerCatalogHandlers`' own teardown removes
     // FOUR of the seven descriptors (`cards.create`, `purchases.list`,
     // `checkout.begin`, `checkout.fillCard`) from the catalog entirely, not
@@ -227,17 +229,39 @@ describe('registerPaymentsMethods: what it attaches', () => {
     // `registerPaymentsMethods`' own teardown, a second registration on this
     // SAME catalog (a recompose without a fresh catalog, the daemon's own
     // restart-without-recreating-the-catalog shape) would find those four ids
-    // gone and throw `Unknown gateway method` trying to attach to them.
+    // gone and reject `ready` with `Unknown gateway method` trying to attach
+    // to them.
     unregister();
-    expect(() => {
-      unregister = registerPaymentsMethods(catalog, {
-        cards, purchases, budget, config, isPaymentsLeader: () => leader,
-        checkout: fakeCheckout(),
-      });
-    }).not.toThrow();
+    const registration = registerPaymentsMethods(catalog, {
+      cards, purchases, budget, config, isPaymentsLeader: () => leader,
+      checkout: fakeCheckout(),
+    });
+    await registration.ready;
+    unregister = registration.unregister;
     for (const id of ATTACHED_PAYMENTS_METHOD_IDS) {
       expect(catalog.hasHandler(id), `${id} was not attached the second time`).toBe(true);
     }
+  });
+
+  test('teardown before ready settles leaves no handler attached once it does', async () => {
+    // The race the torn flag closes: the SDK's own attach lands inside its
+    // promise and cannot be cancelled, so a teardown that runs before `ready`
+    // settles must have the chain restore the descriptors handler-less AFTER
+    // the SDK's attach, or the catalog is left serving payment verbs nobody
+    // holds a teardown for.
+    unregister();
+    const second = registerPaymentsMethods(catalog, {
+      cards, purchases, budget, config, isPaymentsLeader: () => leader,
+      checkout: fakeCheckout(),
+    });
+    second.unregister();
+    await second.ready;
+    for (const id of ATTACHED_PAYMENTS_METHOD_IDS) {
+      expect(catalog.hasHandler(id), `${id} survived a pre-ready teardown`).toBe(false);
+    }
+    // beforeEach's unregister already ran; hand it a no-op so afterEach-style
+    // double calls stay harmless.
+    unregister = () => {};
   });
 });
 
@@ -260,13 +284,15 @@ describe('payments.checkout.begin: what actually gates entry', () => {
   }
 
   /** Re-registers over a fresh catalog with a working (but otherwise inert) seam. */
-  function registerWithSeam(overrides: Partial<CheckoutComposition> = {}): void {
+  async function registerWithSeam(overrides: Partial<CheckoutComposition> = {}): Promise<void> {
     const seam = fakeSeam();
     catalog = new GatewayMethodCatalog();
-    unregister = registerPaymentsMethods(catalog, {
+    const registration = registerPaymentsMethods(catalog, {
       cards, purchases, budget, config, isPaymentsLeader: () => leader,
       checkout: fakeCheckout({ seam: () => seam, ...overrides }),
     });
+    await registration.ready;
+    unregister = registration.unregister;
   }
 
   /** Mints one approval over the verb itself, for the purchase `validBeginBody` names. */
@@ -279,7 +305,7 @@ describe('payments.checkout.begin: what actually gates entry', () => {
 
   test('refuses when the call is not owner-direct', async () => {
     settings.set('payments.enabled', true);
-    registerWithSeam();
+    await registerWithSeam();
 
     const result = await invoke('payments.checkout.begin', {
       context: { principalId: 'test-operator', metadata: { explicitUserRequest: false } },
@@ -298,7 +324,7 @@ describe('payments.checkout.begin: what actually gates entry', () => {
 
   test('refuses on the NEXT gate, not this one, once explicit user authority and an approval are granted', async () => {
     settings.set('payments.enabled', true);
-    registerWithSeam();
+    await registerWithSeam();
     await approvePurchase();
 
     const result = await invoke('payments.checkout.begin', {
@@ -329,7 +355,7 @@ describe('payments.checkout.begin: what actually gates entry', () => {
 
   test('an owner-direct begin with no approval on file refuses, naming the approve verb', async () => {
     settings.set('payments.enabled', true);
-    registerWithSeam();
+    await registerWithSeam();
 
     const refusal = await refusalOf('payments.checkout.begin', {
       context: { principalId: 'test-operator', metadata: { explicitUserRequest: true } },
@@ -342,7 +368,7 @@ describe('payments.checkout.begin: what actually gates entry', () => {
 
   test('the approval is single use: the begin that spent it succeeds past the gate, the next one refuses', async () => {
     settings.set('payments.enabled', true);
-    registerWithSeam();
+    await registerWithSeam();
     await approvePurchase();
 
     // First begin: past the approval gate, refused on the honest next gate
@@ -367,7 +393,7 @@ describe('payments.checkout.begin: what actually gates entry', () => {
 
   test('a begin whose content differs from what was approved refuses and leaves the approval unspent', async () => {
     settings.set('payments.enabled', true);
-    registerWithSeam();
+    await registerWithSeam();
     await approvePurchase('20.00');
 
     // Same merchant and item, different amount: `different-content`, and the
@@ -392,7 +418,7 @@ describe('payments.checkout.begin: what actually gates entry', () => {
   test('an expired approval refuses and says so', async () => {
     settings.set('payments.enabled', true);
     let nowMs = Date.parse('2026-08-21T12:00:00.000Z');
-    registerWithSeam({ approvals: freshApprovals(() => new Date(nowMs)) });
+    await registerWithSeam({ approvals: freshApprovals(() => new Date(nowMs)) });
     await approvePurchase();
 
     // Six minutes later: past the five-minute TTL the store enforces.
@@ -408,7 +434,7 @@ describe('payments.checkout.begin: what actually gates entry', () => {
 
   test('a call that never claimed owner authority is refused by the OUTER gate, not the approval one', async () => {
     settings.set('payments.enabled', true);
-    registerWithSeam();
+    await registerWithSeam();
 
     // No approval on file AND not owner-direct: the outer layer answers, the
     // approval store is never consulted, so the refusal is the flow's own
@@ -558,10 +584,12 @@ describe('the checkout registry is shared across begin and fillCard, not rebuilt
 
     const seam: BrowserCheckoutSeam = { ...fakeSeam(), driverFor: () => stubDriverFor('session-shared', 'page-shared') };
     catalog = new GatewayMethodCatalog();
-    unregister = registerPaymentsMethods(catalog, {
+    const registration = registerPaymentsMethods(catalog, {
       cards, purchases, budget, config, isPaymentsLeader: () => leader,
       checkout: fakeCheckout({ seam: () => seam, addresses: addressStoreWithShipping(), notifier: hangingNotifier() }),
     });
+    await registration.ready;
+    unregister = registration.unregister;
     // Each begin call below spends one owner approval before it reaches the
     // registry (checkout-handlers.ts), so mint one per begin these tests fire.
     for (let count = 0; count < 2; count += 1) {
@@ -759,7 +787,7 @@ describe('a store failure never hands a caller the store internals', () => {
    * teardown removes the DESCRIPTOR, not just the handler slot, so the second
    * registration would answer METHOD_NOT_FOUND.
    */
-  function overFailingSecrets(): void {
+  async function overFailingSecrets(): Promise<void> {
     catalog = new GatewayMethodCatalog();
     const failing: PaymentsSecretStore = {
       get: async () => {
@@ -773,9 +801,11 @@ describe('a store failure never hands a caller the store internals', () => {
       },
     };
     cards = new DaemonCardStore({ filePath: cardsPath, secrets: failing, cvvHandling: () => 'stored' });
-    unregister = registerPaymentsMethods(catalog, {
+    const registration = registerPaymentsMethods(catalog, {
       cards, purchases, budget, config, isPaymentsLeader: () => leader, checkout: fakeCheckout(),
     });
+    await registration.ready;
+    unregister = registration.unregister;
   }
 
   test('cards.list replaces the secret-store message instead of forwarding it', async () => {
@@ -786,7 +816,7 @@ describe('a store failure never hands a caller the store internals', () => {
         expiryMonth: 7, expiryYear: 2029, cvv: '907', cardholderName: 'A Person',
       },
     });
-    overFailingSecrets();
+    await overFailingSecrets();
     const refusal = await refusalOf('payments.cards.list', {});
     expect(refusal.status).toBe(500);
     expect(refusal.code).toBe('INTERNAL_ERROR');
@@ -797,7 +827,7 @@ describe('a store failure never hands a caller the store internals', () => {
   });
 
   test('cards.delete replaces it too', async () => {
-    overFailingSecrets();
+    await overFailingSecrets();
     const refusal = await refusalOf('payments.cards.delete', { body: { id: 'card-anything' } });
     expect(refusal.status).toBe(500);
     expect(refusal.message).not.toContain('secrets.enc');

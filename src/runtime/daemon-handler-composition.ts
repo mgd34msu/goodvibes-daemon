@@ -92,7 +92,8 @@ export function createDaemonHandlerComposition(
     // provider only carries the teardown. See payments-composition.ts for the
     // full checkout composition (address store, notifier, merchant judge,
     // browser-checkout seam).
-    registerPayments: () => createPaymentsServices({
+    registerPayments: () => {
+      const payments = createPaymentsServices({
       gatewayMethods: options.gatewayMethods,
       configManager: options.configManager,
       secretsManager: options.secretsManager,
@@ -127,7 +128,15 @@ export function createDaemonHandlerComposition(
       checkoutSeam: options.checkoutSeam,
       channelDeliveryRouter: options.channelDeliveryRouter,
       providerRegistry: options.providerRegistry,
-    }).unregister,
+      });
+      // The payments verbs attach a beat after composition (the SDK's boot
+      // recovery sweep runs first); this composition stays synchronous, so
+      // the rejection path is handled here rather than awaited.
+      payments.ready.catch((error) => {
+        handlerLogger.error('payments handler attach failed', { error });
+      });
+      return payments.unregister;
+    },
     registerRemote: (ctx) => registerRemoteSurface(ctx, { manager: options.distributedRuntime }),
   });
 }

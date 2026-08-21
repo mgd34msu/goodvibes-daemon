@@ -120,6 +120,13 @@ export interface PaymentsServices {
   readonly cards: DaemonCardStore;
   readonly purchases: DaemonPurchaseLedger;
   readonly budget: BudgetLedger;
+  /**
+   * Resolves once every payments verb is attached; the SDK runs its boot
+   * recovery sweep first, so attachment lands a beat after composition.
+   * Rejects if attaching the daemon's local handlers failed, so whoever drops
+   * this promise must handle that (daemon-handler-composition.ts logs it).
+   */
+  readonly ready: Promise<void>;
   /** Detaches the handlers. Held by the runtime disposal scope. */
   readonly unregister: () => void;
 }
@@ -191,7 +198,7 @@ export function createPaymentsServices(options: PaymentsCompositionOptions): Pay
       controlPlaneStorePath(options.shellPaths, GOODVIBES_DAEMON_SURFACE_ROOT, 'payments-checkout-journal.json'),
     ),
   };
-  const unregister = registerPaymentsMethods(options.gatewayMethods, {
+  const registration = registerPaymentsMethods(options.gatewayMethods, {
     cards,
     purchases,
     budget,
@@ -199,5 +206,5 @@ export function createPaymentsServices(options: PaymentsCompositionOptions): Pay
     isPaymentsLeader: options.isPaymentsLeader,
     checkout,
   });
-  return { cards, purchases, budget, unregister };
+  return { cards, purchases, budget, ready: registration.ready, unregister: registration.unregister };
 }
