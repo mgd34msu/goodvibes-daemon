@@ -7,8 +7,8 @@ import {
   readControlPlaneBinding,
   resolveDaemonEnabled,
 } from '@pellux/goodvibes-sdk/platform/config';
-import type { ConfigKey } from '@pellux/goodvibes-sdk/platform/config';
 import { GOODVIBES_DAEMON_SURFACE_ROOT } from '../config/surface.ts';
+import { isKnownConfigKey } from '../config/config-key-guard.ts';
 import { formatProviderModel, getModelIdFromProviderModel, getProviderIdFromModel } from '@pellux/goodvibes-sdk/platform/providers';
 import { resolveGoodVibesHomeOwnership } from '@pellux/goodvibes-sdk/platform/config';
 import { RuntimeEventBus, GlobalNetworkTransportInstaller, configureRuntimeEventBusDefaults, runtimeEventBusOptionsFrom } from '@/runtime/index.ts';
@@ -564,7 +564,9 @@ async function main(): Promise<void> {
   if (bannerBinding.recognized) {
     const mismatch = describeDerivedBindMismatch(
       { host: bannerBinding.host, port: bannerBinding.port },
-      readControlPlaneBinding((key) => config.get(key as ConfigKey)),
+      readControlPlaneBinding((key) =>
+        isKnownConfigKey(key, config.getSchema()) ? config.get(key) : undefined,
+      ),
     );
     if (mismatch) {
       console.warn(`[goodvibes-daemon] warning: ${mismatch}`);

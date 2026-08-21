@@ -247,21 +247,62 @@ interface PeerRow {
   backendConfig: string;
 }
 
-const VALID_BACKEND_KINDS: ReadonlySet<BackendKind> = new Set([
+// Typed ReadonlySet<string> (not ReadonlySet<BackendKind>) so isBackendKind
+// below can call .has() with a plain string and let the function's own `value
+// is BackendKind` signature do the narrowing, instead of casting the set.
+const VALID_BACKEND_KINDS: ReadonlySet<string> = new Set<BackendKind>([
   'docker',
   'ssh',
   'cloud-terminal',
   'local-process',
 ]);
 
+/** True when `value` is one of the four known backend kinds; narrows to BackendKind. */
+function isBackendKind(value: string): value is BackendKind {
+  return VALID_BACKEND_KINDS.has(value);
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/**
+ * Turn a stored row back into a typed PeerRecord. backendConfig is written
+ * only by register() through normalizeBackendConfig(), but a row read back
+ * from disk is untrusted the same way a fresh registration's raw input is: a
+ * hand-edited database file, a row left over from a schema this file no
+ * longer writes, or on-disk corruption can all put something here that was
+ * never actually normalized. Re-running it through normalizeBackendConfig
+ * catches that at the read boundary instead of handing a malformed object to
+ * a caller that assumes register()'s guarantees already hold.
+ */
 function rowToRecord(row: PeerRow): PeerRecord {
-  const backendKind = row.backendKind as BackendKind;
-  const parsed = JSON.parse(row.backendConfig) as BackendConfig;
+  if (!isBackendKind(row.backendKind)) {
+    throw new PeerRegistryValidationError(
+      `Peer '${row.peerId}' has an unknown backendKind '${row.backendKind}'; the row is corrupt or from an unsupported version.`,
+    );
+  }
+  const backendKind = row.backendKind;
+
+  let raw: unknown;
+  try {
+    raw = JSON.parse(row.backendConfig);
+  } catch {
+    throw new PeerRegistryValidationError(
+      `Peer '${row.peerId}' has a backendConfig that is not valid JSON; the row is corrupt.`,
+    );
+  }
+  if (!isPlainObject(raw)) {
+    throw new PeerRegistryValidationError(
+      `Peer '${row.peerId}' has a backendConfig that is not an object; the row is corrupt.`,
+    );
+  }
+
   return {
     peerId: row.peerId,
     displayName: row.displayName,
     backendKind,
-    backendConfig: parsed,
+    backendConfig: normalizeBackendConfig(backendKind, raw),
   };
 }
 
@@ -335,10 +376,18 @@ export class PeerRegistry {
     return rows.map(rowToRecord);
   }
 
-  /** Remove a peer. Returns true when a row was deleted. */
+  /**
+   * Remove a peer. Returns true when a row was deleted. Existence is checked
+   * without row validation so a corrupt row (which get() rejects) can still
+   * be removed.
+   */
   async remove(peerId: string): Promise<boolean> {
     this.requireInit();
-    const existed = this.get(peerId) !== null;
+    const row = this.store.all<{ peerId: string }>(
+      'SELECT peerId FROM peers WHERE peerId = ?',
+      [peerId],
+    );
+    const existed = row.length > 0;
     if (existed) {
       this.store.run('DELETE FROM peers WHERE peerId = ?', [peerId]);
       await this.store.save();

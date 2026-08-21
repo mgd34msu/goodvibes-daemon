@@ -158,6 +158,16 @@ describe('config set', () => {
     expect(runConfigCommand(['set', 'controlPlane.port'], deps(manager)).exitCode).toBe(2);
     expect(writes).toEqual([]);
   });
+
+  test('an unknown key is refused with the exact message and no write', () => {
+    const { manager, writes } = fakeManager();
+    const result = runConfigCommand(['set', 'not.a.key', 'value'], deps(manager));
+    expect(result.exitCode).toBe(1);
+    expect(result.lines.join('\n')).toContain(
+      "'not.a.key' is not a settings key. Run `goodvibes-daemon config list` to see them.",
+    );
+    expect(writes).toEqual([]);
+  });
 });
 
 describe('config unset', () => {

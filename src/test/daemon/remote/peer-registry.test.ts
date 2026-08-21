@@ -1,10 +1,44 @@
 import { describe, expect, it } from 'bun:test';
 import { makeProjectTempDir } from '../../helpers/project-temp.ts';
+import { HandlerSqliteStore } from '../../../daemon/handlers/sqlite-store.ts';
 import {
   PeerRegistry,
   PeerRegistryValidationError,
   normalizeBackendConfig,
 } from '../../../daemon/handlers/remote/peer-registry.ts';
+
+const PEER_ROW_SCHEMA = [
+  `CREATE TABLE IF NOT EXISTS peers (
+     peerId TEXT PRIMARY KEY,
+     displayName TEXT NOT NULL,
+     backendKind TEXT NOT NULL,
+     backendConfig TEXT NOT NULL
+   )`,
+];
+
+/**
+ * Write directly to the same sqlite file a PeerRegistry opens, bypassing
+ * register()'s normalizeBackendConfig() validation entirely. This is the
+ * only way to produce the row shape a hand-edited database, a stale schema
+ * version, or on-disk corruption would leave behind, register() itself
+ * refuses to write anything malformed.
+ *
+ * Precondition: close any open PeerRegistry on this directory first. Both
+ * stores save a whole-file image, so a still-open registry's next save()
+ * would overwrite the corruption written here.
+ */
+async function corruptRow(dir: string, peerId: string, columns: { backendKind?: string; backendConfig?: string }): Promise<void> {
+  const raw = new HandlerSqliteStore({ workingDirectory: dir, fileName: 'peer-registry.sqlite', schema: PEER_ROW_SCHEMA });
+  await raw.init();
+  if (columns.backendKind !== undefined) {
+    raw.run('UPDATE peers SET backendKind = ? WHERE peerId = ?', [columns.backendKind, peerId]);
+  }
+  if (columns.backendConfig !== undefined) {
+    raw.run('UPDATE peers SET backendConfig = ? WHERE peerId = ?', [columns.backendConfig, peerId]);
+  }
+  await raw.save();
+  raw.close();
+}
 
 const SECRET_REF = 'goodvibes://secrets/goodvibes/REMOTE_SSH_KEY';
 const CRED_REF = 'goodvibes://secrets/goodvibes/CLOUD_CRED';
@@ -223,5 +257,135 @@ describe('PeerRegistry', () => {
   it('throws when used before init', () => {
     const registry = new PeerRegistry(makeProjectTempDir('remote-peers-noinit'));
     expect(() => registry.get('x')).toThrow(/not initialized/);
+  });
+
+  describe('a corrupt row takes the degrade path (clear, typed error)', () => {
+    it('a backendConfig that is not valid JSON is rejected, not thrown as a raw parse error', async () => {
+      const dir = makeProjectTempDir('remote-peers-corrupt-json');
+      const seed = new PeerRegistry(dir);
+      await seed.init();
+      await seed.register({
+        peerId: 'peer-bad-json',
+        displayName: 'Bad JSON',
+        backendKind: 'local-process',
+        backendConfig: {},
+      });
+      seed.close();
+
+      await corruptRow(dir, 'peer-bad-json', { backendConfig: 'not json{{{' });
+
+      const registry = new PeerRegistry(dir);
+      await registry.init();
+      expect(() => registry.get('peer-bad-json')).toThrow(PeerRegistryValidationError);
+      expect(() => registry.list()).toThrow(PeerRegistryValidationError);
+      registry.close();
+    });
+
+    it('a backendConfig that parses but is not an object is rejected', async () => {
+      const dir = makeProjectTempDir('remote-peers-corrupt-shape');
+      const seed = new PeerRegistry(dir);
+      await seed.init();
+      await seed.register({
+        peerId: 'peer-bad-shape',
+        displayName: 'Bad Shape',
+        backendKind: 'local-process',
+        backendConfig: {},
+      });
+      seed.close();
+
+      await corruptRow(dir, 'peer-bad-shape', { backendConfig: '"just a string"' });
+
+      const registry = new PeerRegistry(dir);
+      await registry.init();
+      expect(() => registry.get('peer-bad-shape')).toThrow(PeerRegistryValidationError);
+      registry.close();
+    });
+
+    it('a backendConfig missing a field its backendKind requires is rejected', async () => {
+      const dir = makeProjectTempDir('remote-peers-corrupt-missing-field');
+      const seed = new PeerRegistry(dir);
+      await seed.init();
+      await seed.register({
+        peerId: 'peer-missing-field',
+        displayName: 'Missing Field',
+        backendKind: 'ssh',
+        backendConfig: { sshHost: 'host.example', sshUser: 'deploy', identityRef: SECRET_REF },
+      });
+      seed.close();
+
+      // A legacy/hand-edited row that dropped the required identityRef.
+      await corruptRow(dir, 'peer-missing-field', {
+        backendConfig: JSON.stringify({ kind: 'ssh', sshHost: 'host.example', sshUser: 'deploy' }),
+      });
+
+      const registry = new PeerRegistry(dir);
+      await registry.init();
+      expect(() => registry.get('peer-missing-field')).toThrow(/identityRef/);
+      registry.close();
+    });
+
+    it('an unknown backendKind is rejected instead of flowing downstream unvalidated', async () => {
+      const dir = makeProjectTempDir('remote-peers-corrupt-kind');
+      const seed = new PeerRegistry(dir);
+      await seed.init();
+      await seed.register({
+        peerId: 'peer-bad-kind',
+        displayName: 'Bad Kind',
+        backendKind: 'local-process',
+        backendConfig: {},
+      });
+      seed.close();
+
+      await corruptRow(dir, 'peer-bad-kind', { backendKind: 'quantum-teleport' });
+
+      const registry = new PeerRegistry(dir);
+      await registry.init();
+      expect(() => registry.get('peer-bad-kind')).toThrow(PeerRegistryValidationError);
+      expect(() => registry.get('peer-bad-kind')).toThrow(/backendKind/);
+      registry.close();
+    });
+
+    it('remove() deletes a corrupt row that get() and list() reject', async () => {
+      const dir = makeProjectTempDir('remote-peers-remove-corrupt');
+      const seed = new PeerRegistry(dir);
+      await seed.init();
+      await seed.register({
+        peerId: 'peer-corrupt',
+        displayName: 'Corrupt',
+        backendKind: 'local-process',
+        backendConfig: {},
+      });
+      await seed.register({
+        peerId: 'peer-good',
+        displayName: 'Good',
+        backendKind: 'local-process',
+        backendConfig: {},
+      });
+      seed.close();
+
+      await corruptRow(dir, 'peer-corrupt', { backendKind: 'quantum-teleport' });
+
+      const registry = new PeerRegistry(dir);
+      await registry.init();
+      expect(() => registry.list()).toThrow(PeerRegistryValidationError);
+      expect(await registry.remove('peer-corrupt')).toBe(true);
+      expect(registry.list().map((peer) => peer.peerId)).toEqual(['peer-good']);
+      expect(await registry.remove('peer-corrupt')).toBe(false);
+      registry.close();
+    });
+
+    it('a registry with only well-formed rows lists and reads them exactly as registered', async () => {
+      const dir = makeProjectTempDir('remote-peers-clean-list');
+      const registry = new PeerRegistry(dir);
+      await registry.init();
+      await registry.register({
+        peerId: 'peer-clean',
+        displayName: 'Clean',
+        backendKind: 'local-process',
+        backendConfig: { cwd: '/srv/app' },
+      });
+      expect(registry.list().map((p) => p.peerId)).toEqual(['peer-clean']);
+      registry.close();
+    });
   });
 });

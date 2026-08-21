@@ -22,7 +22,7 @@
  * visible on purpose: it is a pointer, not a secret, and hiding it would make
  * the indirection impossible to verify.
  */
-import type { ConfigManager, ConfigKey, ConfigSetting } from '@pellux/goodvibes-sdk/platform/config';
+import type { ConfigManager, ConfigSetting } from '@pellux/goodvibes-sdk/platform/config';
 import { ConfigError } from '@pellux/goodvibes-sdk/platform/config';
 import {
   REDACTED_VALUE,
@@ -30,6 +30,7 @@ import {
   parseConfigValueText,
   redactConfig,
 } from '@pellux/goodvibes-terminal-shell';
+import { isKnownConfigKey } from '../config/config-key-guard.ts';
 
 export const CONFIG_SUBCOMMANDS = ['list', 'get', 'set', 'unset'] as const;
 export type ConfigSubcommand = (typeof CONFIG_SUBCOMMANDS)[number];
@@ -107,8 +108,9 @@ function message(error: unknown): string {
 }
 
 function readValue(deps: ConfigCommandDeps, key: string): unknown {
+  if (!isKnownConfigKey(key, deps.configManager.getSchema())) return undefined;
   try {
-    return deps.configManager.get(key as ConfigKey);
+    return deps.configManager.get(key);
   } catch {
     return undefined;
   }
@@ -181,13 +183,12 @@ function getResult(deps: ConfigCommandDeps, key: string): ConfigCommandResult {
 }
 
 function setResult(deps: ConfigCommandDeps, key: string, rawValue: string): ConfigCommandResult {
-  const setting = schemaFor(deps, key);
-  if (!setting) {
+  if (!isKnownConfigKey(key, deps.configManager.getSchema())) {
     return failure(`'${key}' is not a settings key. Run \`${deps.binary ?? 'goodvibes-daemon'} config list\` to see them.`, deps);
   }
   const value = parseConfigValueText(rawValue);
   try {
-    deps.configManager.set(key as ConfigKey, value as never);
+    deps.configManager.set(key, value as never);
   } catch (error) {
     // A schema refusal is the common case (wrong type, value outside an enum),
     // and its message already names what was wrong. Passing it through beats
@@ -219,12 +220,11 @@ function setResult(deps: ConfigCommandDeps, key: string, rawValue: string): Conf
 }
 
 function unsetResult(deps: ConfigCommandDeps, key: string): ConfigCommandResult {
-  const setting = schemaFor(deps, key);
-  if (!setting) {
+  if (!isKnownConfigKey(key, deps.configManager.getSchema())) {
     return failure(`'${key}' is not a settings key. Run \`${deps.binary ?? 'goodvibes-daemon'} config list\` to see them.`, deps);
   }
   try {
-    deps.configManager.reset(key as ConfigKey);
+    deps.configManager.reset(key);
   } catch (error) {
     return failure(`could not reset ${key}: ${message(error)}`, deps);
   }
