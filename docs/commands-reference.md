@@ -141,13 +141,22 @@ pick up a settings change that only applies at boot (an endpoint binding, for ex
 goodvibes-daemon status [--json] [--host <name>] [--port <n>] [--token <t>]
 ```
 
-Talk to a daemon that is already running and report: its version, how long it has
-been up, the address it actually bound, what its last update did, whether its channels
-and inbox are healthy, its place in the cluster, and how many sessions it is hosting.
-With no flags it asks the daemon on this machine. The uptime/update/rollback lines are
-read from files on the daemon's own host, so they are reported for a local daemon and
-named as unavailable for a remote one. Exit 0 when the daemon answered, 1 when it
-could not be reached.
+Talk to a daemon that is already running and print one page about it, one labeled
+line per fact. A sub-question that fails becomes one line inside a successful
+report, since a daemon with a broken channel is still up. The lines:
+
+| Line | What it reports |
+| --- | --- |
+| `version` / `state` | what the daemon says about itself over `/status` |
+| `health` | the overall roll-up from `/api/health`, with a line each for degraded domains, provider or integration problems, and quarantined MCP servers |
+| `bound` | the scheme, host and port the control plane actually bound, flagged `NOT ready` with the bind errors when it is not |
+| `uptime`, `starts`, `rejected`, `rollback`, `receipts` | the local lifecycle marker and update receipts. Read from files on the daemon's own host, so they appear for a local daemon and are named as unavailable for a remote one |
+| `channels` | how many channels are switched on out of how many exist, plus a line for each switched-on channel that is not healthy. Disabled channels are not listed as problems |
+| `cluster` | this machine's role and group, or that sharing is off, or that it is in no group yet |
+| `sessions` | how many hosted sessions this daemon is running |
+
+With no flags it asks the daemon on this machine. Exit 0 when the daemon answered,
+1 when it could not be reached.
 
 ### `pair`
 
@@ -236,11 +245,28 @@ goodvibes-daemon send [message] [--channel <id>] [--to <address>] [--title <text
 ```
 
 Send a message through any configured channel. The message is an argument or
-stdin, so it composes with other tooling. Supported channels:
+stdin, so it composes with other tooling. The channels come from the same surface
+catalog `goodvibes surfaces list` reads, so the two commands can never disagree
+about what exists. Each row below names the id `--channel` takes, what `--to`
+means in that channel's own vocabulary, and what has to be configured before the
+channel is usable; the exact settings keys are tabled in
+[configuration.md](configuration.md#channels-surfaces).
 
-- Telegram, ntfy, Discord, Slack, Google Chat
-- Signal, WhatsApp, iMessage, Teams, BlueBubbles
-- Mattermost, Matrix, or a webhook
+| `--channel` | Channel | `--to` names | Needs configured |
+| --- | --- | --- | --- |
+| `telegram` | Telegram | a chat id | a bot token |
+| `ntfy` | ntfy push notifications | a topic | the ntfy server base URL |
+| `discord` | Discord | a channel id | a bot token, application id and public key |
+| `slack` | Slack | a channel id | a bot token and signing secret |
+| `googleChat` | Google Chat | a webhook URL | an incoming-webhook URL |
+| `webhook` | a plain HTTP webhook | a URL | the shared webhook secret |
+| `signal` | Signal | a recipient | a Signal bridge URL and account |
+| `whatsapp` | WhatsApp | a recipient | an access token and phone-number id |
+| `imessage` | iMessage | a chat id | an iMessage bridge URL and account |
+| `msteams` | Microsoft Teams | a conversation id | a bot app id and password |
+| `bluebubbles` | BlueBubbles (iMessage via a Mac server) | a chat GUID | the BlueBubbles server URL and password |
+| `mattermost` | Mattermost | a channel id | the server base URL and a bot token |
+| `matrix` | Matrix | a room id | the homeserver URL, an access token and a user id |
 
 | Flag | Meaning |
 | --- | --- |
@@ -356,10 +382,19 @@ misparsed.
 
 ## Flags this binary refuses by name
 
-This binary's parser used to accept these silently. They are now refused,
-naming the surface that actually owns them:
+This binary's parser used to accept these silently. Every one of them is a
+terminal-app concern, which this binary is not, so each is now refused with a
+message naming what it means and where it works:
 
-`--resume`, `-r`, `--continue`, `--fork`, `--print`, `--prompt`/`-p`,
-`--output`/`--output-format`/`-o`, `--open`, `--no-alt-screen`, `--session`/`-s`,
-`--strict` (outside `provision-wake-model`). Every one of them means "start or resume
-a conversation," which this binary does not do.
+| Flag | What it means |
+| --- | --- |
+| `--resume`, `-r` | resuming a conversation |
+| `--continue` | continuing the last conversation |
+| `--fork` | forking a conversation |
+| `--print` | printing one conversation turn |
+| `--prompt`, `-p` | sending a prompt |
+| `--output`, `--output-format`, `-o` | choosing a conversation output format |
+| `--open` | opening a browser window |
+| `--no-alt-screen` | terminal screen handling |
+| `--session`, `-s` | selecting a conversation |
+| `--strict` | the terminal app's doctor strict mode. Inside `provision-wake-model` this flag is that command's own and is accepted |

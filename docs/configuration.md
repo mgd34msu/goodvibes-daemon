@@ -37,10 +37,34 @@ Two files matter for an operator:
   keys live here.
 - `<daemon home>/settings.json` (default `<GOODVIBES_HOME>/.goodvibes/daemon/settings.json`,
   relocatable with `GOODVIBES_DAEMON_HOME`/`--daemon-home`). This is the **daemon tier**.
-  Daemon-owned keys, `controlPlane.*`, `hostedSessions.*`, `update.*`, `daemon.*`, and
-  more, are written here instead, and overlay the shared file last, so a stale value
-  left behind in the shared file can never win. `config set`/`config list` name which
-  file a key actually came from; you never have to guess.
+  Daemon-owned keys are written here instead, and overlay the shared file last, so a
+  stale value left behind in the shared file can never win. `config set`/`config list`
+  name which file a key actually came from; you never have to guess.
+
+A key is daemon-owned when the daemon is the process that executes it unattended,
+with every client closed. The owned domains:
+
+| Daemon-tier domain | What it configures |
+| --- | --- |
+| `surfaces.*` | the channel connections and their credentials |
+| `controlPlane.*`, `httpListener.*`, `web.*`, `relay.*` | the endpoint bindings, the browser surface, and the relay rendezvous |
+| `watchers.*`, `automation.*`, `checkin.*`, `occasions.*` | scheduled and triggered background work: watcher polling, automation runs, check-in cadence, the occasions sweep |
+| `device.*` | paired-device capabilities and grants |
+| `integrations.*` | channel delivery tracking and route binding |
+| `atRest.*` | at-rest redaction and retention |
+| `payments.*` | every payment setting, since the daemon is the process that holds the card and rolls the budget over |
+| `voice.local.*` | local voice model provisioning |
+| `conversationGate.*` | whether an inbound channel message becomes a conversation |
+| `hostedSessions.*` | the hosted-session policies the daemon enforces |
+| `cluster.*` | the shared-inbox group and its leader election |
+| `profile.*` | the owner profile and its write policy |
+| `email.*`, `calendar.*`, `google.*` | the mail and calendar connector |
+| `danger.httpListener`, `daemon.timezone` | two individual keys owned without their whole prefix |
+
+`update.*`, `service.*`, and the rest of `daemon.*` are deliberately **not**
+daemon-owned. "Does this installation run a daemon at all" is a property of each
+installation, not of the daemon, so those keys land in the shared file; the daemon
+still reads them through the same layered resolution.
 
 ## Channels (`surfaces.*`)
 
@@ -130,12 +154,22 @@ settings:
 
 ## Payments (`payments.*`)
 
-The daemon answers seven `payments.*` verbs over the control plane. Clients can list,
-create and delete stored cards, read the daily budget, list past purchases, and drive
-a checkout through the browser the daemon operates (`payments.checkout.begin` and
-`payments.checkout.fillCard`). Everything is off until configured. `payments.enabled`
-defaults to `false`, and every budget defaults to zero, which the purchase decision
-treats as a terminal refusal, so a daemon nobody configured cannot spend anything.
+The daemon answers seven `payments.*` verbs over the control plane, one family for
+the cards, the budget, the audit trail, and the checkout itself:
+
+| Verb | What it does |
+| --- | --- |
+| `payments.budget.status` | Today's budget pools and what remains in each, plus whether this node is the one allowed to spend on a clustered install |
+| `payments.cards.list` | The stored cards' metadata. No verb in the family ever returns card material |
+| `payments.cards.create` | Validate and store a card, refusing each bad field with a 400 that names it. Metadata goes to the card file, the material one field per key into the daemon secret tier |
+| `payments.cards.delete` | Remove a card's row and sweep its stored material out of the secret tier with it |
+| `payments.purchases.list` | A page of the purchase audit ledger, newest first. `limit` defaults to 100 and is capped at 500 |
+| `payments.checkout.begin` | Start a checkout in the browser the daemon operates. Refused honestly when no browser is composed, and gated by the budget reservation and the notice and decision windows below |
+| `payments.checkout.fillCard` | Type the stored card into the open checkout's payment form, with the card-material guard armed only immediately before typing |
+
+Everything is off until configured. `payments.enabled` defaults to `false`, and every
+budget defaults to zero, which the purchase decision treats as a terminal refusal, so
+a daemon nobody configured cannot spend anything.
 
 Card metadata, the purchase ledger, and the budget's day state are stored beside the
 daemon's other control-plane files as `payments-cards.json`, `payments-purchases.json`

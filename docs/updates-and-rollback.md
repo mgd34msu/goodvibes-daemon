@@ -53,8 +53,17 @@ rollback: an automatic rollback is in force; no fully-started boot has cleared i
 
 ## Receipts
 
-The daemon writes a receipt for events worth telling an operator about: a completed
-swap, a crash-loop rollback, a settings migration. These are read (never written) by
+The daemon writes a receipt for events worth telling an operator about, each a
+timestamped sentence:
+
+| Receipt | Written when |
+| --- | --- |
+| `updated from X to Y at HH:MM` | the self-update loop finished a swap |
+| a crash-loop rollback receipt | the startup path restored the kept previous binary after repeated failed starts |
+| `restarted after a crash at HH:MM` | a boot follows a previous run that did not shut down cleanly |
+| a store-migration report | a boot swept a pre-split control-plane store into the scoped directory and something actually moved or was left behind deliberately |
+
+These are read (never written) by
 `status`/`update`, and are stored on the daemon's own host at
 `<GOODVIBES_HOME>/.goodvibes/tui/control-plane/daemon-receipts.json`, alongside the
 uptime/crash marker at `daemon-lifecycle.json` in the same directory. That is why the
@@ -89,10 +98,14 @@ for the hourly check are the two working paths.
 
 ## Install-kind guard
 
-The self-update loop only runs for a genuine **compiled binary** install. A `bun run
-daemon` dev interpreter and a `bun add -g`/npm global package install are never
-swapped by this mechanism. The daemon detects its own install kind from its exec
-path before handing the update-artifact identity to the update loop at all, so a
-developer's source checkout or a package-manager install is never at risk of having
-its interpreter replaced out from under it. Those installs get their update path from
-`bun`/`npm`/`git pull` instead.
+The self-update loop only runs for a genuine **compiled binary** install. The daemon
+detects its own install kind from its exec path before handing the update-artifact
+identity to the update loop at all, so a developer's source checkout or a
+package-manager install is never at risk of having its interpreter replaced out from
+under it. The three kinds it distinguishes:
+
+| Install kind | Detected by | Update path |
+| --- | --- | --- |
+| `binary` | a standalone compiled executable with no package-manager ancestry in its path | the self-update loop; swapped in place |
+| `bun-global-package` | the executable path contains a `node_modules` segment (`bun add -g`, npm, or a project dependency) | never swapped; the daemon names `bun add -g goodvibes-daemon` instead |
+| `source` | the running executable is the `bun` interpreter itself (`bun run src/...`) | never swapped; the daemon names the curl installer as the way to get a managed binary |

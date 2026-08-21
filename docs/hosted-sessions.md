@@ -38,12 +38,18 @@ three different directories can be asking three separate trust questions at once
 | `sessions.hosted.list` | Every session this daemon hosts, most recently updated first. Terminated sessions are excluded unless `includeTerminated` is set |
 
 These are declared **WebSocket-only** in the control-plane method catalog. There is no
-REST binding for any of them. Driving one further (sending a message, cancelling a
-tool call, queuing follow-ups) uses the same verbs a local session already exposes:
-`sessions.steer`, `sessions.followUp`, `sessions.toolCalls.cancel`,
-`sessions.queuedMessages.*`. Streamed output rides the `turn` and `tools` event
-domains, stamped with the session id, so a client watches a hosted turn exactly as it
-watches a local one.
+REST binding for any of them. Driving a hosted session further uses the same verbs a
+local session already exposes:
+
+| Verb | What it does |
+| --- | --- |
+| `sessions.steer` | Deliver a live steering message to the session's active agent mid-turn |
+| `sessions.followUp` | Queue a follow-up that runs after the current turn completes, or starts immediately when the session is idle |
+| `sessions.toolCalls.cancel` | Cancel one running tool call by its call id, leaving the turn and any other running calls untouched. The cancelled call settles as a structured "cancelled by user" result the model adapts to in the same turn, distinct from a whole-turn interrupt |
+| `sessions.queuedMessages.list` / `.edit` / `.delete` | Manage the messages queued behind the current turn: list them in delivery order, replace one's text, or remove one so it is never delivered. A message already delivered to the model is immutable |
+
+Streamed output rides the `turn` and `tools` event domains, stamped with the session
+id, so a client watches a hosted turn exactly as it watches a local one.
 
 ## Detach vs kill
 
@@ -81,14 +87,20 @@ goodvibes-daemon sessions list [--all] [--json] [--host <name>] [--port <n>] [--
 goodvibes-daemon sessions kill <id> [--json] [--host <name>] [--port <n>] [--token <t>]
 ```
 
-`sessions list` shows every hosted session with:
+`sessions list` prints a block per session, most recently updated first. Only the
+facts a session actually has are printed:
 
-- its status
-- workspace
-- turn count
-- attached-client count
-- its effective detach policy
-- how long since it was last updated
+| Fact | Printed as |
+| --- | --- |
+| id and status | the head line, `<id>  <status>` |
+| title | its own line, when the session has one |
+| workspace | `in <workspaceRoot>` |
+| turns | `N turns` |
+| attached clients | `N clients attached` |
+| detach policy | `on last detach: kill` (or `survive`), the policy that will actually apply |
+| age | how long since it was last updated, for example `5m ago` |
+| restored | `restored from disk`, on a session a daemon restart rebuilt |
+| ended | `ended: <reason>`, on a terminated session listed with `--all` |
 
 `--all` includes already-terminated sessions, kept (with their termination
 reason) until `hostedSessions.terminatedRetentionMs` retires them. `sessions kill <id>`

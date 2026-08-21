@@ -27,10 +27,22 @@ here.
 A **product** over `@pellux/goodvibes-sdk`, exactly like the TUI and the agent are:
 
 - the composition root that builds the daemon's service graph,
-- the product handlers the SDK does not own (inbox, triage, drafts, routing, remote peers,
-  credentials, payments),
-- the CLI (`send`, `cluster`, `webui`, `provision-wake-model`, `install-service` and friends),
+- the product handler families the SDK does not own, tabled below,
+- the CLI, every command of which is documented in
+  [docs/commands-reference.md](docs/commands-reference.md),
 - packaging: the compiled `goodvibes-daemon-<os>-<arch>` binaries.
+
+The handler families under `src/daemon/handlers/`:
+
+| Family | What it serves |
+| --- | --- |
+| inbox | `channels.inbox.list`, the unified inbound-message list, with provider adapters for Slack, Discord and email |
+| triage | the email auto-tag and spam-triage pass that decorates the inbox list with persisted triage metadata |
+| drafts | `channels.drafts.*`, daemon-mirrored channel drafts for cross-device sync, webhook values stored redacted |
+| routing | `channels.routing.*`, the daemon-persisted channel-to-profile routing table |
+| remote | `remote.peers.*`, the peer registry and the dispatcher routing work to docker, ssh, cloud-terminal and local-process backends |
+| credentials | the daemon credential store that resolves `goodvibes://secrets/...` references for the other handlers |
+| payments | the seven `payments.*` verbs: cards, budget, purchase ledger and browser checkout |
 
 Every engine (the facade, the routes, the brokers, the updater, the channel adapters, the
 schedulers) lives in the SDK and is consumed from the published package. Nothing was moved out of
@@ -53,7 +65,8 @@ curl -fsSL https://goodvibes.sh/install.sh | sh
 
 This installs the whole GoodVibes suite (the daemon, the terminal app, the
 agent, and the browser operator surface) from checksum-verified binaries,
-with no package manager involved.
+with no package manager involved. The product-by-product table of what
+lands from where is in [docs/getting-started.md](docs/getting-started.md#install).
 
 The browser surface is not a fourth binary and not a fourth service: the bundle
 unpacks to `<install dir>/webui/<version>` and this daemon serves it on its own

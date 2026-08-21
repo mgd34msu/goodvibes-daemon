@@ -115,17 +115,21 @@ Every entry point resolves the same two roots:
   state, discovery roots, and every tier of the secret store.
 - **`GOODVIBES_DAEMON_HOME`** (or `--daemon-home <dir>`). This is the daemon's own identity
   directory, holding `operator-tokens.json` (the shared bearer token every client
-  authenticates with) and the daemon's own `settings.json` (every daemon-owned config
-  key, `controlPlane.*`, `hostedSessions.*`, `update.*`, and the rest, lands here
-  rather than in the shared settings file). It falls under the tree root
-  (`<GOODVIBES_HOME>/.goodvibes/daemon/`) unless set separately.
+  authenticates with) and the daemon's own `settings.json`, where every daemon-owned
+  config key lands rather than in the shared settings file (the owned domains are
+  tabled in [configuration.md](configuration.md#where-a-value-lands)). It falls under
+  the tree root (`<GOODVIBES_HOME>/.goodvibes/daemon/`) unless set separately.
 
-General settings, local auth users, sessions, watchers, memory and the code index live
-under `<GOODVIBES_HOME>/.goodvibes/tui/`, the daemon's shared-surface state directory.
-The daemon's own activity log (`activity.md`, rotated to `activity.md.1` at 10 MB) is
-written under `<working directory>/.goodvibes/logs/`, where the working directory is the
-one the daemon was started from (or `--working-dir`/`GOODVIBES_WORKING_DIR`). For a
-service-managed daemon that is your login home.
+Under those two roots, plus the working directory and the login home, the daemon's
+state sorts into a few fixed places:
+
+| Path | What lives there |
+| --- | --- |
+| `<GOODVIBES_HOME>/.goodvibes/tui/` | the shared-surface state: the shared settings file, local auth users, sessions, watchers, memory and the code index |
+| `<GOODVIBES_HOME>/.goodvibes/tui/control-plane/` | the daemon's lifecycle marker and update receipts, pairing tokens, and the payments card, purchase and budget files |
+| `<GOODVIBES_HOME>/.goodvibes/daemon/` | the daemon tier: `operator-tokens.json` and the daemon-owned `settings.json` |
+| `<working directory>/.goodvibes/logs/` | the activity log, `activity.md`, rotated to `activity.md.1` at 10 MB. The working directory is where the daemon was started (or `--working-dir`/`GOODVIBES_WORKING_DIR`); for a service-managed daemon that is your login home |
+| `~/.config/systemd/user/` (Linux), `~/Library/LaunchAgents/` (macOS) | the service unit files, always under the real login home, never under a relocated tree |
 
 See [configuration.md](configuration.md) for the full settings reference and
 [troubleshooting.md](troubleshooting.md) for what to check when something looks wrong.
@@ -136,16 +140,10 @@ See [configuration.md](configuration.md) for the full settings reference and
 goodvibes-daemon status
 ```
 
-Reports:
-
-- the version
-- uptime
-- the address it actually bound
-- a health roll-up
-- its configured channels and whether each is healthy
-- its place in any cluster group
-- how many sessions it is hosting
-- what its last update or automatic rollback did
+Prints one page about the running daemon, one labeled line per fact, covering its
+identity, its health and bind, its channels, its cluster role, its hosted-session
+count, and the update history recorded on this host. Every line is explained in the
+table under [`status` in the command reference](commands-reference.md#status).
 
 Exit 0 means the daemon answered; exit 1 means it could not be reached. Pass `--json` for a
 scriptable version, or `--host`/`--port`/`--token` to ask a daemon on another machine.
