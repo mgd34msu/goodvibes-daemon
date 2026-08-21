@@ -43,6 +43,7 @@ function purchase(overrides: Partial<PurchaseRecord> = {}): PurchaseRecord {
     refundedAt: null,
     merchantRecognised: true,
     merchantQualifier: 'major-retailer',
+    merchantDiscovered: false,
     ...overrides,
   };
 }
@@ -112,7 +113,9 @@ describe('DaemonPurchaseLedger', () => {
 
   test('a record with no merchantDiscovered reads as false, never as a claim', async () => {
     const ledger = new DaemonPurchaseLedger({ filePath });
-    await ledger.record(purchase());
+    // A legacy row from before the field existed: strip it deliberately.
+    const { merchantDiscovered: _dropped, ...legacy } = purchase();
+    await ledger.record(legacy as PurchaseRecord);
     expect(ledger.list({ limit: 1, dayKey: undefined }).purchases[0]!.merchantDiscovered).toBe(false);
   });
 

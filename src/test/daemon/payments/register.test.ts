@@ -70,6 +70,7 @@ function purchase(overrides: Partial<PurchaseRecord> = {}): PurchaseRecord {
     refundedAt: null,
     merchantRecognised: true,
     merchantQualifier: 'major-retailer',
+    merchantDiscovered: false,
     ...overrides,
   };
 }
