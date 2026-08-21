@@ -40,6 +40,7 @@ import type { UntrustedContentLedger } from '@pellux/goodvibes-sdk/platform/secu
 import type { BrowserCheckoutSeam } from '../contracts.ts';
 import { HandlerError } from '../errors.ts';
 import type { TypedHandler } from '../register.ts';
+import type { DaemonApprovalStore } from './approval-store.ts';
 import type { DaemonCardStore } from './card-store.ts';
 import type { PaymentsHandlerDeps } from './register.ts';
 
@@ -70,6 +71,20 @@ export interface CheckoutComposition {
   readonly merchantJudge: MerchantJudgePort;
   /** The process-wide ledger; see routes/browser-composition.ts's header for why it must be shared, not private. */
   readonly untrusted: UntrustedContentLedger;
+  /**
+   * The persisted, single-use approvals `payments.checkout.approve` mints and
+   * `payments.checkout.begin` spends. See approval-store.ts for the four
+   * properties the store keeps, and `checkoutBeginHandler` below for where
+   * one is consumed.
+   */
+  readonly approvals: DaemonApprovalStore;
+  /**
+   * The journal the shared service's in-flight registry writes through. The
+   * real daemon composes `DurableCheckoutJournal`
+   * (checkout-journal-store.ts) so a `submit-pending` record survives a
+   * restart; tests may compose the SDK's `MemoryCheckoutJournal`.
+   */
+  readonly journal: CheckoutJournal;
 }
 
 function invalid(field: string, requirement: string): HandlerError {
@@ -386,6 +401,128 @@ const CHECKOUT_UNAVAILABLE_MESSAGE =
   + 'configured, or the browser composition has not finished starting). Retry once the daemon has finished '
   + 'booting; if this persists, the daemon was started without a home directory to keep browser profiles in.';
 
+/**
+ * The action an owner approval authorizes: one `payments.checkout.begin`.
+ * The approve verb mints against this constant and `begin` spends against it,
+ * so the two can never drift into approving one verb and spending on another.
+ */
+export const CHECKOUT_APPROVAL_ACTION = 'payments.checkout.begin';
+
+/**
+ * The exact fields an approval binds, built the same way on both sides.
+ *
+ * On the approve side the values are what the owner typed; on the begin side
+ * they are read from the begin call itself (`merchantDomain`, `item`,
+ * `requestedMax`). One builder for both is what makes the fingerprint a
+ * comparison of the deed rather than two modules' ideas of it.
+ */
+export function checkoutApprovalContent(input: {
+  readonly merchantDomain: string;
+  readonly item: string;
+  readonly amount: string | undefined;
+}): Readonly<Record<string, string | undefined>> {
+  return { merchant: input.merchantDomain, item: input.item, amount: input.amount };
+}
+
+/** How a begin call names the approve verb when it refuses, per mismatch. */
+function approvalRefusalMessage(mismatch: string): string {
+  if (mismatch === 'expired') {
+    return 'The owner approval for this purchase has expired. Approvals last five minutes: call '
+      + 'payments.checkout.approve again with the same merchantDomain, item and amount, then begin promptly.';
+  }
+  if (mismatch === 'different-content' || mismatch === 'no-content-binding') {
+    return 'The owner approval on file was for a different purchase: its merchant, item or amount does not '
+      + 'match this begin call (the amount is compared against requestedMax). Call payments.checkout.approve '
+      + 'with exactly what this begin call names, then begin again.';
+  }
+  return 'This purchase has no owner approval on file. A human approves it first, out of band from this '
+    + 'call: invoke payments.checkout.approve with this purchase\'s merchantDomain, item and amount (the '
+    + 'begin call\'s requestedMax), then begin within five minutes.';
+}
+
+/**
+ * Spend the one approval matching this begin call, or refuse naming the
+ * approve verb. Consuming before the service runs is the sdk store's own
+ * safe direction: an approval taken for a begin that then refuses on a later
+ * gate is spent, never silently reusable.
+ */
+function consumeCheckoutApproval(
+  approvals: DaemonApprovalStore,
+  input: { readonly merchantDomain: string; readonly item: string; readonly requestedMax?: string | undefined },
+): void {
+  let taken: ReturnType<DaemonApprovalStore['take']>;
+  try {
+    taken = approvals.take({
+      action: CHECKOUT_APPROVAL_ACTION,
+      content: checkoutApprovalContent({
+        merchantDomain: input.merchantDomain,
+        item: input.item,
+        amount: input.requestedMax,
+      }),
+    });
+  } catch (error) {
+    // A store that could not persist the removal rolled it back and threw
+    // (approval-store.ts): the approval is still on file and nothing was
+    // submitted. Contained: the raw error can name the store path.
+    void error;
+    throw new HandlerError(
+      'Recording the spent approval failed. The approval was not consumed and nothing was submitted.',
+      'INTERNAL_ERROR',
+      500,
+    );
+  }
+  if (taken.approval === null) {
+    throw new HandlerError(approvalRefusalMessage(taken.mismatch), 'OWNER_APPROVAL_REQUIRED', 403);
+  }
+}
+
+/**
+ * `payments.checkout.approve`.
+ *
+ * The distinct act the sdk's owner-approval ruling requires: a HUMAN, on a
+ * surface with command authority, names one purchase and approves it. The
+ * registration (register.ts) puts this handler behind the same confirmation
+ * gate every destructive verb in this daemon uses (`confirm: true` in the
+ * body AND the explicit-user-request context flag), and the handler passes
+ * `surface: 'owner-direct'` from its own code path, never from an argument,
+ * which is the property `grantOwnerApproval` exists to enforce.
+ *
+ * The minted record is persisted (approval-store.ts), single-use, bound to
+ * the exact merchant + item + amount fields named here, and expires in five
+ * minutes. `payments.checkout.begin` spends it; see `checkoutBeginHandler`.
+ */
+export function checkoutApproveHandler(deps: PaymentsHandlerDeps): TypedHandler<unknown, Record<string, unknown>> {
+  return async ({ body }) => {
+    const params = asRecord(body);
+    const merchantDomain = requireString(params['merchantDomain'], 'merchantDomain');
+    const item = requireString(params['item'], 'item');
+    const amount = requireString(params['amount'], 'amount');
+    let approval;
+    try {
+      approval = deps.checkout.approvals.grant({
+        action: CHECKOUT_APPROVAL_ACTION,
+        content: checkoutApprovalContent({ merchantDomain, item, amount }),
+      });
+    } catch (error) {
+      // Contained for the same reason as `consumeCheckoutApproval`: the raw
+      // write failure can name the store path, and an approval that never
+      // reached disk was deliberately rolled back rather than left spendable.
+      void error;
+      throw new HandlerError('Recording the approval failed. Nothing was approved.', 'INTERNAL_ERROR', 500);
+    }
+    // Named fields, never a spread, the same containment rule as every other
+    // response in this family.
+    return {
+      approved: true,
+      action: CHECKOUT_APPROVAL_ACTION,
+      merchantDomain,
+      item,
+      amount,
+      expiresAt: approval.expiresAt,
+    };
+  };
+}
+
 /** The sdk's own explicit nine-field projection (routes/payments.ts's `createPaymentsCheckoutBeginHandler`), not a spread. */
 function beginResultView(result: Awaited<ReturnType<PaymentsGatewayServiceImpl['beginCheckout']>>): Record<string, unknown> {
   return {
@@ -417,29 +554,34 @@ function beginResultView(result: Awaited<ReturnType<PaymentsGatewayServiceImpl['
  * (`security/turn-boundary.ts`), a second, separate effect of the same
  * caller-set claim, not something this handler arranges.
  *
- * This composition used to also arm `seam.armSubmitApproval` here, minting an
- * `OwnerApproval` for a `'payments.checkout.submit'` action whenever
- * `explicitUserRequest` was true. That mechanism has been deleted: it never
- * actually did anything. The browser engine only ever checks an armed
- * approval's action against the literal string `'browser.submit'`
- * (browser-engine.ts), so an approval minted for `'payments.checkout.submit'`
- * never matched it and the check always fell through to `different-action`.
- * Even with the names made to agree, an approval minted here with no
- * `content` argument carries `contentFingerprint: null`, the WEAK form
- * (`owner-approval.ts`), which clears only a refusal that was itself made
- * without content and never a content-derivation finding, so repairing the
- * name would still not have cleared anything real. A distinct, genuine
- * owner-approval record for a purchase, minted from a separate interactive
- * act and bound to the exact payload approved, is real future work (see
- * `.goodvibes/memory/decisions.json`), and a mechanism that LOOKED like that
- * record while clearing nothing was worse than having none.
+ * ── The genuine owner-approval record, consumed here ───────────────────────
  *
- * The real money controls, downstream of this gate, are the sdk's own
- * checkout ladder: the budget ledger (RESERVE, step 5), the purchase notices
- * and their approval/veto decision windows (NOTICE + WINDOW, step 6), and the
- * card-material guard (`cardFieldGuard`, armed only immediately before
- * typing, never before). See `checkout-flow.ts`'s own header for the full
- * order.
+ * Behind that outer gate sits the distinct-act approval the sdk's
+ * owner-approval ruling describes (platform/security/owner-approval.ts): a
+ * persisted record that a human called `payments.checkout.approve`, out of
+ * band from whatever conversation produced this begin call, naming ONE
+ * purchase by merchant, item and amount. This handler spends exactly one
+ * matching record per begin (`DaemonApprovalStore.take`, approval-store.ts:
+ * single-use, content-bound via the sdk's own fingerprint, five-minute TTL)
+ * and refuses, naming the approve verb, when none matches. The record is
+ * consumed BEFORE the service runs, which is the sdk store's own safe
+ * direction: a taken approval whose begin then refuses on a later gate is
+ * spent, never quietly retried.
+ *
+ * The binding fields are `merchantDomain`, `item` and `requestedMax`, read
+ * from THIS begin call and fingerprinted the same way the approve verb
+ * fingerprinted what the owner typed, so a begin whose merchant, item or
+ * amount differs from what was approved is `different-content`, not a match.
+ * An earlier mechanism that armed `seam.armSubmitApproval` with a
+ * content-free approval was deleted rather than shipped, because an approval
+ * with no content binding clears nothing real; this record is the strong
+ * form, minted with the exact fields.
+ *
+ * The money controls downstream of both gates are unchanged: the budget
+ * ledger (RESERVE, step 5), the purchase notices and their approval/veto
+ * decision windows (NOTICE + WINDOW, step 6), and the card-material guard
+ * (`cardFieldGuard`, armed only immediately before typing, never before).
+ * See `checkout-flow.ts`'s own header for the full order.
  */
 export function checkoutBeginHandler(deps: PaymentsHandlerDeps, holder: CheckoutServiceHolder): TypedHandler<unknown, Record<string, unknown>> {
   return async ({ body, context }) => {
@@ -449,6 +591,16 @@ export function checkoutBeginHandler(deps: PaymentsHandlerDeps, holder: Checkout
     const seam = deps.checkout.seam();
     if (seam === undefined) {
       throw new HandlerError(CHECKOUT_UNAVAILABLE_MESSAGE, 'FAILED_PRECONDITION', 409);
+    }
+
+    // The approval is only consulted INSIDE the outer explicitUserRequest
+    // layer: a call that never claimed to be owner-direct falls through to
+    // the service, whose own gate refuses it `refused:not-owner-request`
+    // exactly as before this record existed. Consuming an approval for a
+    // call that outer layer was always going to refuse would spend the
+    // owner's answer on nothing.
+    if (context.explicitUserRequest) {
+      consumeCheckoutApproval(deps.checkout.approvals, input);
     }
 
     const [usableCard, shippingAddress] = await Promise.all([

@@ -87,7 +87,7 @@ async function readJson(response: Response): Promise<{ status: number; text: str
 }
 
 describe('payments.* is attached to this daemon, not a cataloged 501 facade', () => {
-  test('all seven verbs carry a handler', () => {
+  test('every verb in the family carries a handler', () => {
     for (const id of ATTACHED_PAYMENTS_METHOD_IDS) {
       expect(fixture.services.gatewayMethods.get(id), `${id} is not cataloged`).toBeTruthy();
       expect(
@@ -130,13 +130,11 @@ describe('payments.* is attached to this daemon, not a cataloged 501 facade', ()
     expect(String(response.body['reason'])).toContain('not asked for by you directly');
   });
 
-  test('checkout.begin still refuses (a different, honest reason) once explicit user authority is granted', async () => {
-    // Owner-direct now, and still refused: no card and no address are
-    // configured on this fixture, so `checkPaymentGates` refuses on
-    // `no-card` (or, if the fixture ever gains a default card first,
-    // `no-shipping-address`); either is the honest next gate, never a schema
-    // or transport error, and never a completed purchase against a session
-    // and page that were never real.
+  test('checkout.begin with owner authority but no approval on file refuses over the wire, naming the approve verb', async () => {
+    // Owner-direct now, but nothing was approved: the persisted approval gate
+    // (checkout-handlers.ts, approval-store.ts) refuses with the verb to call,
+    // never a schema or transport error, and never a completed purchase
+    // against a session and page that were never real.
     const response = await readJson(await fixture.fetch('/api/payments/checkout/begin', {
       method: 'POST',
       headers: { 'x-goodvibes-explicit-user-request': 'true' },
@@ -152,6 +150,47 @@ describe('payments.* is attached to this daemon, not a cataloged 501 facade', ()
         shippingOptions: [{ label: 'standard', cost: '0.00' }],
         cardFields: [{ field: 'number', ref: 'e1' }],
         placeOrderTarget: 'e9',
+        requestedMax: '20.00',
+      }),
+    }));
+    expect(response.status, `answered ${String(response.status)}: ${response.text}`).toBe(403);
+    expect(response.body['code']).toBe('OWNER_APPROVAL_REQUIRED');
+    expect(String(response.body['error'] ?? response.text)).toContain('payments.checkout.approve');
+  });
+
+  test('checkout.approve then begin: the approval is spent and begin refuses on the honest next gate', async () => {
+    // The approve verb is ws-only (no REST binding, see register.ts's
+    // CHECKOUT_APPROVE_DESCRIPTOR), so it is minted through the same catalog
+    // dispatch the ws methodId arm uses (control-plane.ts invokes
+    // gatewayMethods.invoke for handler-backed verbs), against the LIVE
+    // composition's persisted store under this fixture's root.
+    const approved = await fixture.services.gatewayMethods.invoke('payments.checkout.approve', {
+      body: { confirm: true, merchantDomain: 'example.invalid', item: 'nothing at all', amount: '20.00' },
+      context: { principalId: 'test-operator', metadata: { explicitUserRequest: true } },
+    } as never) as Record<string, unknown>;
+    expect(approved['approved']).toBe(true);
+
+    // Owner-direct with the approval on file: past the approval gate, and
+    // refused on the honest next gate. No card and no address are configured
+    // on this fixture, so `checkPaymentGates` refuses on `no-card` (or, if
+    // the fixture ever gains a default card first, `no-shipping-address`);
+    // either way, never the approval and never `not-owner-request`.
+    const response = await readJson(await fixture.fetch('/api/payments/checkout/begin', {
+      method: 'POST',
+      headers: { 'x-goodvibes-explicit-user-request': 'true' },
+      body: JSON.stringify({
+        sessionId: 'session-that-does-not-exist',
+        pageId: 'page-that-does-not-exist',
+        merchantDomain: 'example.invalid',
+        checkoutUrl: 'https://example.invalid/checkout',
+        item: 'nothing at all',
+        cardId: 'card-that-does-not-exist',
+        requestedLines: [{ label: 'nothing at all', quantity: 1 }],
+        lines: [{ label: 'nothing at all', quantity: '1', unitPrice: '1.00' }],
+        shippingOptions: [{ label: 'standard', cost: '0.00' }],
+        cardFields: [{ field: 'number', ref: 'e1' }],
+        placeOrderTarget: 'e9',
+        requestedMax: '20.00',
       }),
     }));
     expect(response.status, `answered ${String(response.status)}: ${response.text}`).toBe(200);

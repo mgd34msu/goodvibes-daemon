@@ -177,8 +177,9 @@ function loadInitialState(filePath: string): BudgetStateSnapshot | undefined {
       { filePath },
     );
   }
-  // Named, not just counted: there is no durable journal for a reservation
-  // (unlike the checkout journal's own disclosed gap, see register.ts), so this
+  // Named, not just counted: a reservation has no per-purchase narrative of
+  // its own here (the checkout journal, checkout-journal-store.ts, records
+  // the purchase's phases; this file records only the pools), so this
   // log line is the only record an operator has, at restart, of money that is
   // currently held against the daily limit for a purchase that may or may not
   // still be in flight. Reconciling it against what the merchant actually

@@ -26,6 +26,13 @@ export type { DaemonPurchaseLedgerOptions, PurchaseListQuery, StoredPurchase } f
 
 export { DurableBudgetLedger } from './budget-store.ts';
 
+export { DaemonApprovalStore } from './approval-store.ts';
+export type { ApprovalTakeHit, ApprovalTakeMiss } from './approval-store.ts';
+
+export { DurableCheckoutJournal } from './checkout-journal-store.ts';
+
+export { CHECKOUT_APPROVAL_ACTION, checkoutApprovalContent } from './checkout-handlers.ts';
+
 export { configBackedAddressStore } from './address-store.ts';
 export { channelBackedPaymentNotifier } from './notifier.ts';
 export { createProviderBackedMerchantJudgeModel } from './merchant-judge.ts';

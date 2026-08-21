@@ -154,7 +154,7 @@ settings:
 
 ## Payments (`payments.*`)
 
-The daemon answers seven `payments.*` verbs over the control plane, one family for
+The daemon answers eight `payments.*` verbs over the control plane, one family for
 the cards, the budget, the audit trail, and the checkout itself:
 
 | Verb | What it does |
@@ -164,21 +164,26 @@ the cards, the budget, the audit trail, and the checkout itself:
 | `payments.cards.create` | Validate and store a card, refusing each bad field with a 400 that names it. Metadata goes to the card file, the material one field per key into the daemon secret tier |
 | `payments.cards.delete` | Remove a card's row and sweep its stored material out of the secret tier with it |
 | `payments.purchases.list` | A page of the purchase audit ledger, newest first. `limit` defaults to 100 and is capped at 500 |
-| `payments.checkout.begin` | Start a checkout in the browser the daemon operates. Refused honestly when no browser is composed, and gated by the budget reservation and the notice and decision windows below |
+| `payments.checkout.approve` | Record that a human approves one specific purchase, named by merchant, item and amount. Mints a persisted, single-use approval bound to exactly those fields, expiring in five minutes. Requires `confirm: true` and the explicit-user-request context, and is invoked over the control-plane socket only |
+| `payments.checkout.begin` | Start a checkout in the browser the daemon operates. Spends the one matching approval from `payments.checkout.approve` and refuses without it. Refused honestly when no browser is composed, and gated by the budget reservation and the notice and decision windows below |
 | `payments.checkout.fillCard` | Type the stored card into the open checkout's payment form, with the card-material guard armed only immediately before typing |
 
 Everything is off until configured. `payments.enabled` defaults to `false`, and every
 budget defaults to zero, which the purchase decision treats as a terminal refusal, so
 a daemon nobody configured cannot spend anything.
 
-Card metadata, the purchase ledger, and the budget's day state are stored beside the
-daemon's other control-plane files as `payments-cards.json`, `payments-purchases.json`
-and `payments-budget.json` under `<GOODVIBES_HOME>/.goodvibes/tui/control-plane/`.
-Card material itself (the number, expiry, CVV, cardholder name) never touches those
-files; it is written one field per key into the daemon tier of the secret store. The
-budget file is written back after every reservation, commit and release, so a daemon
-restarted mid-day comes back knowing what it already spent rather than handing the
-full daily budget out again.
+Card metadata, the purchase ledger, the budget's day state, pending owner approvals,
+and the in-flight checkout journal are stored beside the daemon's other control-plane
+files as `payments-cards.json`, `payments-purchases.json`, `payments-budget.json`,
+`payments-approvals.json` and `payments-checkout-journal.json` under
+`<GOODVIBES_HOME>/.goodvibes/tui/control-plane/`. Card material itself (the number,
+expiry, CVV, cardholder name) never touches those files; it is written one field per
+key into the daemon tier of the secret store. The budget file is written back after
+every reservation, commit and release, so a daemon restarted mid-day comes back
+knowing what it already spent rather than handing the full daily budget out again.
+The journal records each checkout's phase durably, with the `submit-pending` write
+flushed before the merchant submit is clicked, so a crash in that one ambiguous
+window leaves a record a restart can disclose to the owner instead of nothing.
 
 Budget amounts are written the way the owner would say them, in whatever
 `payments.currency` names, so `100` is a hundred and `19.99` is nineteen ninety-nine.

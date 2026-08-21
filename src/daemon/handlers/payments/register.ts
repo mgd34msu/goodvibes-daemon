@@ -77,8 +77,8 @@
  * from a call that had material in its arguments.
  */
 import type { BudgetLedger, PaymentsConfigReader } from '@pellux/goodvibes-sdk/platform/payments';
-import { MemoryCheckoutJournal, readDefaultCardId, readPaymentsEnabled, readPaymentsServiceConfig } from '@pellux/goodvibes-sdk/platform/payments';
-import type { CardMetadata, CheckoutJournal } from '@pellux/goodvibes-sdk/platform/payments';
+import { readDefaultCardId, readPaymentsEnabled, readPaymentsServiceConfig } from '@pellux/goodvibes-sdk/platform/payments';
+import type { CardMetadata } from '@pellux/goodvibes-sdk/platform/payments';
 import {
   registerPaymentsGatewayMethods,
   type GatewayMethodCatalog,
@@ -88,7 +88,7 @@ import {
 } from '../contracts.ts';
 import { HandlerError } from '../errors.ts';
 import { registerCatalogHandlers, type TypedHandler, type Unregister } from '../register.ts';
-import { CheckoutServiceHolder, checkoutBeginHandler, checkoutFillCardHandler, type CheckoutComposition } from './checkout-handlers.ts';
+import { CheckoutServiceHolder, checkoutApproveHandler, checkoutBeginHandler, checkoutFillCardHandler, type CheckoutComposition } from './checkout-handlers.ts';
 import { CardStoreUnreadableError, type DaemonCardStore } from './card-store.ts';
 import { MAX_PURCHASE_LIST_LIMIT, type DaemonPurchaseLedger, type StoredPurchase } from './purchase-ledger.ts';
 
@@ -101,9 +101,64 @@ export const ATTACHED_PAYMENTS_METHOD_IDS: readonly string[] = [
   'payments.cards.create',
   'payments.cards.delete',
   'payments.purchases.list',
+  'payments.checkout.approve',
   'payments.checkout.begin',
   'payments.checkout.fillCard',
 ];
+
+/**
+ * The one descriptor in this family this PRODUCT authors, because the id is
+ * product-owned: the SDK's catalog holds the seven `payments.*` verbs it
+ * ships and no `payments.checkout.approve`, and the approve act is this
+ * daemon's own composition (its store, its confirmation gate, its wire
+ * shape). contracts.ts's never-author-a-descriptor rule is about not
+ * RE-declaring an SDK id, which this is not; the parity test
+ * (gateway-verb-family-parity.test.ts) pins this id the same way it pins the
+ * rest, so it cannot drift in silently.
+ */
+const CHECKOUT_APPROVE_DESCRIPTOR: GatewayMethodDescriptor = {
+  id: 'payments.checkout.approve',
+  title: 'Approve One Purchase',
+  description:
+    'Record that a human approves one specific purchase, out of band from the conversation that will run '
+    + 'it: the merchant\'s registrable domain, the item, and the amount (the same string a later begin call '
+    + 'passes as requestedMax). Mints a persisted, single-use approval bound to exactly those fields, '
+    + 'expiring in five minutes; payments.checkout.begin consumes it and refuses without one. Requires '
+    + 'confirm: true and the explicit-user-request context, the same confirmation gate every destructive '
+    + 'verb on this daemon uses. The response never carries card material; this verb never touches a card '
+    + 'at all. ws-only invoke verb; no REST binding: the gateway REST table is the daemon-sdk\'s and this '
+    + 'product cannot add rows to it, the same shape sessions.hosted.* already has.',
+  category: 'payments',
+  source: 'builtin',
+  access: 'admin',
+  transport: ['ws'],
+  scopes: ['write:payments'],
+  dangerous: true,
+  inputSchema: {
+    type: 'object',
+    properties: {
+      confirm: { type: 'boolean' },
+      merchantDomain: { type: 'string' },
+      item: { type: 'string' },
+      amount: { type: 'string' },
+    },
+    required: ['confirm', 'merchantDomain', 'item', 'amount'],
+    additionalProperties: false,
+  },
+  outputSchema: {
+    type: 'object',
+    properties: {
+      approved: { type: 'boolean' },
+      action: { type: 'string' },
+      merchantDomain: { type: 'string' },
+      item: { type: 'string' },
+      amount: { type: 'string' },
+      expiresAt: { type: 'string' },
+    },
+    required: ['approved', 'action', 'merchantDomain', 'item', 'amount', 'expiresAt'],
+    additionalProperties: false,
+  },
+};
 
 /**
  * Kept, empty, rather than deleted: `gateway-payments-verbs.test.ts` and
@@ -378,8 +433,10 @@ function buildPaymentsGatewayService(deps: PaymentsHandlerDeps): PaymentsGateway
 // ---------------------------------------------------------------------------
 
 /**
- * Attach the seven `payments.*` handlers to the descriptors the SDK catalog
- * already holds. Returns the teardown.
+ * Attach the eight `payments.*` handlers: seven to the descriptors the SDK
+ * catalog already holds, and `payments.checkout.approve` to the one
+ * descriptor this product authors (see `CHECKOUT_APPROVE_DESCRIPTOR` above).
+ * Returns the teardown.
  *
  * NOT gated on `payments.enabled`. That key defaults to false, and
  * `payments.cards.*` is how a surface CONFIGURES the capability, so gating
@@ -420,24 +477,21 @@ export function registerPaymentsMethods(
   // The journal backing this registration's checkout pair's in-flight
   // registry (the SDK's own `CheckoutRegistry`, built inside
   // `PaymentsGatewayServiceImpl`'s constructor from whatever `CheckoutJournal`
-  // it is handed, see checkout-handlers.ts's `buildCheckoutService`; this
-  // value here is the journal, not the registry itself). `MemoryCheckoutJournal`
-  // (the sdk's own, checkout-registry.ts, documented "durable across nothing")
-  // is a deliberate choice for THIS pass, not an oversight: a durable journal
-  // is real work (a file or store write on every `registry.advance`, including
-  // the `submit-pending` flush checkout-flow.ts's step 9 makes right before the
-  // merchant submit) that has not been done yet. The gap it leaves is exactly
-  // the one that flush exists to close: if this process crashes between that
-  // `submit-pending` write and seeing the merchant's response, a restart with a
-  // durable journal could tell the owner "this purchase may already have been
-  // submitted, do not resubmit it"; with this in-memory journal, that record is
-  // gone the moment the process is, and a restart has no way to know the
-  // purchase was ever in flight at all. Recorded as future work in
-  // `.goodvibes/memory/decisions.json`, not implied to be solved here.
-  const checkoutJournal: CheckoutJournal = new MemoryCheckoutJournal();
-  // The ONE checkout service instance this registration's begin/fillCard pair
-  // share for their whole life; see checkout-handlers.ts's own header.
-  const checkoutServiceHolder = new CheckoutServiceHolder(deps, checkoutJournal);
+  // it is handed, see checkout-handlers.ts's `buildCheckoutService`). It comes
+  // from the composition (`deps.checkout.journal`), which in the real daemon
+  // is `DurableCheckoutJournal` (checkout-journal-store.ts): every phase write
+  // the registry makes, including the `submit-pending` flush checkout-flow.ts's
+  // step 9 issues right before the merchant submit, lands on disk before the
+  // submit happens, so a restart after a crash in that window can tell the
+  // owner "this purchase may already have been submitted, do not resubmit it"
+  // instead of having no record the purchase was ever in flight. Tests compose
+  // the SDK's `MemoryCheckoutJournal` here instead, which is what the seam in
+  // `CheckoutComposition` is for.
+  //
+  // The ONE checkout service instance this registration's approve/begin/
+  // fillCard verbs share for their whole life; see checkout-handlers.ts's own
+  // header.
+  const checkoutServiceHolder = new CheckoutServiceHolder(deps, deps.checkout.journal);
 
   const cardsCreate: TypedHandler<unknown, Record<string, unknown>> = async ({ body }) => {
     const params = asRecord(body);
@@ -492,9 +546,22 @@ export function registerPaymentsMethods(
     });
   };
 
+  // The approve descriptor is product-authored (see its declaration above),
+  // so it is placed on the catalog here, handler-less, exactly where the
+  // SDK's own descriptors already sit, and then attached through the same
+  // `registerCatalogHandlers` path as the other local wrappers. `replace:
+  // true` so a registration over a catalog that already carries it (a
+  // recompose that skipped teardown) replaces rather than throws.
+  catalog.register(CHECKOUT_APPROVE_DESCRIPTOR, undefined, { replace: true });
+
   const localTeardown = registerCatalogHandlers(catalog, [
     { id: 'payments.cards.create', handler: cardsCreate as TypedHandler<unknown, unknown> },
     { id: 'payments.purchases.list', handler: purchasesList as TypedHandler<unknown, unknown> },
+    // The confirmation gate (`confirm: true` AND the explicit-user-request
+    // context) is what makes this verb owner-direct: the handler then passes
+    // `surface: 'owner-direct'` from its own code path. See
+    // checkout-handlers.ts's `checkoutApproveHandler`.
+    { id: 'payments.checkout.approve', handler: checkoutApproveHandler(deps) as TypedHandler<unknown, unknown>, options: { confirm: true } },
     { id: 'payments.checkout.begin', handler: checkoutBeginHandler(deps, checkoutServiceHolder) as TypedHandler<unknown, unknown> },
     { id: 'payments.checkout.fillCard', handler: checkoutFillCardHandler(deps, checkoutServiceHolder) as TypedHandler<unknown, unknown> },
   ]);

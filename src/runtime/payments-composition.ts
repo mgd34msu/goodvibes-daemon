@@ -80,9 +80,11 @@ import type { ChannelDeliveryRouter } from '@pellux/goodvibes-sdk/platform/chann
 import type { ProviderRegistry } from '@pellux/goodvibes-sdk/platform/providers';
 import type { ShellPathService } from '@/runtime/index.ts';
 import {
+  DaemonApprovalStore,
   DaemonCardStore,
   DaemonPurchaseLedger,
   DurableBudgetLedger,
+  DurableCheckoutJournal,
   channelBackedPaymentNotifier,
   configBackedAddressStore,
   createProviderBackedMerchantJudgeModel,
@@ -174,6 +176,20 @@ export function createPaymentsServices(options: PaymentsCompositionOptions): Pay
     notifier: channelBackedPaymentNotifier(config, options.channelDeliveryRouter),
     merchantJudge: createModelMerchantJudge(createProviderBackedMerchantJudgeModel(options.providerRegistry)),
     untrusted: getProcessUntrustedContentLedger(),
+    // The persisted owner approvals `payments.checkout.approve` mints and
+    // `begin` spends, beside the other payments stores. Constructing it reads
+    // the file once, synchronously, the same one-touch boot cost the budget
+    // ledger already pays.
+    approvals: new DaemonApprovalStore(
+      controlPlaneStorePath(options.shellPaths, GOODVIBES_DAEMON_SURFACE_ROOT, 'payments-approvals.json'),
+    ),
+    // The durable in-flight checkout journal. Every phase write the registry
+    // makes, the `submit-pending` flush before the merchant submit included,
+    // lands here before the flow proceeds, so a crash in the one ambiguous
+    // window leaves a record a restart can disclose instead of nothing.
+    journal: new DurableCheckoutJournal(
+      controlPlaneStorePath(options.shellPaths, GOODVIBES_DAEMON_SURFACE_ROOT, 'payments-checkout-journal.json'),
+    ),
   };
   const unregister = registerPaymentsMethods(options.gatewayMethods, {
     cards,

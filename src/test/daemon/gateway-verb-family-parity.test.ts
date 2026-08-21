@@ -358,12 +358,16 @@ const VERB_FAMILIES: readonly VerbFamily[] = [
       + 'checkout.fillCard attach through local wrappers too, over the sdk 2.0.19 browser-checkout seam '
       + '(composeDaemonBrowser/onBrowserCheckout/BrowserCheckoutSeam), because context.explicitUserRequest, '
       + "the signal this daemon's owner-approval ruling needs, only reaches a handler attached this way; see "
-      + 'register.ts\'s header and gateway-payments-verbs.test.ts, which exercises the ruling over real routes.',
+      + 'register.ts\'s header and gateway-payments-verbs.test.ts, which exercises the ruling over real routes. '
+      + 'checkout.approve is the one PRODUCT-authored descriptor in the family (register.ts\'s '
+      + 'CHECKOUT_APPROVE_DESCRIPTOR): the id is this daemon\'s own, ws-only with no REST binding since the '
+      + 'gateway REST table is the daemon-sdk\'s, and it mints the persisted single-use approval record '
+      + 'checkout.begin spends (daemon/handlers/payments/approval-store.ts).',
     methodIds: [
       'payments.budget.status',
       'payments.cards.list', 'payments.cards.create', 'payments.cards.delete',
       'payments.purchases.list',
-      'payments.checkout.begin', 'payments.checkout.fillCard',
+      'payments.checkout.approve', 'payments.checkout.begin', 'payments.checkout.fillCard',
     ],
   },
 ];

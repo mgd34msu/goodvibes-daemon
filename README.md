@@ -42,7 +42,7 @@ The handler families under `src/daemon/handlers/`:
 | routing | `channels.routing.*`, the daemon-persisted channel-to-profile routing table |
 | remote | `remote.peers.*`, the peer registry and the dispatcher routing work to docker, ssh, cloud-terminal and local-process backends |
 | credentials | the daemon credential store that resolves `goodvibes://secrets/...` references for the other handlers |
-| payments | the seven `payments.*` verbs: cards, budget, purchase ledger and browser checkout |
+| payments | the `payments.*` verbs: cards, budget, purchase ledger, owner approvals and browser checkout |
 
 Every engine (the facade, the routes, the brokers, the updater, the channel adapters, the
 schedulers) lives in the SDK and is consumed from the published package. Nothing was moved out of

@@ -14,9 +14,10 @@ import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { beforeEach, describe, expect, test } from 'bun:test';
 import { GatewayMethodCatalog, type BrowserCheckoutSeam } from '@pellux/goodvibes-sdk/platform/control-plane';
-import { BudgetLedger, CardMaterialRedactor } from '@pellux/goodvibes-sdk/platform/payments';
+import { BudgetLedger, CardMaterialRedactor, MemoryCheckoutJournal } from '@pellux/goodvibes-sdk/platform/payments';
 import type { AddressStore, CheckoutPageDriver, MerchantJudgePort, PaymentNotifier, PaymentsConfigReader, PurchaseRecord } from '@pellux/goodvibes-sdk/platform/payments';
 import { getProcessUntrustedContentLedger } from '@pellux/goodvibes-sdk/platform/security';
+import { DaemonApprovalStore } from '../../../daemon/handlers/payments/approval-store.ts';
 import { DaemonCardStore, type PaymentsSecretStore } from '../../../daemon/handlers/payments/card-store.ts';
 import { DaemonPurchaseLedger } from '../../../daemon/handlers/payments/purchase-ledger.ts';
 import {
@@ -51,6 +52,12 @@ const unqualifiedMerchantJudge: MerchantJudgePort = {
   judge: async () => ({ qualifies: false, confident: false, recourse: 'test double' }),
 };
 
+/** A fresh, persisted approval store on its own temp file, as the real composition builds one. */
+function freshApprovals(now?: () => Date): DaemonApprovalStore {
+  const path = join(makeProjectTempDir('gv-payments-approvals'), 'payments-approvals.json');
+  return now ? new DaemonApprovalStore(path, now) : new DaemonApprovalStore(path);
+}
+
 /** A `CheckoutComposition` whose seam is absent by default; tests that need one call `withSeam`. */
 function fakeCheckout(overrides: Partial<CheckoutComposition> = {}): CheckoutComposition {
   return {
@@ -59,6 +66,8 @@ function fakeCheckout(overrides: Partial<CheckoutComposition> = {}): CheckoutCom
     notifier: noopNotifier,
     merchantJudge: unqualifiedMerchantJudge,
     untrusted: getProcessUntrustedContentLedger(),
+    approvals: freshApprovals(),
+    journal: new MemoryCheckoutJournal(),
     ...overrides,
   };
 }
@@ -186,7 +195,7 @@ beforeEach(() => {
 });
 
 describe('registerPaymentsMethods: what it attaches', () => {
-  test('all seven verbs gain a handler; UNATTACHED_PAYMENTS_METHOD_IDS is empty', () => {
+  test('every verb in the family gains a handler; UNATTACHED_PAYMENTS_METHOD_IDS is empty', () => {
     for (const id of ATTACHED_PAYMENTS_METHOD_IDS) {
       expect(catalog.hasHandler(id), `${id} was not attached`).toBe(true);
     }
@@ -251,12 +260,20 @@ describe('payments.checkout.begin: what actually gates entry', () => {
   }
 
   /** Re-registers over a fresh catalog with a working (but otherwise inert) seam. */
-  function registerWithSeam(): void {
+  function registerWithSeam(overrides: Partial<CheckoutComposition> = {}): void {
     const seam = fakeSeam();
     catalog = new GatewayMethodCatalog();
     unregister = registerPaymentsMethods(catalog, {
       cards, purchases, budget, config, isPaymentsLeader: () => leader,
-      checkout: fakeCheckout({ seam: () => seam }),
+      checkout: fakeCheckout({ seam: () => seam, ...overrides }),
+    });
+  }
+
+  /** Mints one approval over the verb itself, for the purchase `validBeginBody` names. */
+  async function approvePurchase(amount = '20.00'): Promise<void> {
+    await invoke('payments.checkout.approve', {
+      context: { principalId: 'test-operator', metadata: { explicitUserRequest: true } },
+      body: { confirm: true, merchantDomain: 'example.invalid', item: 'a test item', amount },
     });
   }
 
@@ -279,19 +296,21 @@ describe('payments.checkout.begin: what actually gates entry', () => {
     expect(String(result['reason'])).toContain('not asked for by you directly');
   });
 
-  test('refuses on the NEXT gate, not this one, once explicit user authority is granted', async () => {
+  test('refuses on the NEXT gate, not this one, once explicit user authority and an approval are granted', async () => {
     settings.set('payments.enabled', true);
     registerWithSeam();
+    await approvePurchase();
 
     const result = await invoke('payments.checkout.begin', {
       context: { principalId: 'test-operator', metadata: { explicitUserRequest: true } },
-      body: validBeginBody(),
+      body: { ...validBeginBody(), requestedMax: '20.00' },
     });
 
-    // Owner-direct now, and still refused: no card and no address are
-    // configured on this fixture, so `checkPaymentGates` refuses on `no-card`
-    // (or, if the fixture ever gains a default card first,
-    // `no-shipping-address`), the honest next gate, never the owner-direct one.
+    // Owner-direct with a matching approval now, and still refused: no card
+    // and no address are configured on this fixture, so `checkPaymentGates`
+    // refuses on `no-card` (or, if the fixture ever gains a default card
+    // first, `no-shipping-address`), the honest next gate, never the
+    // owner-direct or approval one.
     expect(String(result['outcome'])).toStartWith('refused:');
     expect(result['outcome']).not.toBe('refused:not-owner-request');
   });
@@ -306,6 +325,146 @@ describe('payments.checkout.begin: what actually gates entry', () => {
     expect(refusal.status).toBe(409);
     expect(refusal.code).toBe('FAILED_PRECONDITION');
     expect(refusal.message).toContain('not available');
+  });
+
+  test('an owner-direct begin with no approval on file refuses, naming the approve verb', async () => {
+    settings.set('payments.enabled', true);
+    registerWithSeam();
+
+    const refusal = await refusalOf('payments.checkout.begin', {
+      context: { principalId: 'test-operator', metadata: { explicitUserRequest: true } },
+      body: { ...validBeginBody(), requestedMax: '20.00' },
+    });
+    expect(refusal.status).toBe(403);
+    expect(refusal.code).toBe('OWNER_APPROVAL_REQUIRED');
+    expect(refusal.message).toContain('payments.checkout.approve');
+  });
+
+  test('the approval is single use: the begin that spent it succeeds past the gate, the next one refuses', async () => {
+    settings.set('payments.enabled', true);
+    registerWithSeam();
+    await approvePurchase();
+
+    // First begin: past the approval gate, refused on the honest next gate
+    // (no card on this fixture), never on the approval.
+    const first = await invoke('payments.checkout.begin', {
+      context: { principalId: 'test-operator', metadata: { explicitUserRequest: true } },
+      body: { ...validBeginBody(), requestedMax: '20.00' },
+    });
+    expect(String(first['outcome'])).toStartWith('refused:');
+    expect(first['outcome']).not.toBe('refused:not-owner-request');
+
+    // Second, identical begin: the record was taken (removed when returned,
+    // approval-store.ts), so this one has nothing to spend.
+    const second = await refusalOf('payments.checkout.begin', {
+      context: { principalId: 'test-operator', metadata: { explicitUserRequest: true } },
+      body: { ...validBeginBody(), requestedMax: '20.00' },
+    });
+    expect(second.status).toBe(403);
+    expect(second.code).toBe('OWNER_APPROVAL_REQUIRED');
+    expect(second.message).toContain('payments.checkout.approve');
+  });
+
+  test('a begin whose content differs from what was approved refuses and leaves the approval unspent', async () => {
+    settings.set('payments.enabled', true);
+    registerWithSeam();
+    await approvePurchase('20.00');
+
+    // Same merchant and item, different amount: `different-content`, and the
+    // record stays on file, since `take` only removes what it returns.
+    const mismatched = await refusalOf('payments.checkout.begin', {
+      context: { principalId: 'test-operator', metadata: { explicitUserRequest: true } },
+      body: { ...validBeginBody(), requestedMax: '999.99' },
+    });
+    expect(mismatched.status).toBe(403);
+    expect(mismatched.code).toBe('OWNER_APPROVAL_REQUIRED');
+    expect(mismatched.message).toContain('different purchase');
+
+    // The matching begin still finds it, proving the mismatch spent nothing.
+    const matching = await invoke('payments.checkout.begin', {
+      context: { principalId: 'test-operator', metadata: { explicitUserRequest: true } },
+      body: { ...validBeginBody(), requestedMax: '20.00' },
+    });
+    expect(String(matching['outcome'])).toStartWith('refused:');
+    expect(matching['outcome']).not.toBe('refused:not-owner-request');
+  });
+
+  test('an expired approval refuses and says so', async () => {
+    settings.set('payments.enabled', true);
+    let nowMs = Date.parse('2026-08-21T12:00:00.000Z');
+    registerWithSeam({ approvals: freshApprovals(() => new Date(nowMs)) });
+    await approvePurchase();
+
+    // Six minutes later: past the five-minute TTL the store enforces.
+    nowMs += 6 * 60 * 1000;
+    const refusal = await refusalOf('payments.checkout.begin', {
+      context: { principalId: 'test-operator', metadata: { explicitUserRequest: true } },
+      body: { ...validBeginBody(), requestedMax: '20.00' },
+    });
+    expect(refusal.status).toBe(403);
+    expect(refusal.code).toBe('OWNER_APPROVAL_REQUIRED');
+    expect(refusal.message).toContain('expired');
+  });
+
+  test('a call that never claimed owner authority is refused by the OUTER gate, not the approval one', async () => {
+    settings.set('payments.enabled', true);
+    registerWithSeam();
+
+    // No approval on file AND not owner-direct: the outer layer answers, the
+    // approval store is never consulted, so the refusal is the flow's own
+    // `not-owner-request`, exactly as before the record existed.
+    const result = await invoke('payments.checkout.begin', {
+      context: { principalId: 'test-operator', metadata: { explicitUserRequest: false } },
+      body: { ...validBeginBody(), requestedMax: '20.00' },
+    });
+    expect(result['outcome']).toBe('refused:not-owner-request');
+  });
+});
+
+describe('payments.checkout.approve: the distinct act that authorizes one begin', () => {
+  test('refuses without the confirmation gate, so page text cannot mint one', async () => {
+    // No confirm field: the gate refuses before the handler runs, whatever
+    // the context claims.
+    const unconfirmed = await refusalOf('payments.checkout.approve', {
+      context: { principalId: 'test-operator', metadata: { explicitUserRequest: true } },
+      body: { merchantDomain: 'example.invalid', item: 'a test item', amount: '20.00' },
+    });
+    expect(unconfirmed.status).toBe(403);
+    expect(unconfirmed.code).toBe('REQUIRE_CONFIRM');
+
+    // confirm: true but no explicit-user-request context: still refused. The
+    // model can set a body field; the context flag is the caller surface's.
+    const automated = await refusalOf('payments.checkout.approve', {
+      context: { principalId: 'test-operator', metadata: { explicitUserRequest: false } },
+      body: { confirm: true, merchantDomain: 'example.invalid', item: 'a test item', amount: '20.00' },
+    });
+    expect(automated.status).toBe(403);
+    expect(automated.code).toBe('REQUIRE_CONFIRM');
+  });
+
+  test('names each missing field with a 400 rather than storing a partial approval', async () => {
+    const refusal = await refusalOf('payments.checkout.approve', {
+      context: { principalId: 'test-operator', metadata: { explicitUserRequest: true } },
+      body: { confirm: true, merchantDomain: 'example.invalid', item: 'a test item' },
+    });
+    expect(refusal.status).toBe(400);
+    expect(refusal.message).toContain('amount');
+  });
+
+  test('answers with the approved fields and an expiry, never a spread', async () => {
+    const result = await invoke('payments.checkout.approve', {
+      context: { principalId: 'test-operator', metadata: { explicitUserRequest: true } },
+      body: { confirm: true, merchantDomain: 'example.invalid', item: 'a test item', amount: '20.00' },
+    });
+    expect(result).toEqual({
+      approved: true,
+      action: 'payments.checkout.begin',
+      merchantDomain: 'example.invalid',
+      item: 'a test item',
+      amount: '20.00',
+      expiresAt: result['expiresAt'],
+    });
+    expect(Date.parse(String(result['expiresAt']))).toBeGreaterThan(Date.now());
   });
 });
 
@@ -376,6 +535,7 @@ describe('the checkout registry is shared across begin and fillCard, not rebuilt
       shippingOptions: [{ label: 'standard', cost: '0.00' }],
       cardFields: [{ field: 'number', ref: 'e1' }],
       placeOrderTarget: 'e9',
+      requestedMax: '20.00',
     };
   }
 
@@ -402,6 +562,14 @@ describe('the checkout registry is shared across begin and fillCard, not rebuilt
       cards, purchases, budget, config, isPaymentsLeader: () => leader,
       checkout: fakeCheckout({ seam: () => seam, addresses: addressStoreWithShipping(), notifier: hangingNotifier() }),
     });
+    // Each begin call below spends one owner approval before it reaches the
+    // registry (checkout-handlers.ts), so mint one per begin these tests fire.
+    for (let count = 0; count < 2; count += 1) {
+      await invoke('payments.checkout.approve', {
+        context: { principalId: 'test-operator', metadata: { explicitUserRequest: true } },
+        body: { confirm: true, merchantDomain: 'example.invalid', item: 'a test item', amount: '20.00' },
+      });
+    }
   });
 
   test('a fillCard for the SAME page a begin opened finds it, refusing on phase rather than "no purchase in flight"', async () => {
