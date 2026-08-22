@@ -40,7 +40,7 @@ writeFileSync(join(workspace, 'note.txt'), 'the note a hosted session can read\n
 const results: { step: string; ok: boolean; detail: string }[] = [];
 function check(step: string, ok: boolean, detail = ''): void {
   results.push({ step, ok, detail });
-  console.log(`${ok ? 'OK  ' : 'FAIL'} ${step}${detail ? ` — ${detail}` : ''}`);
+  console.log(`${ok ? 'OK  ' : 'FAIL'} ${step}${detail ? `: ${detail}` : ''}`);
 }
 
 // --- the model the hosted session will actually call --------------------------

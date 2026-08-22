@@ -103,7 +103,7 @@ function isFiniteNonNegativeAmount(value: unknown): value is number {
  * first time `snapshot()` or `reserve()` computes a day key from it (`day.ts`),
  * on every call, forever, since nothing ever mutates the record to fix it or
  * calls `persist()` to rewrite the file. Checked the same way an amount is:
- * finite, and additionally a whole number inside the range `Date` accepts.
+ * finite, and a whole number inside the range `Date` accepts.
  */
 function isValidTimestampMs(value: unknown): value is number {
   return typeof value === 'number'

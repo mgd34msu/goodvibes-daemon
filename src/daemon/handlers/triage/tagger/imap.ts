@@ -235,7 +235,7 @@ export function imapStoreFlagOverTls(
     type Step = { tag: string; isLogout: boolean; resolve: () => void; reject: (e: Error) => void };
 
     let done = false;
-    let completed = false; // LOGOUT acknowledged (or BYE seen) — close is expected.
+    let completed = false; // LOGOUT acknowledged (or BYE seen), so close is expected.
     let buffer = '';
     let pending: Step | null = null;
     let counter = 0;

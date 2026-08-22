@@ -117,7 +117,7 @@ function clampLimit(value: unknown): number | undefined {
 
 /**
  * Routing surface handle. Satisfies the foundation `RoutingRegistration`
- * (`{ unregister, resolveProfileId }`) and additionally exposes the live
+ * (`{ unregister, resolveProfileId }`) and exposes the live
  * {@link RoutingResolver} and {@link RouteStore} so the inbox surface and tests
  * can reuse routing resolution without going through the catalog.
  */

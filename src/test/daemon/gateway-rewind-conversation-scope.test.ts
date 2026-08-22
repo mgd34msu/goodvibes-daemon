@@ -80,7 +80,7 @@ describe('composed daemon serves conversation-scope rewind live', () => {
     } as never)) as RewindPlanResult;
 
     expect(plan.conversation).toBeTruthy();
-    expect(plan.conversation?.available).toBe(true); // the port is threaded — not the absent-store default
+    expect(plan.conversation?.available).toBe(true); // a port is threaded here, not the absent-store default
     expect(plan.conversation?.messagesToDrop).toBe(2);
     expect(plan.conversation?.messagesRemaining).toBe(3);
     expect(typeof plan.token).toBe('string');

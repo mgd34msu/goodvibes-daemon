@@ -92,7 +92,7 @@ describe('imapStoreFlagOverTls CRLF-injection guard', () => {
 // would), and emit() to drive 'close'/'error'. This exercises the async
 // protocol state machine end-to-end with no real network socket: greeting
 // validation, untagged-line skipping, tagged OK/NO/BAD parsing, the `* BYE`
-// clean-close path, the completed/close interplay, and the timeout branch.
+// clean-close path, how completed and close interact, and the timeout branch.
 // ---------------------------------------------------------------------------
 class FakeImapSocket implements ImapSocketLike {
   readonly writes: string[] = [];

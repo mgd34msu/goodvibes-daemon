@@ -29,7 +29,7 @@ let failed = 0;
 
 // 1) Shared SDK-pin tri-agreement + import sweep (toolchain).
 for (const result of runSdkPinGate(realFsReader(root), config.sdkPin)) {
-  console.log(`${result.ok ? 'PASS' : 'FAIL'}  ${result.id} — ${result.detail}`);
+  console.log(`${result.ok ? 'PASS' : 'FAIL'}  ${result.id}: ${result.detail}`);
   if (!result.ok) failed += 1;
 }
 
@@ -41,16 +41,16 @@ const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')) as Reco
 for (const field of ['name', 'version', 'description', 'license']) {
   const value = pkg[field];
   if (typeof value !== 'string' || value.trim().length === 0) {
-    console.error(`FAIL  publish-field-present — package.json missing required field: ${field}`);
+    console.error(`FAIL  publish-field-present: package.json missing required field: ${field}`);
     failed += 1;
   }
 }
 if (!pkg.repository || typeof pkg.repository.url !== 'string') {
-  console.error('FAIL  publish-field-present — package.json missing repository metadata');
+  console.error('FAIL  publish-field-present: package.json missing repository metadata');
   failed += 1;
 }
 if (!pkg.bin || typeof pkg.bin['goodvibes-daemon'] !== 'string') {
-  console.error('FAIL  publish-field-present — package.json must expose a goodvibes-daemon bin entry');
+  console.error('FAIL  publish-field-present: package.json must expose a goodvibes-daemon bin entry');
   failed += 1;
 }
 
@@ -61,7 +61,7 @@ if (config.publish) {
     config: config.publish,
     bins: [{ name: 'goodvibes-daemon', path: 'bin/goodvibes-daemon', shebang: '#!/usr/bin/env bun' }],
   });
-  for (const issue of install.issues) console.error(`FAIL  package-install-check — ${issue}`);
+  for (const issue of install.issues) console.error(`FAIL  package-install-check: ${issue}`);
   if (!install.ok) failed += 1;
 }
 
@@ -73,7 +73,7 @@ if (!skipAuthCheck) {
     execSync(`npm whoami --registry ${registry}`, { stdio: ['ignore', 'pipe', 'pipe'], encoding: 'utf8' });
   } catch {
     console.error(
-      `FAIL  registry-auth — npm token invalid for ${registry}; refresh NPM_TOKEN / npm login\n` +
+      `FAIL  registry-auth: npm token invalid for ${registry}. Refresh NPM_TOKEN / npm login.\n` +
         '  (set GOODVIBES_SKIP_NPM_AUTH_CHECK=1 to bypass in offline/dry-run contexts)',
     );
     failed += 1;

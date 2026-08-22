@@ -1,5 +1,5 @@
 /**
- * daemon-fatal-boot-legacy-entry.ts — the fatal tail as it shipped, on purpose.
+ * daemon-fatal-boot-legacy-entry.ts: the fatal tail as it shipped, on purpose.
  *
  * The control for the compiled-binary disclosure test. This is the shape
  * `src/daemon/cli.ts` actually used through 1.27.0: report the failure to the
@@ -7,8 +7,8 @@
  * the entrypoint never called `configureActivityLogger` at all, so the logger
  * it reports to has no destination either.
  *
- * Compiled and run, it produces zero bytes on stdout and zero bytes on stderr —
- * which is precisely what an operator saw for 77 crash-loops, and precisely
+ * Compiled and run, it produces zero bytes on stdout and zero bytes on stderr.
+ * Zero bytes is precisely what an operator saw for 77 crash-loops, and precisely
  * what a source-level test cannot observe.
  *
  * Its only job is to hold that baseline still, so the fixed entry's output is
@@ -24,7 +24,7 @@ import { resolveGoodVibesHomeOwnership } from '@pellux/goodvibes-sdk/platform/co
 async function main(): Promise<void> {
   const { homeDirectory } = resolveGoodVibesHomeOwnership();
   const workingDir = process.env['GOODVIBES_WORKING_DIR'] ?? process.cwd();
-  // Deliberately no configureActivityLogger — the shipped daemon entrypoint had
+  // Deliberately no configureActivityLogger. The shipped daemon entrypoint had
   // none, which is the other half of why nothing was written anywhere.
   const config = new ConfigManager({ workingDir, homeDir: homeDirectory, surfaceRoot: 'tui' });
   process.stdout.write(`BOOTED controlPlane.port=${String(config.get('controlPlane.port'))}\n`);

@@ -1,5 +1,5 @@
 /**
- * daemon-fatal-boot-entry.ts — the daemon's boot-and-fail path, compilable.
+ * daemon-fatal-boot-entry.ts: the daemon's boot-and-fail path, compilable.
  *
  * This exists to be built with `bun build --compile` and RUN, because the
  * defect it guards is invisible to a source-level test: the released 1.27.0
@@ -14,8 +14,8 @@
  *
  * Why not compile `src/daemon/cli.ts` itself: that build only RUNS after
  * `scripts/prebuild.ts` has rewritten `node_modules/css-tree/lib/data-patch.js`
- * into a form `bun build --compile` can bundle. On a fresh checkout — which is
- * what the CI test job has — the compiled entrypoint dies at module init with
+ * into a form `bun build --compile` can bundle. On a fresh checkout, which is
+ * what the CI test job has, the compiled entrypoint dies at module init with
  * `Cannot find module '../data/patch.json'`, from a dependency of jsdom, before
  * a single line of daemon code runs. Measured both ways. A test that mutates
  * node_modules to make itself possible is worse than this fixture, which
@@ -33,7 +33,7 @@ async function main(): Promise<void> {
   const { homeDirectory } = resolveGoodVibesHomeOwnership();
   const workingDir = process.env['GOODVIBES_WORKING_DIR'] ?? process.cwd();
   configureActivityLogger(join(workingDir, '.goodvibes', 'logs'));
-  // The construction that throws on an unreadable daemon tier — the exact call
+  // The construction that throws on an unreadable daemon tier. It is the exact call
   // src/daemon/cli.ts makes, with the same surfaceRoot.
   const config = new ConfigManager({ workingDir, homeDir: homeDirectory, surfaceRoot: GOODVIBES_DAEMON_SURFACE_ROOT });
   process.stdout.write(`BOOTED controlPlane.port=${String(config.get('controlPlane.port'))}\n`);

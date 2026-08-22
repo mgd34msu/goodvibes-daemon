@@ -42,7 +42,7 @@ export function sweepStaleTestTmp(root: string, options: SweepOptions = {}): str
   try {
     entries = readdirSync(root);
   } catch {
-    return []; // root doesn't exist yet — nothing to sweep
+    return []; // the root doesn't exist yet, so there is nothing to sweep
   }
 
   const removed: string[] = [];

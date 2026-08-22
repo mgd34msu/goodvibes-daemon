@@ -271,5 +271,5 @@ export interface RuntimeServices {
    * rather than preserved.
    */
   cancelHostedAgentRuns(): number;
-  dispose(): void; // Stop every poller this graph started; best-effort, total, idempotent. This surface owns its graph — the SDK's disposal scope drives it.
+  dispose(): void; // Stops every poller this graph started: best-effort, total, idempotent. This surface owns its graph, and the SDK's disposal scope drives it.
 }

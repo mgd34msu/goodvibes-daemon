@@ -471,7 +471,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
       .register({ sessionId: id, kind: 'acp', title, project: cwd, participant: { surfaceKind: 'service', surfaceId: `acp-host:${agentTitle}`, lastSeenAt: Date.now() } })
       .catch(() => { /* best-effort; the fleet row is authoritative */ }),
   });
-  const { processRegistry } = createFleetServices({ // Shared archive-aware fleet registry (+ daemon observed rows) — see fleet-services.ts
+  const { processRegistry } = createFleetServices({ // Shared archive-aware fleet registry (+ daemon observed rows). See fleet-services.ts.
     agentManager, wrfcController,
     orchestrationEngine, // Folds workstream/phase/work-item nodes into the fleet
     codeIndexService: codeIndexStore, // Folds a single 'code-index' node into the fleet
@@ -563,7 +563,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     watcherRegistry, userPermissionRuleStore, shellPaths, configManager, runtimeStore: options.runtimeStore,
     channelDeliveryRouter, providerRegistry, automationManager, sessionLister: sessionBroker, sessionIntake: sessionBroker,
     workingDirectory, memoryRegistry, pairingTokens, sessionLiveTurnControls, powerManager, memoryGovernor, voiceSetup,
-    acpHost, // Registers acp.agents.list (discovery) and acp.sessions.create (spawn) — see register-gateway-verb-groups.ts
+    acpHost, // Registers acp.agents.list (discovery) and acp.sessions.create (spawn). See register-gateway-verb-groups.ts.
     attemptsController: orchestrationEngine,
     relayAvailable: () => configManager.get('relay.enabled') === true,
     pairingWebOrigin: () => resolvePairingWebOrigin(configManager).origin,

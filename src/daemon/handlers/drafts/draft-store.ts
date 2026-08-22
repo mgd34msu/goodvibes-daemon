@@ -65,7 +65,7 @@ export interface DraftRecord {
   createdAt: string; // ISO-8601
   updatedAt: string; // ISO-8601
   status: DraftStatus;
-  message: string; // sha256First(body, 12) digest — plaintext body is NEVER transmitted
+  message: string; // sha256First(body, 12) digest. Plaintext body is NEVER transmitted.
   title?: string;
   channel?: string;
   route?: string;
