@@ -16,7 +16,7 @@ All notable changes to the GoodVibes daemon.
   artifact version, which had every 2.x surface refusing adoption and
   silently running local-only since sdk 2.0.0.
 - **A machine with no microphone is reported as that**, once, in plain
-  words, with a gentle retry — not a wake-detector crash loop. A busy
+  words, with a gentle retry, not a wake-detector crash loop. A busy
   device keeps prompt retries and the crash latch.
 
 ## [1.28.23] - 2026-08-21
@@ -55,8 +55,8 @@ All notable changes to the GoodVibes daemon.
   the content fingerprint whenever one is present and the caller names the
   content in question, independent of taint clearing.
 - **In-flight checkouts survive restarts.** The checkout registry writes
-  every phase to `payments-checkout-journal.json` before proceeding — the
-  `submit-pending` flush lands on disk before the merchant submit — so a
+  every phase to `payments-checkout-journal.json` before proceeding. The
+  `submit-pending` flush lands on disk before the merchant submit, so a
   crash in the one ambiguous window leaves a record the boot sweep can
   disclose instead of nothing. Unknown journal fields round-trip untouched.
 - **Help text tells the truth** about update checks and auth file paths.
