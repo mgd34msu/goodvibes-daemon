@@ -2,6 +2,18 @@
 
 All notable changes to the GoodVibes daemon.
 
+## [1.28.23] - 2026-08-21
+
+### Changes
+
+- **A rejected OpenAI subscription token recovers before it fails a turn.**
+  sdk 2.0.21 inside: a token the Codex backend refuses (expired, revoked by
+  a login elsewhere, entitlement lost) gets one coalesced, time-bounded
+  refresh attempt and one retry; only an authorization server that answers
+  "no" produces the sign-in-again error, and that error names the
+  subscription session, never an API key. No daemon code change; the pin is
+  the fix.
+
 ## [1.28.22] - 2026-08-21
 
 ### Changes
