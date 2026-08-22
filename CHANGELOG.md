@@ -2,6 +2,23 @@
 
 All notable changes to the GoodVibes daemon.
 
+## [1.28.24] - 2026-08-22
+
+### Changes
+
+- **A dead subscription login shows dead everywhere.** sdk 2.0.22 inside:
+  a refused grant stamps the stored record, the provider-health posture
+  reports the session as ended instead of deriving healthy from a
+  timestamp, later turns fail fast with the honest message, and a
+  near-expiry token refreshes silently before the send.
+- **Surfaces adopt this daemon again.** The adoption gate now band-checks
+  the platform build this daemon reports on /status instead of its 1.28.x
+  artifact version, which had every 2.x surface refusing adoption and
+  silently running local-only since sdk 2.0.0.
+- **A machine with no microphone is reported as that**, once, in plain
+  words, with a gentle retry — not a wake-detector crash loop. A busy
+  device keeps prompt retries and the crash latch.
+
 ## [1.28.23] - 2026-08-21
 
 ### Changes
