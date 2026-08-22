@@ -2,6 +2,36 @@
 
 All notable changes to the GoodVibes daemon.
 
+## [1.28.22] - 2026-08-21
+
+### Changes
+
+- **Interrupted checkouts are disclosed at boot.** sdk 2.0.20's
+  `registerPaymentsGatewayMethods` runs a recovery sweep over the durable
+  checkout journal before attaching the payment verbs: a checkout the last
+  process died holding is settled by its journaled phase (`not-submitted`
+  released, `possibly-submitted` disclosed to the owner once, `submitted`
+  reconciled against the purchase ledger) instead of being forgotten. The
+  daemon's five local handlers now attach after that sweep through the new
+  `{ ready, unregister }` registration shape, so the sdk's deferred attach can
+  never replace them, and a teardown that runs before attachment completes
+  leaves no handler behind. Recovery outcomes land on the daemon log through
+  the sdk's `onRecoveryFailure`/`onRecoverySettled` hooks.
+- **Approving a purchase is a real recorded act.** The new
+  `payments.checkout.approve` verb (ws-only, confirm-gated, owner-direct from
+  its own code path) mints a single-use, content-bound approval with a
+  five-minute TTL, persisted in `payments-approvals.json`; `checkout.begin`
+  spends exactly one or refuses with `OWNER_APPROVAL_REQUIRED` naming the
+  verb. Approvals ride sdk 2.0.20's `checkOwnerApproval`, which now compares
+  the content fingerprint whenever one is present and the caller names the
+  content in question, independent of taint clearing.
+- **In-flight checkouts survive restarts.** The checkout registry writes
+  every phase to `payments-checkout-journal.json` before proceeding — the
+  `submit-pending` flush lands on disk before the merchant submit — so a
+  crash in the one ambiguous window leaves a record the boot sweep can
+  disclose instead of nothing. Unknown journal fields round-trip untouched.
+- **Help text tells the truth** about update checks and auth file paths.
+
 ## [1.28.21] - 2026-08-21
 
 ### Changes
