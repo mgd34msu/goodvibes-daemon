@@ -2,6 +2,20 @@
 
 All notable changes to the GoodVibes daemon.
 
+## [1.28.25] - 2026-08-23
+
+### Changes
+
+- **The platform moves to sdk 2.0.23.** Calendar callers get an honest
+  CALENDAR_AUTH_FAILED for a dead Google grant, non-model 400s keep their own
+  hints instead of an LLM checklist, provider auth summaries fold in their
+  routes (a usable subscription sign-in reads configured), catalog providers
+  without declared auth metadata gain derived api-key and secret-ref routes,
+  and the model verbs serve the new reasoning-effort surface this daemon now
+  hosts: per-model options on models.list, a persisted validated level on
+  models.current.set with null-to-clear, the level reported by
+  models.current.get, and each turn resolving it with snap-down.
+
 ## [1.28.24] - 2026-08-22
 
 ### Changes
