@@ -766,6 +766,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     agentOrchestrator,
     contextAccountingHolder,
     wrfcController,
+    wrfcFixEngine,
     processManager,
     orchestrationEngine,
     workstreamCommands,

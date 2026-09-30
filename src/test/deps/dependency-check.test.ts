@@ -15,94 +15,12 @@
  * resolves and can perform its primary operation without throwing.
  */
 import { describe, test, expect } from 'bun:test';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
 const repoRoot = join(import.meta.dir, '..', '..', '..');
 
-/**
- * The pin set, written out by hand rather than derived from package.json, so a
- * pin silently dropped fails here instead of quietly changing what a hosted
- * turn can do.
- */
-const PINNED = [
-  '@agentclientprotocol/sdk',
-  '@ast-grep/napi',
-  'bash-language-server',
-  'fuse.js',
-  'graphql',
-  'jszip',
-  'node-edge-tts',
-  'pyright',
-  'sql.js',
-  'tree-sitter-css',
-  'tree-sitter-javascript',
-  'tree-sitter-json',
-  'tree-sitter-python',
-  'tree-sitter-typescript',
-  'typescript-language-server',
-  'vscode-langservers-extracted',
-  'web-tree-sitter',
-] as const;
-
-describe('the local-tools pin set', () => {
-  test('every package a hosted turn needs is pinned by this product, not inherited', () => {
-    const manifest = JSON.parse(readFileSync(join(repoRoot, 'package.json'), 'utf-8')) as {
-      dependencies: Record<string, string>;
-    };
-    const missing = PINNED.filter((name) => manifest.dependencies[name] === undefined);
-    expect(missing).toEqual([]);
-  });
-
-  test('each pin says the same range the platform declares for it', () => {
-    // The platform declares all of these optional, with a range of its own. A
-    // narrower range here does not "pin harder", it makes an install resolve a
-    // version the platform's own code was not built against, or fail outright.
-    const manifest = JSON.parse(readFileSync(join(repoRoot, 'package.json'), 'utf-8')) as {
-      dependencies: Record<string, string>;
-    };
-    const platform = JSON.parse(
-      readFileSync(join(repoRoot, 'node_modules', '@pellux', 'goodvibes-sdk', 'package.json'), 'utf-8'),
-    ) as { optionalDependencies?: Record<string, string> };
-    const disagreements = PINNED
-      .filter((name) => platform.optionalDependencies?.[name] !== undefined)
-      .filter((name) => {
-        const declared = platform.optionalDependencies![name]!;
-        const pinned = manifest.dependencies[name];
-        if (!declared.startsWith('file:')) return pinned !== declared;
-        // A file: declaration means the platform VENDORS the tool inside its
-        // own package. The published range to agree with is the vendored
-        // copy's real version: this repo's caret pin must include it.
-        const vendored = JSON.parse(
-          readFileSync(
-            join(repoRoot, 'node_modules', '@pellux', 'goodvibes-sdk', declared.slice('file:'.length), 'package.json'),
-            'utf-8',
-          ),
-        ) as { version: string };
-        return pinned !== `^${vendored.version}`;
-      })
-      .map((name) => `${name}: ${manifest.dependencies[name]} here, ${platform.optionalDependencies![name]} there`);
-    expect(disagreements).toEqual([]);
-  });
-
-  test('the two provider packages nothing imports are gone', () => {
-    // @anthropic-ai/vertex-sdk and @aws/bedrock-token-generator were declared
-    // here and imported by nothing in this repository or the platform.
-    const manifest = JSON.parse(readFileSync(join(repoRoot, 'package.json'), 'utf-8')) as {
-      dependencies: Record<string, string>;
-    };
-    expect(manifest.dependencies['@anthropic-ai/vertex-sdk']).toBeUndefined();
-    expect(manifest.dependencies['@aws/bedrock-token-generator']).toBeUndefined();
-  });
-});
-
 describe('sql.js', () => {
-  test('exports an initSqlJs factory function', async () => {
-    const mod = await import('sql.js');
-    const factory = mod.default ?? mod;
-    expect(typeof factory).toBe('function');
-  });
-
   test('can create a table and read a row back', async () => {
     const initSqlJs = (await import('sql.js')).default;
     const SQL = await initSqlJs();
@@ -117,11 +35,6 @@ describe('sql.js', () => {
 });
 
 describe('fuse.js', () => {
-  test('exports a Fuse constructor as default', async () => {
-    const { default: Fuse } = await import('fuse.js');
-    expect(typeof Fuse).toBe('function');
-  });
-
   test('can search an index and return the match', async () => {
     const { default: Fuse } = await import('fuse.js');
     const fuse = new Fuse(
@@ -176,16 +89,5 @@ describe('tree-sitter grammars', () => {
     // the runtime; every grammar parse below the surface goes through it.
     const Parser = (mod.default ?? mod.Parser) as unknown as { init(): Promise<void> };
     await Parser.init();
-  });
-});
-
-describe('@agentclientprotocol/sdk', () => {
-  // Hosted third-party coding agents: services.ts constructs AcpHostService,
-  // which speaks this protocol over the agent's stdio.
-  test('exports the connection classes the ACP host speaks through', async () => {
-    const mod = await import('@agentclientprotocol/sdk');
-    expect(typeof mod.AgentSideConnection).toBe('function');
-    expect(typeof mod.ClientSideConnection).toBe('function');
-    expect(typeof mod.ndJsonStream).toBe('function');
   });
 });

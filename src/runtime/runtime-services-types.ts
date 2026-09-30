@@ -218,6 +218,8 @@ export interface RuntimeServices {
   readonly agentOrchestrator: AgentOrchestrator;
   readonly contextAccountingHolder: ContextAccountingHolder; // bound at bootstrap.ts; see context-accounting-source.ts
   readonly wrfcController: WrfcController;
+  /** The orchestration engine that runs wrfcController's planned-fix phase (built by the SDK's createAgentGraph, disposed with this graph). */
+  readonly wrfcFixEngine: OrchestrationEngine;
   readonly processManager: ProcessManager;
   /** The phase/work-item orchestration engine, the SDK's platform/orchestration. */
   readonly orchestrationEngine: OrchestrationEngine;

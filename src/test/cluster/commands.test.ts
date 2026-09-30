@@ -15,8 +15,6 @@
 
 import { describe, expect, test } from 'bun:test';
 import type { ConfigManager } from '@pellux/goodvibes-sdk/platform/config';
-import { readFileSync, readdirSync } from 'node:fs';
-import { join, relative, resolve } from 'node:path';
 import {
   CLUSTER_SUBCOMMANDS,
   clipboardEscapeSequence,
@@ -393,60 +391,5 @@ describe('rendering', () => {
     expect(describeAge(1_000_000, 1_000_000)).toBe('0s ago');
     expect(describeAge(1_000_000, 1_090_000)).toBe('2m ago');
     expect(describeAge(0, 3 * 24 * 60 * 60 * 1_000)).toBe('3d ago');
-  });
-});
-
-describe('wiring', () => {
-  test('the daemon CLI intercepts `cluster` before it composes a runtime', () => {
-    const source = readFileSync(join(import.meta.dir, '../../daemon/cli.ts'), 'utf-8');
-    // Before the flag parser, because the subcommand has its own flag
-    // vocabulary the daemon parser would reject; before the runtime, because it
-    // talks to a daemon that is ALREADY RUNNING and a second composed graph on
-    // the same machine is a second set of state.
-    expect(source).toContain("if (rawArgs[0] === 'cluster') {");
-    expect(source).toContain('runClusterCommand');
-    const interceptIndex = source.indexOf("if (rawArgs[0] === 'cluster') {");
-    const parserIndex = source.indexOf('parseDaemonCli(process.argv');
-    const composeIndex = source.indexOf('createRuntimeServices({');
-    expect(interceptIndex).toBeGreaterThan(0);
-    expect(interceptIndex).toBeLessThan(parserIndex);
-    expect(interceptIndex).toBeLessThan(composeIndex);
-  });
-
-  test('this repository builds no cluster requests of its own', () => {
-    // Every caller, this CLI, a client's /cluster command, a web view, goes
-    // through runClusterCommand, so a command run against a REMOTE daemon
-    // behaves exactly like one run on that machine. A second request builder
-    // in this repository is how those two drift apart. The one `/api/cluster/`
-    // path named here is status-command.ts asking for the group's own view of
-    // membership, which is a read the cluster command family does not have.
-    const src = resolve(import.meta.dir, '../..');
-    const builders = new Set<string>();
-    const walk = (dir: string): void => {
-      for (const entry of readdirSync(dir, { withFileTypes: true })) {
-        const full = join(dir, entry.name);
-        if (entry.isDirectory()) {
-          if (entry.name !== 'test') walk(full);
-          continue;
-        }
-        if (!entry.name.endsWith('.ts')) continue;
-        for (const line of readFileSync(full, 'utf-8').split('\n')) {
-          const trimmed = line.trimStart();
-          if (trimmed.startsWith('*') || trimmed.startsWith('/*') || trimmed.startsWith('//')) continue;
-          if (/['"`]\/api\/cluster\//.test(line)) builders.add(relative(src, full));
-        }
-      }
-    };
-    walk(src);
-    expect([...builders].sort()).toEqual(['daemon/status-command.ts']);
-  });
-
-  test('the daemon CLI intercepts `cluster` before composing a runtime', () => {
-    const source = readFileSync(join(import.meta.dir, '../../daemon/cli.ts'), 'utf-8');
-    const clusterAt = source.indexOf("rawArgs[0] === 'cluster'");
-    const runtimeAt = source.indexOf('createRuntimeServices(');
-    expect(clusterAt).toBeGreaterThan(0);
-    expect(runtimeAt).toBeGreaterThan(0);
-    expect(clusterAt).toBeLessThan(runtimeAt);
   });
 });

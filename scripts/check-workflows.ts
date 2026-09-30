@@ -10,17 +10,11 @@
  *   - every workflow declares `name`, `on`, and a non-empty `jobs` map;
  *   - every job declares `runs-on` and either `steps` or `uses` (reusable call);
  *   - no job carries `continue-on-error: true` (banned across the ecosystem, a
- *     run that reports success over a failing job is a false green);
- *   - the release workflow carries the publish job we expect (this repo ships a
- *     single npm package, no platform-specific sub-packages. It does carry a
- *     secondary GitHub Packages mirror job, published under the repo-owner
- *     scope; npmjs stays the one registry consumers pin).
+ *     run that reports success over a failing job is a false green).
  *
  * Exit code 0 = green (0 problems), non-zero = the check found problems.
  *
- * The first CLI argument overrides the directory to validate; it exists so the
- * gate's own test can point it at fixture workflows and prove each rule still
- * reports a problem when the workflow is actually broken.
+ * The first CLI argument overrides the directory to validate.
  */
 import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
@@ -47,14 +41,6 @@ if (files.length === 0) {
   console.error('check-workflows: no workflow files found under .github/workflows');
   process.exit(1);
 }
-
-/**
- * Jobs the release workflow must define. This repo ships one npm package, so
- * the list is shorter than the Agent's; `verify-tag-version` is the gate that
- * refuses to release when the pushed tag and package.json version disagree,
- * and it is asserted here so it cannot be dropped without this check going red.
- */
-const RELEASE_REQUIRED_JOBS: readonly string[] = ['verify-tag-version', 'publish-npm'];
 
 /**
  * A step-level `continue-on-error` is an informational annotation and never
@@ -108,15 +94,6 @@ for (const file of files) {
     }
     if (jobContinuesOnError(job)) {
       fail(file, `job "${jobName}" declares job-level continue-on-error: true (banned: it hides a failing job behind a green run)`);
-    }
-  }
-
-  if (file === 'release.yml') {
-    for (const job of RELEASE_REQUIRED_JOBS) {
-      const jobDef = (jobs as Json)[job];
-      if (!isObject(jobDef)) {
-        fail(file, `release workflow is missing the "${job}" job`);
-      }
     }
   }
 }

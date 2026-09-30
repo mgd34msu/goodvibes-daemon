@@ -22,10 +22,9 @@ import { disposeTestRuntimeServicesAfterAll, getTestRuntimeServices } from '../h
 disposeTestRuntimeServicesAfterAll();
 
 let root: string;
-// Rooted under .test-tmp rather than the real OS temp dir: the whole-suite
-// coverage run (scripts/coverage-gate.ts) spawns `bun test` WITHOUT the preload
-// that redirects TMPDIR, so creating scratch straight under the real temp root
-// here leaked a `gv-hosted-posture-` directory that no prefix in
+// Rooted under .test-tmp rather than the real OS temp dir: a bare `bun test`
+// run gets no TMPDIR redirect, so creating scratch straight under the real temp
+// root here leaked a `gv-hosted-posture-` directory that no prefix in
 // scripts/stale-tmp-sweep.ts was registered to reclaim.
 beforeAll(() => { root = makeProjectTempDir('gv-hosted-posture'); });
 afterAll(() => { rmSync(root, { recursive: true, force: true }); });

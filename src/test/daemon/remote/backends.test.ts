@@ -69,22 +69,14 @@ describe('runProcess', () => {
   });
 
   it('SIGKILLs and reaps a process that exceeds the timeout', async () => {
-    const start = Date.now();
-    const result = await runProcess({ args: ['sleep', '10'], timeoutMs: 200 });
-    const elapsed = Date.now() - start;
+    // The await resolves on child.exited (post-SIGKILL). A runner that only
+    // flagged the timeout without killing would wait out the 60 s sleep, past
+    // this test's 20 s ceiling, so the ceiling is what fails, not a clock
+    // comparison that a loaded host can trip.
+    const result = await runProcess({ args: ['sleep', '60'], timeoutMs: 200 });
     expect(result.timedOut).toBe(true);
-    // The await resolves on child.exited (post-SIGKILL), so it returns promptly
-    // rather than waiting the full sleep, no orphaned child is left running.
-    //
-    // The threshold used to be 5_000 with no per-test budget, which is bun's
-    // own default: the assertion could never fail, because the test died of the
-    // timeout at exactly the moment `elapsed` reached the number it was being
-    // compared against. A measurement that cannot fail its own assertion proves
-    // nothing. The budget now sits above the threshold, so the assertion is
-    // what fails, and the threshold is still two orders of magnitude below the
-    // 10 s sleep this guards against waiting out.
-    expect(elapsed).toBeLessThan(5_000);
-  }, 30_000);
+    expect(result.exitCode).not.toBe(0);
+  }, 20_000);
 
   it('pipes stdin to the child', async () => {
     const result = await runProcess({ args: ['cat'], stdin: 'piped-input', timeoutMs: 5_000 });

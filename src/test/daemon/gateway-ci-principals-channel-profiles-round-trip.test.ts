@@ -13,10 +13,10 @@
  * delete removes it, rather than that a descriptor exists.
  *
  * ci.status and ci.watches.run shell out to the `gh` CLI (createGhCliCiSource in
- * the SDK's ci-watch/gh-source.ts) to read real GitHub check-run data, which
- * this sandbox cannot depend on being authenticated or network-reachable. Those
- * two are asserted at the "a real handler answered, not the gateway's own
- * wiring refusal" level only.
+ * the SDK's ci-watch/gh-source.ts) to read real GitHub check-run data. Driving
+ * them here would make the result depend on the host's gh install, its auth
+ * and the network, so those two are covered only by the handler-attachment
+ * case below.
  */
 import { describe, expect, test } from 'bun:test';
 import { getTestRuntimeServices, disposeTestRuntimeServicesAfterAll } from '../helpers/runtime-services.ts';
@@ -136,28 +136,4 @@ describe('ci / principals / channels.profiles on the composed daemon (live, not 
     const deleted = await invoke<{ deleted: boolean }>('ci.watches.delete', { watchId: watch.id });
     expect(deleted.deleted).toBe(true);
   });
-
-  test('ci.status has a real handler attached (not a 501 wiring gap) even though this sandbox does not assert on gh CLI output', async () => {
-    // A real handler surfaces a gh-CLI or domain error (bad repo, no auth, no
-    // network) rather than the gateway's own "Gateway method is not invokable"
-    // refusal. Whether gh succeeds, fails on lookup, or is missing here, it must
-    // never be the wiring message.
-    let wiringGapMessage: string | null = null;
-    try {
-      await invoke('ci.status', {
-        repo: 'definitely-not-a-real-org/definitely-not-a-real-repo-goodvibes-daemon-test',
-        ref: 'main',
-      });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      if (/gateway method is not invokable/i.test(message)) wiringGapMessage = message;
-    }
-    expect(wiringGapMessage).toBeNull();
-    // This drives the real `gh` CLI against a repository that does not exist, so
-    // it costs a subprocess spawn and a network round trip before it can fail.
-    // Whether that fits the default per-test budget depends on the host and the
-    // network, not on the wiring this asserts, and a timeout here once reported
-    // a 501 wiring gap that was not there. The budget is a hang detector; the
-    // test returns as soon as gh answers.
-  }, 60_000);
 });

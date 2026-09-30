@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/mgd34msu/goodvibes-daemon/actions/workflows/ci.yml/badge.svg)](https://github.com/mgd34msu/goodvibes-daemon/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/version-1.28.21-blue.svg)](https://github.com/mgd34msu/goodvibes-daemon)
+[![Version](https://img.shields.io/badge/version-1.29.0-blue.svg)](https://github.com/mgd34msu/goodvibes-daemon)
 
 The GoodVibes daemon is the one long-running process per machine that holds the control plane
 every GoodVibes client talks to. It:
@@ -129,6 +129,7 @@ goodvibes-daemon provision-wake-model
 - [Updates and rollback](docs/updates-and-rollback.md): the hourly self-update loop, automatic crash-loop rollback, `.previous`
 - [Daemon-hosted sessions](docs/hosted-sessions.md): conversations that run inside the daemon and outlive any one client
 - [Troubleshooting](docs/troubleshooting.md): startup failures, log locations, port conflicts, service-status oddities
+- [Testing and validation](docs/testing-and-validation.md): what to run while you work, what CI runs on every push, and what the version bump regenerates
 
 ## License
 

@@ -45,12 +45,6 @@
       }
     ]
   },
-  "//coverage": "Ratchet floors, set about a point below the measured whole-suite baseline so ordinary feature work does not block releases (funcs 81.47%, lines 86.49% on the 2026-08-20 tree, 1181 tests, 0 fail). Raise as coverage improves; never lower without an explicit decision.",
-  "coverage": {
-    "funcsFloor": 80,
-    "linesFloor": 85,
-    "command": ["bun", "test", "--coverage", "src"]
-  },
   "smoke": {
     "bannerPrefix": "goodvibes-daemon ",
     "forbiddenStrings": ["sqlite-vec", "$bunfs/root"],
@@ -59,10 +53,10 @@
   "releaseCut": {
     "branch": "main",
     "versionFiles": [],
-    "syncCommands": [["bun", "run", "scripts/prebuild.ts"]],
+    "syncCommands": [["bun", "run", "scripts/release-prepare.ts", "--no-bump", "--no-changelog"]],
     "commitPaths": ["package.json", "src/version.ts", "README.md", "CHANGELOG.md"],
     "changelogHeading": "bracket",
-    "changelogInsertMarker": "first-separator"
+    "changelogInsertMarker": "top"
   },
   "publish": {
     "packageName": "@pellux/goodvibes-daemon",

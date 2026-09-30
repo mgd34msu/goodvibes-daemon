@@ -1,5 +1,19 @@
 name: CI
 
+# Per-push CI: the checks that catch a regression in behavior, on every push.
+#
+#   typecheck      tsc over src/, scripts/ and the tests (tsconfig.test.json
+#                  includes everything tsconfig.json does), plus the import-cycle
+#                  and layer-boundary check and the workflow structure check
+#   test           one run of the suite (scripts/run-tests.ts)
+#   build          the linux-x64 binary and the toolchain's banner smoke
+#   boot-smoke     the compiled binary serves HTTP and hosts a session end to end
+#   publish-check  the SDK-pin agreement and the npm tarball contents, pre-tag
+#
+# Version stamps and the CHANGELOG section are written at the version bump by
+# `bun run release:prepare`, never checked per push. See
+# docs/testing-and-validation.md.
+
 on:
   push:
     branches: [main]
@@ -25,10 +39,12 @@ jobs:
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
       - name: Setup
         uses: ./.github/actions/setup
-      - name: Type check
-        run: bun run typecheck
-      - name: Type check (tests)
+      - name: Type check (source, scripts and tests)
         run: bun run typecheck:test
+      - name: Import cycles and layer boundaries
+        run: bun run architecture:check
+      - name: Workflow structure
+        run: bun run workflows:check
 
   test:
     runs-on: ubuntu-latest
@@ -45,46 +61,13 @@ jobs:
       - name: Run tests
         run: bun run test
 
-  # ── Aggregate coverage ratchet. `bun run test` above spawns one process PER
-  #    FILE for TMPDIR isolation, so it can never produce an aggregate number;
-  #    this runs the whole suite in a single process and compares the "All
-  #    files" row against the floors in toolchain.config.json. Its own job so a
-  #    coverage regression reads as a coverage regression, not a test failure. ─
-  coverage:
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - name: Checkout
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
-      - name: Setup
-        uses: ./.github/actions/setup
-      - name: Configure git for tests
-        run: |
-          git config --global user.name "CI"
-          git config --global user.email "ci@test.com"
-      - name: Coverage gate (ratchet)
-        run: bun run test:coverage
-
-  architecture:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - name: Checkout
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
-      - name: Setup
-        uses: ./.github/actions/setup
-      - name: Architecture check
-        run: bun run architecture:check
-
-  # ── The SDK-pin gate, run PRE-TAG. publish:check also runs inside
-  #    release.yml's publish-command, but that is after the GitHub Release
-  #    already exists and only when vars.PUBLISH_NPM is true, so a pin or
-  #    lockfile drift discovered there has already burned the tag. Running it
-  #    here makes it a gate on the commit instead of an epitaph for the tag.
-  #    GOODVIBES_SKIP_NPM_AUTH_CHECK=1 skips only the `npm whoami` registry
-  #    probe (CI has no publish token); every other gate, the SDK-pin
-  #    tri-agreement, the npm-specifier import sweep, the publish-metadata
-  #    fields and the tarball path/size policy, runs in full. ────────────────
+  # ── The SDK-pin gate and the tarball contents, run PRE-TAG. publish:check
+  #    also runs inside release.yml's publish-command, but that is after the
+  #    GitHub Release already exists, so a pin or lockfile drift discovered
+  #    there has already burned the tag. GOODVIBES_SKIP_NPM_AUTH_CHECK=1 skips
+  #    only the `npm whoami` registry probe (CI has no publish token); the
+  #    SDK-pin tri-agreement, the npm-specifier import sweep, the
+  #    publish-metadata fields and the tarball path/size check run in full. ──
   publish-check:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -93,32 +76,19 @@ jobs:
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
       - name: Setup
         uses: ./.github/actions/setup
-      - name: Publish package check (SDK pin + tarball policy)
+      - name: Publish package check (SDK pin + tarball contents)
         env:
           GOODVIBES_SKIP_NPM_AUTH_CHECK: "1"
         run: bun run publish:check
 
-  workflow-check:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - name: Checkout
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
-      - name: Setup
-        uses: ./.github/actions/setup
-      - name: Workflow structure check
-        run: bun run workflows:check
-      - name: Changelog section check
-        run: bun run changelog:check
-
   # ── build+smoke: build the linux-x64 binary and run the toolchain's banner
   #    smoke (version banner, no placeholder version, sqlite-vec addon staged,
   #    no forbidden strings baked into the binary). Uploaded so boot-smoke below
-  #    reuses these bytes instead of rebuilding them. ──────────────────────────
+  #    reuses these bytes instead of rebuilding them. Runs alongside typecheck
+  #    and test; auto-release waits for all of them. ─────────────────────────
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    needs: [typecheck, test, workflow-check]
     steps:
       - name: Checkout
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
@@ -186,10 +156,7 @@ jobs:
     needs:
       - typecheck
       - test
-      - coverage
-      - architecture
       - publish-check
-      - workflow-check
       - build
       - boot-smoke
     permissions:

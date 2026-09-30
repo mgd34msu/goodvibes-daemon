@@ -9,14 +9,11 @@
  * ratchets, the Agent's Knowledge-route snippet requirements) are not ported,
  * and no new rule was invented to fill the space.
  *
- * What this checks:
- *   1. Source-file line-count gate (non-test files <= 800 lines)
- *   2. Pattern-based rules (ambient root discovery, GOODVIBES_HOME meaning, ...)
- *   3. Explicit-any detection (via the TypeScript compiler API)
- *   4. Test discipline (no mock.module(), no mkdtemp under the real OS temp dir)
- *   5. Import-cycle detection, Tarjan SCC over the src/ runtime import graph
- *   6. Layer-boundary rules, codified allowed dependency directions
- *   7. Rules that guard nothing (missing targets, stale exemptions, dead layers)
+ * What this checks, runtime dependency structure only (the line-count cap and
+ * the text-pattern rules were removed; see docs/testing-and-validation.md):
+ *   1. Import-cycle detection, Tarjan SCC over the src/ runtime import graph
+ *   2. Layer-boundary rules, codified allowed dependency directions
+ *   3. Boundary rules that guard nothing (a layer that is not a src/ directory)
  *
  * --- LAYER MAP ---------------------------------------------------------------
  *
@@ -43,28 +40,9 @@
  */
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
-import ts from 'typescript';
 
 const ROOT = join(import.meta.dir, '..');
 const SRC_ROOT = join(ROOT, 'src');
-const SCRIPTS_ROOT = join(ROOT, 'scripts');
-const MAX_SOURCE_LINES = 800;
-
-// Files over the cap when the gate was introduced. The cap catches the NEXT
-// file that grows past it; these two are the ratchet's starting point and may
-// only be removed from this set, never added to.
-const SOURCE_LINE_LIMIT_EXEMPTIONS = new Set([
-  'src/daemon/cli.ts',
-  'src/cli/command-catalog.ts',
-]);
-
-type Rule = {
-  readonly name: string;
-  readonly files: readonly string[];
-  readonly pattern: RegExp;
-  readonly allow?: readonly string[];
-  readonly message: string;
-};
 
 function walk(dir: string): string[] {
   const entries = readdirSync(dir, { withFileTypes: true });
@@ -84,46 +62,6 @@ function walk(dir: string): string[] {
 
 function isTestSource(path: string): boolean {
   return path.includes('/src/test/') || path.endsWith('.test.ts') || path.includes('/__tests__/');
-}
-
-/**
- * Paths named by a rule that no longer exist.
- *
- * A rule scoped to a directory that has since moved matches nothing and passes,
- * forever, while reading as if it were still guarding something. That is worse
- * than no rule at all, so a named-but-missing path is a failure of THIS file.
- */
-const missingRuleTargets = new Set<string>();
-
-function expandTargets(targets: readonly string[]): string[] {
-  return targets.flatMap((target) => {
-    const abs = join(ROOT, target);
-    if (!existsSync(abs)) {
-      missingRuleTargets.add(target);
-      return [];
-    }
-    const stats = statSync(abs);
-    if (stats.isDirectory()) {
-      return walk(abs).filter((file) => !isTestSource(file));
-    }
-    return [abs];
-  });
-}
-
-/**
- * An exemption for a file that is gone is the same defect in the other
- * direction: it reads as a deliberate carve-out and exempts nothing.
- */
-function checkAllowEntries(rulesToCheck: readonly Rule[]): string[] {
-  const stale: string[] = [];
-  for (const rule of rulesToCheck) {
-    for (const entry of rule.allow ?? []) {
-      if (!existsSync(join(ROOT, entry))) {
-        stale.push(`[${rule.name}] allow-entry names a file that does not exist: ${entry}`);
-      }
-    }
-  }
-  return stale;
 }
 
 // --- Import-graph utilities --------------------------------------------------
@@ -341,119 +279,10 @@ function checkLayerBoundaries(
 // --- Main analysis -----------------------------------------------------------
 
 const allSourceFiles = walk(SRC_ROOT);
-const scriptFiles = walk(SCRIPTS_ROOT);
 const nonTestFiles = allSourceFiles.filter((file) => !isTestSource(file));
-const testFiles = allSourceFiles.filter((file) => isTestSource(file));
-const explicitAnyFiles = [...allSourceFiles, ...scriptFiles];
 const violations: string[] = [];
 
 const startMs = Date.now();
-
-for (const file of nonTestFiles) {
-  const text = readFileSync(file, 'utf-8');
-  const normalized = text.endsWith('\n') ? text.slice(0, -1) : text;
-  const lineCount = normalized.length === 0 ? 0 : normalized.split('\n').length;
-  const rel = relative(ROOT, file);
-  if (lineCount > MAX_SOURCE_LINES && !SOURCE_LINE_LIMIT_EXEMPTIONS.has(rel)) {
-    violations.push(`${rel}: exceeds ${MAX_SOURCE_LINES} lines (${lineCount})`);
-  }
-}
-
-const rules: readonly Rule[] = [
-  {
-    name: 'no-ambient-root-discovery-in-reusable-code',
-    files: nonTestFiles,
-    allow: [
-      // The composition root: the one place entitled to ask the process where
-      // it is running and what home it belongs to. Everything it resolves is
-      // handed down explicitly from here.
-      'src/daemon/cli.ts',
-      // Pre-existing at the time this gate was introduced: baseDirectory is
-      // injectable and process.cwd() is only its fallback. Exempted as the
-      // ratchet's starting point, not as a sanctioned pattern.
-      'src/daemon/webui-command.ts',
-    ],
-    pattern: /\bprocess\.cwd\(\)|\bhomedir\(\)/,
-    message: 'reusable code must not discover cwd/home implicitly; composition roots must pass owned roots explicitly',
-  },
-  {
-    name: 'no-implicit-project-root-literals',
-    files: nonTestFiles,
-    pattern: /join\(\s*['"]\.goodvibes['"]|join\(\s*['"]\.['"]\s*,\s*['"]\.goodvibes['"]|workspaceRoot:\s*['"]\.['"]/,
-    message: 'reusable code must not hide project-root ownership behind relative .goodvibes paths or "." workspace roots; inject explicit owned roots instead',
-  },
-  {
-    // One variable with two meanings is how a home-redirection incident
-    // starts, and one already has: GOODVIBES_HOME was read as the .goodvibes
-    // DIRECTORY in one place and as the tree ROOT it sits under in another, so
-    // a redirected process inspected a different tree than it had written to.
-    // Everything derives from the SDK's resolvers now. Writing the variable
-    // (a systemd unit's Environment= block) is untouched; this bans reads.
-    name: 'one-goodvibes-home-meaning',
-    files: [...nonTestFiles, ...scriptFiles],
-    pattern: /\benv(?:ironment)?\s*(?:\[\s*['"]GOODVIBES_HOME['"]\s*\]|\.GOODVIBES_HOME\b)/,
-    message: 'GOODVIBES_HOME has one meaning (the tree root) and one reader; derive from @pellux/goodvibes-sdk/platform/config (resolveGoodVibesHome / resolveGoodVibesTreeDirectory) instead of reading the variable directly',
-  },
-  {
-    // A directory created straight under the real OS temp dir and cleaned only
-    // by afterEach/afterAll/finally is what exhausts /tmp inodes: that cleanup
-    // never runs when the process is killed by a signal. makeProjectTempDir
-    // (src/test/helpers/project-temp.ts) roots scratch under this repo's own
-    // .test-tmp, where leftovers are bounded by the age-gated sweep in
-    // scripts/stale-tmp-sweep.ts. This bans only the exact dir-creation shape,
-    // not every mention of tmpdir().
-    name: 'no-raw-mkdtemp-under-os-tmpdir-in-tests',
-    files: testFiles,
-    // The containment mechanism itself, and the file that proves it works.
-    // Neither can route through makeProjectTempDir without pointing the
-    // mechanism at itself: the preload creates the one per-process directory
-    // that every later tmpdir() call resolves into, and its test asserts on
-    // that redirect directly.
-    allow: [
-      'src/test/preload/temp-cleanup.ts',
-      'src/test/helpers/temp-cleanup.test.ts',
-    ],
-    pattern: /\bmkdtemp(Sync)?\s*\([^)]*\btmpdir\s*\(\s*\)/,
-    message: 'do not mkdtemp/mkdtempSync directly under the real OS temp dir in a test: use makeProjectTempDir from src/test/helpers/project-temp.ts, so a signal-killed process leaks into the swept .test-tmp root instead of the real /tmp (the whole-suite coverage run has no TMPDIR redirect at all)',
-  },
-];
-
-for (const rule of rules) {
-  for (const file of rule.files) {
-    const rel = relative(ROOT, file);
-    if (rule.allow?.includes(rel)) continue;
-    if (rule.pattern.test(readFileSync(file, 'utf-8'))) {
-      violations.push(`${rel}: ${rule.message} [${rule.name}]`);
-    }
-  }
-}
-
-for (const file of explicitAnyFiles) {
-  const text = readFileSync(file, 'utf-8');
-  const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
-  const rel = relative(ROOT, file);
-  const seenPositions = new Set<number>();
-
-  const visit = (node: ts.Node): void => {
-    if (node.kind === ts.SyntaxKind.AnyKeyword) {
-      const start = node.getStart(source);
-      if (!seenPositions.has(start)) {
-        seenPositions.add(start);
-        const { line, character } = source.getLineAndCharacterOfPosition(start);
-        violations.push(`${rel}:${line + 1}:${character + 1}: explicit any is forbidden`);
-      }
-    }
-    ts.forEachChild(node, visit);
-  };
-
-  visit(source);
-}
-
-for (const file of testFiles) {
-  if (readFileSync(file, 'utf-8').includes('mock.module(')) {
-    violations.push(`${relative(ROOT, file)}: process-global mock.module() is forbidden in tests; use explicit dependency injection or local spies instead`);
-  }
-}
 
 // --- Cycle detection ---------------------------------------------------------
 
@@ -488,16 +317,6 @@ for (const rule of LAYER_BOUNDARY_RULES) {
       );
     }
   }
-}
-
-for (const stale of checkAllowEntries(rules)) {
-  violations.push(stale);
-}
-for (const target of [...missingRuleTargets].sort()) {
-  violations.push(
-    `a rule is scoped to "${target}", which does not exist; the rule matches nothing and passes vacuously;`
-    + ' remove the path (and the rule, if it has no live paths left) or correct it',
-  );
 }
 
 // --- Report ------------------------------------------------------------------

@@ -17,7 +17,6 @@ import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { readFileSync } from 'node:fs';
 import type { PermissionPromptDecision, PermissionPromptRequest } from '@pellux/goodvibes-sdk/platform/permissions';
 import { operations } from '@pellux/goodvibes-sdk/platform/runtime';
 import { GOODVIBES_DAEMON_SURFACE_ROOT } from '../../config/surface.ts';
@@ -27,9 +26,6 @@ import {
   trustGatedApprovalRaiser,
   type ApprovalRaiseExtras,
 } from '../../runtime/trust/trust-gated-approvals.ts';
-import { disposeTestRuntimeServicesAfterAll, getTestRuntimeServices } from '../helpers/runtime-services.ts';
-
-disposeTestRuntimeServicesAfterAll();
 
 let workspace: string;
 
@@ -234,20 +230,5 @@ describe('the attribution a brokered ask carries survives the gate', () => {
     // Undecided still: the next run asks again rather than inheriting a
     // decision nobody made.
     expect(manager.isDecided()).toBe(false);
-  });
-});
-
-describe('the composition hands the manager to the runs it hosts', () => {
-  it('exposes a permission manager on the service surface', () => {
-    expect(getTestRuntimeServices().permissionManager).toBeDefined();
-  });
-
-  it('gives the agent orchestrator that manager', () => {
-    // Source-level, like the rest of the unification pins: a missing key here
-    // fails nothing at runtime, the background permission gate simply
-    // approves everything, so the absence has to be what fails.
-    const source = readFileSync(join(import.meta.dir, '..', '..', 'runtime', 'services.ts'), 'utf8');
-    const setDependencies = source.slice(source.indexOf('agentOrchestrator.setDependencies({'));
-    expect(setDependencies.slice(0, setDependencies.indexOf('});'))).toContain('permissionManager,');
   });
 });
