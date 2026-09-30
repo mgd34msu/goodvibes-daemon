@@ -31,6 +31,8 @@ const BINARY = process.argv[2] ?? defaultBinary();
 const DAEMON_PORT = 47861;
 const STUB_PORT = 47862;
 const TOKEN = 'hosted-binary-proof-token';
+/** The scripted model's reply starts with this; the stored transcript must carry it. */
+const REPLY_MARKER = 'hosted-proof-reply';
 
 const home = mkdtempSync(join(tmpdir(), 'gv-hosted-proof-'));
 const workspace = join(home, 'workspace');
@@ -54,21 +56,31 @@ const stub = Bun.serve({
       return Response.json({ data: [{ id: 'proof-model' }] });
     }
     stubCalls += 1;
-    const body = await request.json().catch(() => ({})) as { messages?: unknown[] };
+    const body = await request.json().catch(() => ({})) as { messages?: unknown[]; stream?: boolean };
     const saw = JSON.stringify(body.messages ?? []);
+    const content = `${REPLY_MARKER} ${stubCalls}; the prompt mentioned the workspace: ${saw.includes(workspace)}`;
+    // The hosted provider path asks for a stream (stream: true) and reads the
+    // reply from the chunks; a plain JSON body there is stored as an empty
+    // reply. Answer the way the request asked.
+    if (body.stream === true) {
+      const chunk = (delta: Record<string, unknown>, finish: string | null): string => `data: ${JSON.stringify({
+        id: 'chatcmpl-proof',
+        object: 'chat.completion.chunk',
+        created: Math.floor(Date.now() / 1000),
+        model: 'proof-model',
+        choices: [{ index: 0, delta, finish_reason: finish }],
+      })}\n\n`;
+      return new Response(
+        chunk({ role: 'assistant', content }, null) + chunk({}, 'stop') + 'data: [DONE]\n\n',
+        { headers: { 'content-type': 'text/event-stream' } },
+      );
+    }
     return Response.json({
       id: 'chatcmpl-proof',
       object: 'chat.completion',
       created: Math.floor(Date.now() / 1000),
       model: 'proof-model',
-      choices: [{
-        index: 0,
-        message: {
-          role: 'assistant',
-          content: `hosted turn ${stubCalls} answered; the prompt mentioned the workspace: ${saw.includes(workspace)}`,
-        },
-        finish_reason: 'stop',
-      }],
+      choices: [{ index: 0, message: { role: 'assistant', content }, finish_reason: 'stop' }],
       usage: { prompt_tokens: 10, completion_tokens: 8, total_tokens: 18 },
     });
   },
@@ -173,12 +185,21 @@ try {
   check('sessions.steer accepts a hosted session id; no parallel verb family', steered === 'steered', steered.slice(0, 160));
   for (let attempt = 0; attempt < 40 && stubCalls === 0; attempt += 1) await Bun.sleep(500);
   check('the hosted session called a real model', stubCalls > 0, `${stubCalls} provider call(s)`);
+  // The model answering is not the reply being stored; wait for the turn to land.
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    const { sessions } = await invoke<{ sessions: HostedSession[] }>('sessions.hosted.list', {});
+    if ((sessions.find((s) => s.id === created.session.id)?.messageCount ?? 0) >= 2) break;
+    await Bun.sleep(500);
+  }
 
   const afterTurn = await invoke<{ session: HostedSession; history: { role: string; content: string }[] }>(
     'sessions.hosted.attach', { sessionId: created.session.id, clientId: 'proof-watcher' },
   );
   check('attach returns the transcript so far', afterTurn.history.length > 0,
     `${afterTurn.history.length} message(s)`);
+  const storedReply = afterTurn.history.find((message) => message.role === 'assistant')?.content ?? '';
+  check('the stored hosted reply is the model\'s scripted text, not an empty turn',
+    storedReply.includes(REPLY_MARKER), JSON.stringify(storedReply).slice(0, 160));
 
   // --- detach under kill ------------------------------------------------------
   await invoke('sessions.hosted.detach', { sessionId: created.session.id, clientId: 'proof-watcher' });

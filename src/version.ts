@@ -16,7 +16,7 @@ try {
   // "0.0.0", exactly the wrong-version banner a bare daemon launch showed in
   // the field. Guarding on the package name means the prebuild-baked fallback
   // above wins in that case instead of a stray version.
-  if (pkg?.name === 'goodvibes-daemon' && typeof pkg.version === 'string' && pkg.version.length > 0) {
+  if (pkg?.name === '@pellux/goodvibes-daemon' && typeof pkg.version === 'string' && pkg.version.length > 0) {
     _version = pkg.version;
   }
 } catch {
