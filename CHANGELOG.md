@@ -2,6 +2,23 @@
 
 All notable changes to the GoodVibes daemon.
 
+## [1.29.0] - 2026-09-30
+
+### Changes
+
+- **The daemon rides sdk 2.1.0.** It hosts the theme engine's config
+  (display.theme with the bundled names, display.treeGlyphs), notifications
+  that name the work with the behavior.notificationsMetadataOnly setting off
+  by default, context windows resolved from the models.dev catalog with
+  their source named, whole-message compaction that keeps tool calls, and
+  WRFC chains that run in their own git worktree, commit only their own
+  changes plus edits GoodVibes' own tools made, and run the repository's git
+  hooks.
+- **Every open dependency advisory is closed.** undici, brace-expansion,
+  the Anthropic client (0.92), qs, body-parser, ip-address, fflate, fast-uri,
+  js-yaml and sharp move to patched versions; bun audit reports no
+  vulnerabilities.
+
 ## [1.28.25] - 2026-08-23
 
 ### Changes
