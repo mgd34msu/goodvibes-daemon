@@ -203,10 +203,9 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   // the SDK's agent-graph composition for why the six are built as one.
   const {
     agentMessageBus, archetypeLoader, agentOrchestrator,
-    agentManager, contextAccountingHolder, wrfcController,
-  } = createAgentGraph({
-    runtimeBus: options.runtimeBus, workingDirectory, configManager, providerRegistry,
-  });
+    agentManager, contextAccountingHolder, wrfcController, orchestrationEngine: wrfcFixEngine,
+  } = createAgentGraph({ runtimeBus: options.runtimeBus, workingDirectory, configManager, providerRegistry });
+  disposalScope.registry.add('wrfc fix engine', () => wrfcFixEngine.dispose());
   // The one late-binding holder for the personal-capture port. The gateway verb
   // groups fill it (they own the owner-profile store and the occasions service),
   // and the agent orchestrator reads it when it builds a run's tool registry.
