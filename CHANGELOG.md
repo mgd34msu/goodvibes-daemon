@@ -2,6 +2,12 @@
 
 All notable changes to the GoodVibes daemon.
 
+## [1.29.1] - 2026-11-02
+
+### Fixed
+
+- Update to SDK 2.1.1 so model requests exclude the active assistant rendering block. Local llama.cpp models, including DeepSeek, can complete replies after tool calls without returning an empty turn.
+
 ## [1.29.0] - 2026-09-30
 
 ### Changes
