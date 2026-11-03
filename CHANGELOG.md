@@ -2,6 +2,12 @@
 
 All notable changes to the GoodVibes daemon.
 
+## [1.29.2] - 2026-11-03
+
+### Fixed
+
+- Use SDK 2.1.2 so turn completion waits for automatic compaction before queued input starts, preserving conversation history during compaction.
+
 ## [1.29.1] - 2026-11-02
 
 ### Fixed
